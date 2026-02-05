@@ -1,7 +1,7 @@
 # Kodi Log Monitor
 
 Kodi Log Monitor is a Python-based tool designed to monitor **Kodi.log activity in real time**.  
-It provides live log tracking with filtering capabilities for warnings, errors, and custom keyword searches through a built-in search bar.
+It provides live log tracking with filtering capabilities for log, warnings, errors, and custom keyword searches through a built-in search bar.
 
 <img width="3245" height="2123" alt="screenshot" src="https://github.com/user-attachments/assets/895b08f7-4acc-4799-b203-024c41334cba" />
 
