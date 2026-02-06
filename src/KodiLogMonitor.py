@@ -8,7 +8,7 @@ import sys
 import locale
 
 # --- CONFIGURATION ---
-APP_VERSION = "v1.1.3" 
+APP_VERSION = "v1.1" 
 CONFIG_FILE = ".kodi_monitor_config"
 ICON_NAME = "logo.ico"
 # ----------------------------
