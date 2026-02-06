@@ -1,36 +1,37 @@
-# Kodi Log Monitor
+# 📂 Kodi Log Monitor v1.1.3
 
-Kodi Log Monitor is a Python-based tool designed to monitor **Kodi.log activity in real time**.  
-It provides live log tracking with filtering capabilities for log, warnings, errors, and custom keyword searches through a built-in search bar.
+A lightweight and intuitive real-time log viewer for Kodi. It helps users and developers track events, troubleshoot errors, and monitor system status through a clean, color-coded interface.
 
-<img width="3245" height="2123" alt="screenshot" src="https://github.com/user-attachments/assets/895b08f7-4acc-4799-b203-024c41334cba" />
+![screenshot](https://github.com/user-attachments/assets/c3635d2b-35ff-4688-adfc-ba5055481c38)
+
 
 ---
 
-## ✨ Features
-
-- 📡 Real-time monitoring of Kodi.log
-- ⚠️ Filter log levels:
-  - LOG 
-  - WARN
-  - ERROR
-- 🔎 Keyword search filtering with a search bar
-- 🧾 Live event display
-- 🐍 Python source available for cross-platform builds
-- 🪟 Precompiled Windows binary included
+### 📝 What is it for?
+Kodi generates a log file that records everything happening in the background. This application allows you to:
+* **Monitor in real-time**: See new log lines instantly as they are written (tail -f style).
+* **Identify issues**: Errors are highlighted in red and warnings in orange for quick spotting.
+* **Filter easily**: Focus on specific levels (Error, Warning, Info) or search for keywords.
+* **Analyze setup**: Access a quick system summary to check your Kodi version and environment.
 
 ---
 
-## 📦 Releases
+### 🚀 For Regular Users
+If you just want to use the tool without installing Python:
 
-- Windows users can download the precompiled binary from the **Releases** section.
-- Other platforms can run the Python source or build their own executable.
+1. Go to the **[Releases](../../releases)** section on the right.
+2. Download the latest `KodiLogMonitor.exe`.
+3. Run the file. No installation is required.
+*Note: This binary is pre-built for Windows.*
 
 ---
 
-## 🧰 Requirements (Python version)
+### 🛠️ For Advanced Users & Developers
+If you want to run the script manually or explore the code:
 
-- Python 3.x
-- Access to a valid `Kodi.log` file
-
-
+#### Running from source
+Ensure you have Python 3.x installed, then:
+```bash
+git clone [https://github.com/YOUR_USERNAME/YOUR_REPO.git](https://github.com/YOUR_USERNAME/YOUR_REPO.git)
+cd YOUR_REPO
+python kodi_log_monitor.py
