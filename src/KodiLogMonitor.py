@@ -44,7 +44,6 @@ class KodiLogMonitor:
     def __init__(self, root):
         self.root = root
         self.root.title(f"Kodi Log Monitor") 
-        # Taille par défaut si aucune config n'existe
         self.window_geometry = "1200x850"
         self.root.configure(bg="#1e1e1e")
         self.set_window_icon()
@@ -65,16 +64,13 @@ class KodiLogMonitor:
         self.current_filter_tag.trace_add("write", self.trigger_refresh)
         self.search_query.trace_add("write", self.on_search_change)
         
-        # Intercepter la fermeture de la fenêtre pour sauvegarder la taille
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         
         self.setup_ui()
         self.load_session()
-        # Appliquer la géométrie après le chargement de la session
         self.root.geometry(self.window_geometry)
 
     def on_closing(self):
-        """Sauvegarde la position et la taille avant de quitter."""
         self.window_geometry = self.root.geometry()
         self.save_session()
         self.root.destroy()
@@ -214,24 +210,47 @@ class KodiLogMonitor:
     def monitor_loop(self):
         try:
             with open(self.log_file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                if self.load_full_file.get(): f.seek(0)
+                if self.load_full_file.get():
+                    f.seek(0)
                 else:
-                    f.seek(0, os.SEEK_END); f.seek(max(0, f.tell() - 250000))
+                    # On se positionne vers la fin
+                    f.seek(0, os.SEEK_END)
+                    f.seek(max(0, f.tell() - 250000))
+                
+                # Chargement initial de l'historique
                 lines = f.readlines()
-                if not self.load_full_file.get(): lines = lines[-1000:]
+                if not self.load_full_file.get():
+                    lines = lines[-1000:]
+                
+                # CRITIQUE : Capturer la position exacte AVANT d'entrer dans la boucle temps réel
+                last_pos = f.tell()
+                
                 to_display = [d for l in lines if (d := self.get_line_data(l))]
                 self.root.after(0, self.bulk_insert, to_display)
-                f.seek(0, os.SEEK_END); last_pos = f.tell()
+                
                 while self.running:
                     if not os.path.exists(self.log_file_path): break
+                    
+                    # Vérifier si le fichier a été tronqué/réinitialisé
                     if os.path.getsize(self.log_file_path) < last_pos:
-                        self.root.after(0, self.start_monitoring, self.log_file_path, False); return 
+                        self.root.after(0, self.start_monitoring, self.log_file_path, False)
+                        return 
+                    
                     line = f.readline()
-                    if not line: self.root.after(0, self.update_stats); time.sleep(0.5); continue
-                    last_pos = f.tell(); data = self.get_line_data(line)
-                    if data: self.root.after(0, self.append_to_gui, data[0], data[1])
-                    else: self.root.after(0, self.update_stats)
-        except: self.root.after(0, self.show_loading, False)
+                    if not line:
+                        self.root.after(0, self.update_stats)
+                        time.sleep(0.5)
+                        continue
+                    
+                    # Mettre à jour la position après chaque lecture réussie
+                    last_pos = f.tell()
+                    data = self.get_line_data(line)
+                    if data:
+                        self.root.after(0, self.append_to_gui, data[0], data[1])
+                    else:
+                        self.root.after(0, self.update_stats)
+        except:
+            self.root.after(0, self.show_loading, False)
 
     def get_line_data(self, line):
         if not line or line.strip() == "": return None
@@ -277,7 +296,6 @@ class KodiLogMonitor:
     def save_session(self):
         try:
             with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-                # Ajout de la géométrie dans le fichier de config
                 f.write(f"{self.log_file_path}\n")
                 f.write(f"{self.current_lang.get()}\n")
                 f.write(f"{'1' if self.load_full_file.get() else '0'}\n")
@@ -294,7 +312,6 @@ class KodiLogMonitor:
                     if len(lines) >= 2 and lines[1] in LANGS: self.current_lang.set(lines[1])
                     if len(lines) >= 3: self.load_full_file.set(lines[2] == "1")
                     if len(lines) >= 4: self.font_size = int(lines[3])
-                    # Chargement de la géométrie (si elle existe dans le fichier)
                     if len(lines) >= 5: self.window_geometry = lines[4]
             except: pass
         self.retranslate_ui(); self.update_tags_config()
@@ -334,6 +351,7 @@ if __name__ == "__main__":
     root = tk.Tk()
     try:
         from ctypes import windll, byref, sizeof, c_int
+        # Appliquer le mode sombre à la barre de titre sous Windows
         windll.dwmapi.DwmSetWindowAttribute(windll.user32.GetParent(root.winfo_id()), 35, byref(c_int(1)), sizeof(c_int))
     except: pass
     app = KodiLogMonitor(root); root.mainloop()
