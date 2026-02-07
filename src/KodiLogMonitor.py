@@ -27,13 +27,13 @@ LANGS = {
         "stats_simple": " | 📈 TOTAL : {} lines | 📁 {}"
     },
     "DE": {
-        "log": "📂 LOG", "sum": "📝 ÜBERSICHT", "exp": "💾 EXPORT", "clr": "🗑️ LÖSCHEN", "all": "ALLE", "info": "INFO", "warn": "WARNING", "err": "ERROR",
+        "log": "📂 LOG", "sum": "📝 ÜBERSICHT", "exp": "💾 EXPORT", "clr": "LÖSCHEN", "all": "ALLE", "info": "INFO", "warn": "WARNUNG", "err": "FEHLER",
         "ready": "Bereit", "sel": "Log auswählen.", "sys_sum": "\n--- SYSTEMÜBERSICHT ---\n", "loading": "Laden...", "reset": "\n--- DATEI VON KODI ZURÜCKGESETZT ---\n",
         "stats": " | 📈 {}{} : {} / {} zeilen | 📁 {}",
         "stats_simple": " | 📈 TOTAL : {} zeilen | 📁 {}"
     },
     "ES": {
-        "log": "📂 LOG", "sum": "📝 RESUMEN", "exp": "💾 EXPORT", "clr": "🗑️ LIMPIAR", "all": "TODO", "info": "INFO", "warn": "WARNING", "err": "ERROR",
+        "log": "📂 LOG", "sum": "📝 RESUMEN", "exp": "💾 EXPORT", "clr": "LIMPIAR", "all": "TODO", "info": "INFO", "warn": "AVISO", "err": "ERROR",
         "ready": "Listo", "sel": "Seleccione un log.", "sys_sum": "\n--- RESUMEN DEL SISTEMA ---\n", "loading": "Cargando...", "reset": "\n--- ARCHIVO REINICIADO POR KODI ---\n",
         "stats": " | 📈 {}{} : {} / {} líneas | 📁 {}",
         "stats_simple": " | 📈 TOTAL : {} líneas | 📁 {}"
@@ -51,6 +51,8 @@ class KodiLogMonitor:
         self.log_file_path = ""
         self.running = False
         self.monitor_thread = None
+        self.last_sent_line = "" 
+        
         self.load_full_file = tk.BooleanVar(value=False)
         self.wrap_mode = tk.BooleanVar(value=False)
         self.is_paused = tk.BooleanVar(value=False)
@@ -60,7 +62,6 @@ class KodiLogMonitor:
         self.font_size = 10
         
         self.filter_colors = {"all": "#007acc", "info": "#4CAF50", "warning": "#FF9800", "error": "#F44336"}
-        
         self.current_filter_tag.trace_add("write", self.trigger_refresh)
         self.search_query.trace_add("write", self.on_search_change)
         
@@ -143,8 +144,7 @@ class KodiLogMonitor:
         self.update_filter_button_colors()
 
     def update_stats(self):
-        if not self.log_file_path: 
-            self.stats_var.set(""); return
+        if not self.log_file_path: self.stats_var.set(""); return
         l = LANGS.get(self.current_lang.get(), LANGS["EN"])
         tag_f = self.current_filter_tag.get()
         query = self.search_query.get()
@@ -153,7 +153,7 @@ class KodiLogMonitor:
         if tag_f == "all" and not query:
             self.stats_var.set(l["stats_simple"].format(real_total, size_str))
         else:
-            lang_key = {"all":"all","info":"info","warning":"warn","error":"err"}[tag_f]
+            lang_key = {"all":"all","info":"info","warning":"warn","error":"err"}.get(tag_f, "all")
             log_type_label = l.get(lang_key, tag_f.upper())
             kw_display = f" + KEYWORD: '{query}'" if query else ""
             content = self.txt_area.get('1.0', 'end-1c')
@@ -168,27 +168,10 @@ class KodiLogMonitor:
                 line_count = sum(1 for _ in f)
             size_str = "0 KB"; temp_size = size_bytes
             for unit in ['B', 'KB', 'MB', 'GB']:
-                if temp_size < 1024: 
-                    size_str = f"{temp_size:.2f} {unit}"; break
+                if temp_size < 1024: size_str = f"{temp_size:.2f} {unit}"; break
                 temp_size /= 1024
             return size_str, line_count
         except: return "N/A", 0
-
-    def toggle_pause_scroll(self):
-        if not self.is_paused.get() and self.log_file_path: self.txt_area.see(tk.END)
-
-    def on_search_change(self, *args):
-        if self.search_query.get(): self.btn_clear_search.pack(side=tk.LEFT, padx=(0, 2))
-        else: self.btn_clear_search.pack_forget()
-        self.trigger_refresh()
-
-    def clear_search(self): self.search_query.set(""); self.search_entry.focus()
-
-    def update_filter_button_colors(self):
-        active = self.current_filter_tag.get()
-        for rb, mode in self.filter_radios:
-            target_bg = self.filter_colors[mode] if active == "all" or active == mode else "#3e3e42"
-            rb.config(bg=target_bg, selectcolor=target_bg)
 
     def trigger_refresh(self, *args):
         self.update_filter_button_colors()
@@ -197,10 +180,11 @@ class KodiLogMonitor:
     def start_monitoring(self, path, save=True):
         self.running = False 
         self.log_file_path = path
+        self.last_sent_line = ""
         self.retranslate_ui()
         if save: self.save_session()
         self.txt_area.config(state=tk.NORMAL); self.txt_area.delete('1.0', tk.END)
-        self.update_stats(); self.show_loading(True)
+        self.show_loading(True)
         self.root.after(200, self._launch_thread) 
 
     def _launch_thread(self):
@@ -213,25 +197,23 @@ class KodiLogMonitor:
                 if self.load_full_file.get():
                     f.seek(0)
                 else:
-                    # On se positionne vers la fin
                     f.seek(0, os.SEEK_END)
                     f.seek(max(0, f.tell() - 250000))
                 
-                # Chargement initial de l'historique
-                lines = f.readlines()
+                initial_lines = f.readlines()
                 if not self.load_full_file.get():
-                    lines = lines[-1000:]
+                    initial_lines = initial_lines[-1000:]
                 
-                # CRITIQUE : Capturer la position exacte AVANT d'entrer dans la boucle temps réel
-                last_pos = f.tell()
-                
-                to_display = [d for l in lines if (d := self.get_line_data(l))]
+                if initial_lines:
+                    self.last_sent_line = initial_lines[-1].strip()
+
+                to_display = [d for l in initial_lines if (d := self.get_line_data(l))]
                 self.root.after(0, self.bulk_insert, to_display)
                 
+                last_pos = f.tell()
+
                 while self.running:
                     if not os.path.exists(self.log_file_path): break
-                    
-                    # Vérifier si le fichier a été tronqué/réinitialisé
                     if os.path.getsize(self.log_file_path) < last_pos:
                         self.root.after(0, self.start_monitoring, self.log_file_path, False)
                         return 
@@ -239,13 +221,16 @@ class KodiLogMonitor:
                     line = f.readline()
                     if not line:
                         self.root.after(0, self.update_stats)
-                        time.sleep(0.5)
-                        continue
+                        time.sleep(0.5); continue
                     
-                    # Mettre à jour la position après chaque lecture réussie
                     last_pos = f.tell()
+                    clean_line = line.strip()
+                    
+                    if clean_line == self.last_sent_line: continue
+
                     data = self.get_line_data(line)
                     if data:
+                        self.last_sent_line = clean_line
                         self.root.after(0, self.append_to_gui, data[0], data[1])
                     else:
                         self.root.after(0, self.update_stats)
@@ -273,19 +258,12 @@ class KodiLogMonitor:
         if not self.is_paused.get(): self.txt_area.see(tk.END)
         self.update_stats()
 
-    def clear_console(self): 
-        self.txt_area.config(state=tk.NORMAL); self.txt_area.delete('1.0', tk.END); self.update_stats()
+    def update_filter_button_colors(self):
+        active = self.current_filter_tag.get()
+        for rb, mode in self.filter_radios:
+            target_bg = self.filter_colors[mode] if active == "all" or active == mode else "#3e3e42"
+            rb.config(bg=target_bg, selectcolor=target_bg)
 
-    def apply_wrap_mode(self): self.txt_area.config(wrap=tk.WORD if self.wrap_mode.get() else tk.NONE)
-    def toggle_full_load(self): self.save_session(); self.start_monitoring(self.log_file_path, save=False)
-    
-    def show_loading(self, state):
-        if state:
-            l = LANGS.get(self.current_lang.get(), LANGS["EN"])
-            self.loading_label.config(text=l["loading"]); self.overlay.grid(row=0, column=0, sticky="nsew"); self.root.update_idletasks()
-        else: self.overlay.grid_forget()
-
-    def change_language(self): self.retranslate_ui(); self.save_session()
     def retranslate_ui(self):
         l = LANGS.get(self.current_lang.get(), LANGS["EN"])
         self.btn_log.config(text=l["log"]); self.btn_sum.config(text=l["sum"]); self.btn_exp.config(text=l["exp"]); self.btn_clr.config(text=l["clr"])
@@ -293,16 +271,52 @@ class KodiLogMonitor:
         for rb, mode in self.filter_radios: rb.config(text=l[tag_m[mode]])
         self.footer_var.set(l["sel"] if not self.log_file_path else f"📍 {self.log_file_path}"); self.update_stats()
 
+    def clear_console(self): self.txt_area.config(state=tk.NORMAL); self.txt_area.delete('1.0', tk.END); self.update_stats()
+    def apply_wrap_mode(self): self.txt_area.config(wrap=tk.WORD if self.wrap_mode.get() else tk.NONE)
+    def toggle_full_load(self): self.save_session(); self.start_monitoring(self.log_file_path, save=False)
+    def toggle_pause_scroll(self): 
+        if not self.is_paused.get() and self.log_file_path: self.txt_area.see(tk.END)
+    def on_search_change(self, *args):
+        if self.search_query.get(): self.btn_clear_search.pack(side=tk.LEFT, padx=(0, 2))
+        else: self.btn_clear_search.pack_forget()
+        self.trigger_refresh()
+    def clear_search(self): self.search_query.set(""); self.search_entry.focus()
+    def show_loading(self, state):
+        if state:
+            l = LANGS.get(self.current_lang.get(), LANGS["EN"])
+            self.loading_label.config(text=l["loading"]); self.overlay.grid(row=0, column=0, sticky="nsew"); self.root.update_idletasks()
+        else: self.overlay.grid_forget()
+    def change_language(self): self.retranslate_ui(); self.save_session()
+    def open_file(self):
+        path = filedialog.askopenfilename(filetypes=[("Log files", "*.log"), ("All files", "*.*")])
+        if path: self.start_monitoring(path)
+    def update_tags_config(self):
+        c_font = ("Consolas", self.font_size)
+        for t, c in [("info", "#4CAF50"), ("warning", "#FF9800"), ("error", "#F44336"), ("summary", "#00E5FF")]:
+            self.txt_area.tag_config(t, foreground=c, font=(c_font[0], self.font_size))
+        self.txt_area.configure(font=c_font); self.font_label.config(text=str(self.font_size))
+    def increase_font(self): self.font_size += 1; self.update_tags_config(); self.save_session()
+    def decrease_font(self): 
+        if self.font_size > 6: self.font_size -= 1; self.update_tags_config(); self.save_session()
+    def show_summary(self):
+        if not self.log_file_path: return
+        l = LANGS.get(self.current_lang.get(), LANGS["EN"])
+        try:
+            with open(self.log_file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                content = f.read(); starts = list(re.finditer(r"(-+\n.*?Starting Kodi.*?-+\n)", content, re.DOTALL))
+                if starts:
+                    self.txt_area.insert(tk.END, l["sys_sum"], "summary")
+                    self.txt_area.insert(tk.END, starts[-1].group(1), "summary"); self.txt_area.see(tk.END)
+        except: pass
+    def export_log(self):
+        path = filedialog.asksaveasfilename(defaultextension=".txt", initialfile="kodi_extract.txt")
+        if path:
+            with open(path, "w", encoding="utf-8") as f: f.write(self.txt_area.get("1.0", tk.END))
     def save_session(self):
         try:
             with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-                f.write(f"{self.log_file_path}\n")
-                f.write(f"{self.current_lang.get()}\n")
-                f.write(f"{'1' if self.load_full_file.get() else '0'}\n")
-                f.write(f"{self.font_size}\n")
-                f.write(f"{self.window_geometry}")
+                f.write(f"{self.log_file_path}\n{self.current_lang.get()}\n{'1' if self.load_full_file.get() else '0'}\n{self.font_size}\n{self.window_geometry}")
         except: pass
-
     def load_session(self):
         if os.path.exists(CONFIG_FILE):
             try:
@@ -317,41 +331,10 @@ class KodiLogMonitor:
         self.retranslate_ui(); self.update_tags_config()
         if self.log_file_path: self.start_monitoring(self.log_file_path, save=False)
 
-    def open_file(self):
-        path = filedialog.askopenfilename(filetypes=[("Log files", "*.log"), ("All files", "*.*")])
-        if path: self.start_monitoring(path)
-
-    def update_tags_config(self):
-        c_font = ("Consolas", self.font_size)
-        for t, c in [("info", "#4CAF50"), ("warning", "#FF9800"), ("error", "#F44336"), ("summary", "#00E5FF")]:
-            self.txt_area.tag_config(t, foreground=c, font=(c_font[0], self.font_size))
-        self.txt_area.configure(font=c_font); self.font_label.config(text=str(self.font_size))
-
-    def show_summary(self):
-        if not self.log_file_path: return
-        l = LANGS.get(self.current_lang.get(), LANGS["EN"])
-        try:
-            with open(self.log_file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                content = f.read(); starts = list(re.finditer(r"(-+\n.*?Starting Kodi.*?-+\n)", content, re.DOTALL))
-                if starts:
-                    self.txt_area.insert(tk.END, l["sys_sum"], "summary")
-                    self.txt_area.insert(tk.END, starts[-1].group(1), "summary"); self.txt_area.see(tk.END)
-        except: pass
-
-    def export_log(self):
-        path = filedialog.asksaveasfilename(defaultextension=".txt", initialfile="kodi_extract.txt")
-        if path:
-            with open(path, "w", encoding="utf-8") as f: f.write(self.txt_area.get("1.0", tk.END))
-
-    def increase_font(self): self.font_size += 1; self.update_tags_config(); self.save_session()
-    def decrease_font(self): 
-        if self.font_size > 6: self.font_size -= 1; self.update_tags_config(); self.save_session()
-
 if __name__ == "__main__":
     root = tk.Tk()
     try:
         from ctypes import windll, byref, sizeof, c_int
-        # Appliquer le mode sombre à la barre de titre sous Windows
         windll.dwmapi.DwmSetWindowAttribute(windll.user32.GetParent(root.winfo_id()), 35, byref(c_int(1)), sizeof(c_int))
     except: pass
     app = KodiLogMonitor(root); root.mainloop()
