@@ -1,5 +1,6 @@
 # 📂 Kodi Log Monitor
-[![Tool for Kodi](https://img.shields.io/badge/Tool%20for-Kodi-blue)](https://forum.kodi.tv/showthread.php?tid=384328)  ![Downloads latest release](https://img.shields.io/github/downloads/Nanomani/KodiLogMonitor/latest/total)
+[![Tool for Kodi](https://img.shields.io/badge/Tool%20for-Kodi-blue)](https://forum.kodi.tv/showthread.php?tid=384328) ![Total downloads](https://img.shields.io/github/downloads/Nanomani/KodiLogMonitor/total) ![Downloads latest release](https://img.shields.io/github/downloads/Nanomani/KodiLogMonitor/latest/total)
+
 
 
 
