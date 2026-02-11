@@ -21,7 +21,7 @@ Kodi generates a log file that records everything happening in the background. T
 
 ### 🔍 Keyword Lists (v1.2.0+)
 You can now filter your logs using custom keyword lists:
-* **Custom Filtering**: Create a `.txt` file in the `list_keyword` folder (one keyword or phrase per line).
+* **Custom Filtering**: Create a `.txt` file in the `keyword_list` folder (one keyword or phrase per line).
 * **Smart Highlighting**: The monitor only displays lines containing your keywords and highlights them for better visibility.
 * **Easy Management**: Use the 📁 button to open the folder and ♻️ to refresh your lists instantly.
 
