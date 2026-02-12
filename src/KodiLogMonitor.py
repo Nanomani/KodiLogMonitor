@@ -10,7 +10,7 @@ import subprocess
 from collections import deque
 
 # --- CONFIGURATION ---
-APP_VERSION = "v1.2.1" 
+APP_VERSION = "v1.2.2" 
 CONFIG_FILE = ".kodi_monitor_config"
 ICON_NAME = "logo.ico"
 KEYWORD_DIR = "keyword_lists"
@@ -81,7 +81,7 @@ class KodiLogMonitor:
         self.log_file_path = ""
         self.running = False
         self.monitor_thread = None
-        self.seen_lines = deque(maxlen=150) 
+        self.seen_lines = deque(maxlen=200) 
         
         self.load_full_file = tk.BooleanVar(value=False)
         self.wrap_mode = tk.BooleanVar(value=False)
@@ -110,7 +110,7 @@ class KodiLogMonitor:
 
     def is_duplicate(self, text):
         clean_text = text.strip()
-        if not clean_text: return False
+        if not clean_text: return True 
         if clean_text in self.seen_lines: return True
         self.seen_lines.append(clean_text)
         return False
@@ -155,8 +155,12 @@ class KodiLogMonitor:
 
     def bulk_insert(self, data_list):
         if not self.running: return
+        valid_data = [d for d in data_list if d is not None]
+        if not valid_data:
+            self.show_loading(False)
+            return
         self.txt_area.config(state=tk.NORMAL)
-        for text, tag in data_list: self.insert_with_highlight(text, tag)
+        for text, tag in valid_data: self.insert_with_highlight(text, tag)
         if not self.is_paused.get(): self.txt_area.see(tk.END)
         self.update_stats(); self.show_loading(False)
 
@@ -282,10 +286,24 @@ class KodiLogMonitor:
         self.txt_area.configure(bg=COLOR_BG_MAIN, font=c_font); self.font_label.config(text=str(self.font_size))
 
     def reset_all_filters(self):
+        self.running = False 
         l = LANGS.get(self.current_lang.get(), LANGS["EN"])
-        self.current_filter_tag.set("all"); self.search_query.set(""); self.selected_list.set(l["none"]); self.is_paused.set(False); self.toggle_pause_scroll(); self.trigger_refresh()
+        
+        # Réinitialisation séquentielle des variables
+        self.search_query.set("") 
+        self.selected_list.set(l["none"])
+        self.current_filter_tag.set("all")
+        self.is_paused.set(False)
+        self.load_full_file.set(True)
+        
+        self.txt_area.config(state=tk.NORMAL)
+        self.txt_area.delete('1.0', tk.END)
+        
+        if self.log_file_path:
+            self.root.after(100, lambda: self.start_monitoring(self.log_file_path, save=False, retranslate=False))
 
     def get_line_data(self, line):
+        if not line or not line.strip(): return None 
         low = line.lower(); tag_f = self.current_filter_tag.get(); q = self.search_query.get().lower()
         if not (tag_f == "all" or f" {tag_f} " in low): return None
         if q and q not in low: return None
