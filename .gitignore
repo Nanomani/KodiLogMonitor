@@ -3,7 +3,8 @@ src/.kodi_monitor_config
 
 # --- Sorties de compilation (PyInstaller) ---
 # Ces dossiers sont créés à la racine ou dans src selon où tu lances la commande
-build/
+build/*
+!build/app.spec
 dist/
 src/build/
 src/dist/
