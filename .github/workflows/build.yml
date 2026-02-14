@@ -46,14 +46,14 @@ jobs:
             cp dist/KodiLogMonitor release/KodiLogMonitor-linux
           fi
 
-      - name: Clean previous builds
+      - name: Clean up unwanted files
         shell: bash
         run: |
           rm -rf build
+          rm -rf release/spec
+          rm -rf release/.github
           rm -rf dist
-          rm -rf release
           rm -rf __pycache__
-          mkdir -p release
           
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
