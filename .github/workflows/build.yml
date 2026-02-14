@@ -75,9 +75,19 @@ jobs:
       - name: Create Windows MSI
         if: matrix.os == 'windows-latest'
         run: |
-          choco install wixtoolset -y
-          candle build\installer.wxs
-          light installer.wixobj -o KodiLogMonitor-${{ env.VERSION }}.msi
+          # 1. Vérifier si le fichier existe pour debugger
+          if (Test-Path "build\installer.wxs") {
+              Write-Host "Fichier installer.wxs trouvé."
+          } else {
+              Write-Error "Fichier build\installer.wxs INTROUVABLE. Vérifiez l'emplacement dans votre repo."
+              exit 1
+          }
+
+          # 2. Compiler (on spécifie le dossier de sortie pour éviter les conflits)
+          candle.exe build\installer.wxs -o build\installer.wixobj
+          
+          # 3. Lier
+          light.exe build\installer.wixobj -o KodiLogMonitor-${{ env.VERSION }}.msi
         shell: powershell
 
       # changelog auto
