@@ -34,6 +34,13 @@ jobs:
           python-version: "3.11"
           cache: pip
 
+      # Linux GUI deps
+      - name: Linux dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-tk zip imagemagick
+
       - name: Install Python dependencies
         run: |
           pip install --upgrade pip
@@ -41,6 +48,7 @@ jobs:
           pip install pyinstaller pillow pyinstaller-hooks-contrib
         shell: bash
 
+      # macOS icon conversion
       - name: Convert icon for macOS
         if: matrix.os == 'macos-latest'
         run: |
@@ -49,16 +57,19 @@ jobs:
           sips -z 512 512 logo.png --out icon.iconset/icon_512x512.png
           iconutil -c icns icon.iconset -o logo.icns
 
+      # Build with PyInstaller
       - name: Build app
         run: python -m PyInstaller spec/app.spec
         shell: bash
 
+      # macOS bundle
       - name: Package macOS .app
         if: matrix.os == 'macos-latest'
         run: |
           mkdir -p KodiLogMonitor.app
           cp -R dist/KodiLogMonitor/* KodiLogMonitor.app/
 
+      # Windows MSI
       - name: Create Windows MSI
         if: matrix.os == 'windows-latest'
         run: |
@@ -67,10 +78,12 @@ jobs:
           light build/installer.wixobj -o KodiLogMonitor-${{ env.VERSION }}.msi
         shell: powershell
 
+      # Generate changelog
       - name: Generate changelog
         run: git log -10 --pretty=format:"- %s" > CHANGELOG.txt
         shell: bash
 
+      # Package artifacts
       - name: Package artifacts
         run: |
           mkdir package
@@ -81,46 +94,45 @@ jobs:
           zip -r KodiLogMonitor-${VERSION}-${{ matrix.os }}.zip *
         shell: bash
 
-      - name: Upload artifacts (for debugging)
+      - name: Upload build artifacts (for Release)
         uses: actions/upload-artifact@v4
         with:
           name: KodiLogMonitor-${{ env.VERSION }}-${{ matrix.os }}
           path: package/*.zip
 
-    release:
-      needs: build
-      runs-on: ubuntu-latest
-      steps:
-        - uses: actions/checkout@v4
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-        - name: Create GitHub Release
-          id: create_release
-          uses: actions/create-release@v2
-          with:
-            tag_name: ${{ github.ref_name }}
-            release_name: Release ${{ github.ref_name }}
-            draft: false
-            prerelease: false
-          env:
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-        - name: Download all build artifacts
-          uses: actions/download-artifact@v4
-          with:
-            path: release-assets
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
 
-        - name: Upload all release assets
-          shell: bash
-          run: |
-            for file in release-assets/*.zip; do
-              echo "Uploading $file ..."
-              curl -sL \
-                -X POST \
-                -H "Authorization: token $GITHUB_TOKEN" \
-                -H "Content-Type: application/zip" \
-                --data-binary @"$file" \
-                "$(jq -r .upload_url <<< "${{ steps.create_release.outputs.upload_url }}" | sed -e "s/{?name,label}//")?name=$(basename $file)"
-            done
-          env:
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+      - name: Upload all release assets
+        shell: bash
+        run: |
+          for file in release-assets/*.zip; do
+            echo "Uploading $file ..."
+            curl -sL \
+              -X POST \
+              -H "Authorization: token $GITHUB_TOKEN" \
+              -H "Content-Type: application/zip" \
+              --data-binary @"$file" \
+              "$(jq -r .upload_url <<< "${{ steps.create_release.outputs.upload_url }}" | sed -e "s/{?name,label}//")?name=$(basename $file)"
+          done
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
