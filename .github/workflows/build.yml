@@ -1,0 +1,94 @@
+name: KodiLogMonitor Production Build
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ "v*" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+          else
+            VERSION=$(cat build/version.txt)
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Linux GUI deps
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-tk zip imagemagick
+
+      - name: Install deps
+        run: |
+          pip install pyinstaller pillow pyinstaller-hooks-contrib
+        shell: bash
+
+      # conversion icone macOS
+      - name: Convert icon for macOS
+        if: matrix.os == 'macos-latest'
+        run: |
+          sips -s format png src/logo.ico --out logo.png
+          mkdir icon.iconset
+          sips -z 512 512 logo.png --out icon.iconset/icon_512x512.png
+          iconutil -c icns icon.iconset -o logo.icns
+
+      - name: Build app
+        run: pyinstaller build/app.spec
+        shell: bash
+
+      # macOS bundle
+      - name: Create macOS .app
+        if: matrix.os == 'macos-latest'
+        run: |
+          mkdir KodiLogMonitor.app
+          cp -R dist/KodiLogMonitor/* KodiLogMonitor.app/
+
+      # Windows MSI installer
+      - name: Create Windows MSI
+        if: matrix.os == 'windows-latest'
+        run: |
+          choco install wixtoolset -y
+          candle build\installer.wxs
+          light installer.wixobj -o KodiLogMonitor-${{ env.VERSION }}.msi
+        shell: powershell
+
+      # changelog auto
+      - name: Generate changelog
+        run: |
+          git log -10 --pretty=format:"- %s" > CHANGELOG.txt
+        shell: bash
+
+      - name: Package artifacts
+        run: |
+          mkdir package
+          cp -r dist/* package/ || true
+          cp CHANGELOG.txt package/
+          cd package
+          zip -r KodiLogMonitor-${VERSION}-${{ matrix.os }}.zip *
+        shell: bash
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KodiLogMonitor-${{ env.VERSION }}-${{ matrix.os }}
+          path: package/*.zip
