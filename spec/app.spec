@@ -1,34 +1,28 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+import sys
 from pathlib import Path
 from PyInstaller.utils.hooks import collect_data_files
 from PyInstaller.building.build_main import Analysis, PYZ, EXE, COLLECT
 
-# Définir les chemins relatifs à la racine du repo
+# Chemins
+project_root = Path(__file__).parent.parent
+script_path = project_root / "src" / "KodiLogMonitor.py"
+icon_path = project_root / "logo.ico"
 
-datas = collect_data_files('src')
-cwd = Path.cwd()
-src_dir = cwd / "src"
-script_path = src_dir / "KodiLogMonitor.py"
-icon_path = cwd / "logo.ico"
+# Vérification de l'existence du fichier principal
+if not script_path.exists():
+    raise FileNotFoundError(f"Le script principal n'existe pas: {script_path}")
 
-# Récupérer toutes les ressources si nécessaire (ici exemple avec Tkinter)
-datas = [(str(Path.cwd() / "logo.ico"), ".")]
+# Vérification de l'icône (optionnelle)
+datas = []
+if icon_path.exists():
+    datas.append((str(icon_path), "."))  # copie à la racine de l'exe
 
-coll = COLLECT(
-    exe,
-    a.binaries,
-    a.zipfiles,
-    a.datas + datas,
-    strip=False,
-    upx=True,
-    name='KodiLogMonitor'
-)
-
-# Analyse du script
+# Analyse
 a = Analysis(
     [str(script_path)],
-    pathex=[str(src_dir)],
+    pathex=[str(project_root / "src")],
     binaries=[],
     datas=datas,
     hiddenimports=[],
@@ -37,32 +31,29 @@ a = Analysis(
     excludes=[],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
-    noarchive=False
+    cipher=None,
+    noarchive=False,
 )
 
-# Créer archive PYZ
+# Compilation du bytecode
 pyz = PYZ(a.pure, a.zipped_data, cipher=None)
 
-# Créer l’exécutable
+# Création de l'exécutable
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
     [],
+    exclude_binaries=True,
     name="KodiLogMonitor",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    upx_exclude=[],
-    runtime_tmpdir=None,
-    console=False,  # Tkinter GUI, pas de console
-    icon=str(icon_path)
+    console=True,  # mettre False si tu veux une GUI
+    icon=str(icon_path) if icon_path.exists() else None
 )
 
-# Collecter pour créer le dossier final si besoin
+# Collecte finale (dist)
 coll = COLLECT(
     exe,
     a.binaries,
@@ -70,6 +61,5 @@ coll = COLLECT(
     a.datas,
     strip=False,
     upx=True,
-    upx_exclude=[],
     name="KodiLogMonitor"
 )
