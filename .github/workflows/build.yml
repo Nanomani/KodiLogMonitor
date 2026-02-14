@@ -7,20 +7,24 @@ on:
 
 permissions:
   contents: write
-  
+
+concurrency:
+  group: release
+  cancel-in-progress: true
+
 jobs:
 
   build:
-    name: Build ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-
     strategy:
+      fail-fast: false
       matrix:
         os: [windows-latest, macos-latest, ubuntu-latest]
 
+    runs-on: ${{ matrix.os }}
+
     steps:
 
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Setup Python
@@ -30,42 +34,45 @@ jobs:
 
       - name: Install dependencies
         run: |
+          python -m pip install --upgrade pip
           pip install pyinstaller
 
-      - name: Debug files
+      - name: Debug repository structure
         run: |
-          echo "=== ROOT ==="
+          echo "===== ROOT ====="
           ls -R
 
       - name: Build with PyInstaller
         run: |
           python -m PyInstaller ./spec/app.spec
 
-      - name: Rename artifact (Windows)
-        if: runner.os == 'Windows'
+      - name: Prepare release binary
+        shell: bash
         run: |
-          move dist\KodiLogMonitor\KodiLogMonitor.exe dist\KodiLogMonitor-windows.exe
+          mkdir release
 
-      - name: Rename artifact (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          mv dist/KodiLogMonitor/KodiLogMonitor dist/KodiLogMonitor-macos
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            cp dist/KodiLogMonitor.exe release/KodiLogMonitor-windows.exe
+          fi
 
-      - name: Rename artifact (Linux)
-        if: runner.os == 'Linux'
-        run: |
-          mv dist/KodiLogMonitor/KodiLogMonitor dist/KodiLogMonitor-linux
+          if [ "$RUNNER_OS" == "macOS" ]; then
+            cp dist/KodiLogMonitor release/KodiLogMonitor-macos
+          fi
 
-      - name: Upload artifacts
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            cp dist/KodiLogMonitor release/KodiLogMonitor-linux
+          fi
+
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: KodiLogMonitor-${{ runner.os }}
-          path: dist/*
+          path: release/*
 
   release:
-
     needs: build
     runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
 
     steps:
 
@@ -74,7 +81,10 @@ jobs:
         with:
           path: artifacts
 
-      - name: Create Release
+      - name: Show artifacts
+        run: ls -R artifacts
+
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: artifacts/**/*
