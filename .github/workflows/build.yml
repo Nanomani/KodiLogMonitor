@@ -87,50 +87,40 @@ jobs:
           name: KodiLogMonitor-${{ env.VERSION }}-${{ matrix.os }}
           path: package/*.zip
 
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+    release:
+      needs: build
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v4
 
-      - name: Create GitHub Release
-        id: create_release
-        uses: actions/create-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          release_name: Release ${{ github.ref_name }}
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        - name: Create GitHub Release
+          id: create_release
+          uses: actions/create-release@v2
+          with:
+            tag_name: ${{ github.ref_name }}
+            release_name: Release ${{ github.ref_name }}
+            draft: false
+            prerelease: false
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: release-assets
+        - name: Download all build artifacts
+          uses: actions/download-artifact@v4
+          with:
+            path: release-assets
 
-      - name: Upload release assets
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: release-assets/KodiLogMonitor-${{ env.VERSION }}-windows-latest.zip
-          asset_name: KodiLogMonitor-${{ env.VERSION }}-windows-latest.zip
-          asset_content_type: application/zip
+        - name: Upload all release assets
+          shell: bash
+          run: |
+            for file in release-assets/*.zip; do
+              echo "Uploading $file ..."
+              curl -sL \
+                -X POST \
+                -H "Authorization: token $GITHUB_TOKEN" \
+                -H "Content-Type: application/zip" \
+                --data-binary @"$file" \
+                "$(jq -r .upload_url <<< "${{ steps.create_release.outputs.upload_url }}" | sed -e "s/{?name,label}//")?name=$(basename $file)"
+            done
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload macOS asset
-        if: ${{ matrix.os == 'macos-latest' }}
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: release-assets/KodiLogMonitor-${{ env.VERSION }}-macos-latest.zip
-          asset_name: KodiLogMonitor-${{ env.VERSION }}-macos-latest.zip
-          asset_content_type: application/zip
-
-      - name: Upload Linux asset
-        if: ${{ matrix.os == 'ubuntu-latest' }}
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: release-assets/KodiLogMonitor-${{ env.VERSION }}-ubuntu-latest.zip
-          asset_name: KodiLogMonitor-${{ env.VERSION }}-ubuntu-latest.zip
-          asset_content_type: application/zip
