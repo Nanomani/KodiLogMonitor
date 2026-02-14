@@ -33,7 +33,10 @@ jobs:
           mkdir -p release
 
           if [ "$RUNNER_OS" == "Windows" ]; then
-            pyinstaller --onefile src/KodiLogMonitor.py -n KodiLogMonitor.exe
+            pyinstaller --noconsole --onefile \
+                  --add-data "src/logo.ico;." \
+                  --icon="src/logo.ico" \
+                  --name "KodiLogMonitor" src/KodiLogMonitor.py
             cp dist/KodiLogMonitor.exe release/KodiLogMonitor-windows.exe
           elif [ "$RUNNER_OS" == "macOS" ]; then
             pyinstaller --onefile src/KodiLogMonitor.py -n KodiLogMonitor
