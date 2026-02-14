@@ -10,16 +10,18 @@ jobs:
     strategy:
       matrix:
         include:
-        - os: ubuntu-latest
-          artifact_name: linux
-        - os: windows-latest
-          artifact_name: windows
-        - os: macos-13 # Intel x64
-          artifact_name: macos-x64
-          arch: x86_64
-        - os: macos-14 # Apple Silicon arm64
-          artifact_name: macos-arm64
-          arch: arm64
+          - os: ubuntu-latest
+            artifact_name: linux
+            arch: x64
+          - os: windows-latest
+            artifact_name: windows
+            arch: x64
+          - os: macos-13
+            artifact_name: macos-x64
+            arch: x86_64
+          - os: macos-14
+            artifact_name: macos-arm64
+            arch: arm64
 
     runs-on: ${{ matrix.os }}
 
