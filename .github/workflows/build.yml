@@ -27,6 +27,15 @@ jobs:
           pip install pyinstaller pillow pyinstaller-hooks-contrib
         shell: bash
 
+      - name: Clean previous builds
+        shell: bash
+        run: |
+          rm -rf build
+          rm -rf dist
+          rm -rf release
+          rm -rf __pycache__
+          mkdir -p release
+          
       - name: Build binary
         shell: bash
         run: |
@@ -45,15 +54,6 @@ jobs:
             pyinstaller --onefile src/KodiLogMonitor.py -n KodiLogMonitor
             cp dist/KodiLogMonitor release/KodiLogMonitor-linux
           fi
-
-      - name: Clean up unwanted files
-        shell: bash
-        run: |
-          rm -rf build
-          rm -rf release/spec
-          rm -rf release/.github
-          rm -rf dist
-          rm -rf __pycache__
           
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
