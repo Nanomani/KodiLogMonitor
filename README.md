@@ -31,7 +31,7 @@ You can now filter your logs using custom keyword lists:
 ### 🎨 Customization (v1.2.0+)
 The code is now designed for easy styling. You can find the **UI THEME** section at the very beginning of the script to change:
 * **Interface Colors**: Modify backgrounds for the text area, header, and buttons.
-* **Log & Highlight Colors**: Change the hex codes for `info`, `warning`, `error`, and the keyword `highlight`.
+* **Log & Highlight Colors**: Change the hex codes for `info`, `warning`, `error`, `debug`, and the keyword `highlight`.
 * **Centralized Design**: No need to search through the functions; everything is at the top of the file.
 
 ---
