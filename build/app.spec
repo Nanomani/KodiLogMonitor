@@ -1,7 +1,7 @@
 block_cipher = None
 
 a = Analysis(
-    ['src/KodiLogMonitor.py'],
+    ['../src/KodiLogMonitor.py'],
     pathex=[],
     binaries=[],
     datas=[('src/logo.ico', '.')],
