@@ -16,7 +16,8 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
       - name: Extract version
         shell: bash
@@ -29,13 +30,14 @@ jobs:
           echo "VERSION=$VERSION"
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
-      - uses: actions/setup-python@v5
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
 
-      # Linux GUI deps
-      - name: Linux dependencies
+      # Linux GUI dependencies
+      - name: Install Linux dependencies
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
@@ -44,7 +46,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install -r requirements.txt || true
           pip install pyinstaller pillow pyinstaller-hooks-contrib
         shell: bash
 
@@ -58,7 +60,7 @@ jobs:
           iconutil -c icns icon.iconset -o logo.icns
 
       # Build with PyInstaller
-      - name: Build app
+      - name: Build app with PyInstaller
         run: python -m PyInstaller ./spec/app.spec
         shell: bash
 
@@ -94,7 +96,7 @@ jobs:
           zip -r KodiLogMonitor-${VERSION}-${{ matrix.os }}.zip *
         shell: bash
 
-      - name: Upload build artifacts (for Release)
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: KodiLogMonitor-${{ env.VERSION }}-${{ matrix.os }}
