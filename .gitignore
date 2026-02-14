@@ -12,11 +12,6 @@ src/dist/
 spec/*
 !spec/app.spec
 
-# --- Fichiers exlus du fichier release (source code) ---
-.github/ export-ignore
-.gitignore export-ignore
-*.spec export-ignore
-
 # --- Fichiers temporaires Python ---
 __pycache__/
 src/__pycache__/
