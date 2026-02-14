@@ -4,7 +4,7 @@ a = Analysis(
     ['../src/KodiLogMonitor.py'],
     pathex=[],
     binaries=[],
-    datas=[('src/logo.ico', '.')],
+    datas=[('../src/logo.ico', '.')],
     hiddenimports=[],
     hookspath=[],
 )
