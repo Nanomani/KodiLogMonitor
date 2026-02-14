@@ -59,7 +59,7 @@ jobs:
 
       # Build with PyInstaller
       - name: Build app
-        run: python -m PyInstaller spec/app.spec
+        run: python -m PyInstaller ./spec/app.spec
         shell: bash
 
       # macOS bundle
