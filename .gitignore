@@ -4,13 +4,13 @@ src/.kodi_monitor_config
 # --- Sorties de compilation (PyInstaller) ---
 # Ces dossiers sont créés à la racine ou dans src selon où tu lances la commande
 build/*
-!build/app.spec
 !build/installer.wxs
 dist/
 src/build/
 src/dist/
 *.spec
-src/*.spec
+spec/*
+!spec/app.spec
 
 # --- Fichiers temporaires Python ---
 __pycache__/
