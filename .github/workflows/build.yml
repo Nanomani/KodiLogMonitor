@@ -49,10 +49,10 @@ jobs:
             cp dist/KodiLogMonitor.exe release/KodiLogMonitor-windows.exe
           elif [ "$RUNNER_OS" == "macOS" ]; then
             pyinstaller --noconsole --onefile \
-                        --add-data "logo.png:." \
-                        --icon="logo.icns" \
-                        --name "KodiLogMonitor" \
-                        src/KodiLogMonitor.py
+                  --add-data "src/logo.ico:." \
+                  --icon="logo.icns" \
+                  --name "KodiLogMonitor" \
+                  src/KodiLogMonitor.py
             cp -r dist/KodiLogMonitor release/KodiLogMonitor-macos
           elif [ "$RUNNER_OS" == "Linux" ]; then
             pyinstaller --onefile src/KodiLogMonitor.py -n KodiLogMonitor
