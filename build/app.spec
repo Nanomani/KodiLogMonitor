@@ -18,7 +18,7 @@ exe = EXE(
     exclude_binaries=True,
     name='KodiLogMonitor',
     console=False,
-    icon='src/logo.ico'
+    icon='../src/logo.ico'
 )
 
 coll = COLLECT(
