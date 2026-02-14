@@ -11,9 +11,11 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
+    env:
+      VERSION: ${{ github.ref_name }}
 
     steps:
-      - name: Checkout repo
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Setup Python
@@ -28,42 +30,24 @@ jobs:
           pip install pyinstaller pillow pyinstaller-hooks-contrib
 
       - name: Build binary
-        shell: bash
         run: |
           mkdir -p dist release
-
-          if [ "$RUNNER_OS" == "Windows" ]; then
-              pyinstaller --onefile src/KodiLogMonitor.py -n KodiLogMonitor.exe
-              cp dist/KodiLogMonitor.exe release/KodiLogMonitor-windows.exe
-          elif [ "$RUNNER_OS" == "macOS" ]; then
-              pyinstaller --onefile src/KodiLogMonitor.py -n KodiLogMonitor
-              cp -r dist/KodiLogMonitor release/KodiLogMonitor-macos
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            pyinstaller --onefile src/KodiLogMonitor.py -n KodiLogMonitor.exe
+            cp dist/KodiLogMonitor.exe release/KodiLogMonitor-windows.exe
+            cp logo.ico release/logo-windows.ico
+          elif [[ "${{ runner.os }}" == "macOS" ]]; then
+            pyinstaller --onefile src/KodiLogMonitor.py -n KodiLogMonitor
+            cp -r dist/KodiLogMonitor release/KodiLogMonitor-macos
+            cp logo.ico release/logo-macos.ico
           else
-              pyinstaller --onefile src/KodiLogMonitor.py -n KodiLogMonitor
-              cp dist/KodiLogMonitor release/KodiLogMonitor-linux
+            pyinstaller --onefile src/KodiLogMonitor.py -n KodiLogMonitor
+            cp -r dist/KodiLogMonitor release/KodiLogMonitor-linux
+            cp logo.ico release/logo-linux.ico
           fi
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: kodi-release-${{ github.ref_name }}
-          path: release/*
-
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: kodi-release-${{ github.ref_name }}
-          path: release
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          name: Release ${{ github.ref_name }}
-          files: release/*
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        - name: Upload artifacts
+          uses: actions/upload-artifact@v4
+          with:
+            name: kodi-${{ github.ref_name }}-${{ runner.os }}-${{ github.run_number }}
+            path: release/*
