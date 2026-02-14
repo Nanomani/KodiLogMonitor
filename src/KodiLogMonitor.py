@@ -456,7 +456,7 @@ class KodiLogMonitor:
         self.combo_lists.pack(side=tk.LEFT, padx=5)
         self.combo_lists.bind("<<ComboboxSelected>>", self.on_list_selected)
 
-        self.create_custom_button(kw_box, "♻️", self.refresh_keyword_lists, bg_color=COLOR_BTN_SECONDARY, padx=8, pady=2).pack(side=tk.LEFT, padx=5)
+        self.create_custom_button(kw_box, "♻️", self.refresh_keyword_list, bg_color=COLOR_BTN_SECONDARY, padx=8, pady=2).pack(side=tk.LEFT, padx=5)
         self.create_custom_button(kw_box, "📁", self.open_keyword_folder, bg_color=COLOR_BTN_SECONDARY, padx=8, pady=2).pack(side=tk.LEFT, padx=5)
 
         search_box = tk.Frame(sh_left, bg=COLOR_BG_MAIN, padx=8)
@@ -763,7 +763,7 @@ class KodiLogMonitor:
         else:
             subprocess.Popen(['open' if sys.platform == 'darwin' else 'xdg-open', abs_path])
 
-    def refresh_keyword_lists(self, trigger_monitor=True):
+    def refresh_keyword_list(self, trigger_monitor=True):
         l = LANGS.get(self.current_lang.get(), LANGS["EN"])
         files = [f.replace(".txt", "") for f in os.listdir(KEYWORD_DIR) if f.endswith(".txt")]
         self.combo_lists['values'] = [l["none"]] + sorted(files)
@@ -790,7 +790,7 @@ class KodiLogMonitor:
         for mode, cb in self.filter_widgets.items():
             cb.config(text=l[tm[mode]])
         self.footer_var.set(l["sel"] if not self.log_file_path else f"📍 {self.log_file_path}")
-        self.refresh_keyword_lists(trigger_monitor=refresh_monitor)
+        self.refresh_keyword_list(trigger_monitor=refresh_monitor)
         self.update_stats()
         self.update_filter_button_colors()
 
