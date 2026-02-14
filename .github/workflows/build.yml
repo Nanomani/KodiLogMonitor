@@ -59,10 +59,11 @@ jobs:
           sips -z 512 512 logo.png --out icon.iconset/icon_512x512.png
           iconutil -c icns icon.iconset -o logo.icns
 
-      # Debug
+      # 🔹 Debug: Vérifie que spec/app.spec existe
       - name: Debug repo files
         run: ls -R
-        
+        shell: bash
+
       # Build with PyInstaller
       - name: Build app with PyInstaller
         run: python -m PyInstaller ./spec/app.spec
