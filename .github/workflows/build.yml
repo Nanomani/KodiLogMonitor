@@ -46,8 +46,8 @@ jobs:
             cp logo.ico release/logo-linux.ico
           fi
 
-        - name: Upload artifacts
-          uses: actions/upload-artifact@v4
-          with:
-            name: kodi-${{ github.ref_name }}-${{ runner.os }}-${{ github.run_number }}
-            path: release/*
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: kodi-${{ github.ref_name }}-${{ runner.os }}
+          path: release/*
