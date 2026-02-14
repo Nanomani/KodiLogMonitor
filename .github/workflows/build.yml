@@ -1,171 +1,77 @@
-name: KodiLogMonitor Production Build
+name: Build KodiLogMonitor
 
 on:
   push:
     tags:
       - "v*"
-  workflow_dispatch:
 
 jobs:
+
   build:
+    name: Build ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+
     strategy:
-      fail-fast: false
       matrix:
         os: [windows-latest, macos-latest, ubuntu-latest]
 
-    runs-on: ${{ matrix.os }}
-
     steps:
+
       - name: Checkout repo
         uses: actions/checkout@v4
-
-      - name: Extract version
-        shell: bash
-        run: |
-          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
-            VERSION="${GITHUB_REF#refs/tags/v}"
-          else
-            VERSION="dev"
-          fi
-          echo "VERSION=$VERSION"
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: pip
 
-      # Linux GUI dependencies
-      - name: Install Linux dependencies
-        if: matrix.os == 'ubuntu-latest'
+      - name: Install dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y python3-tk zip imagemagick
+          pip install pyinstaller
 
-      - name: Install Python dependencies
+      - name: Debug files
         run: |
-          pip install --upgrade pip
-          pip install -r requirements.txt || true
-          pip install pyinstaller pillow pyinstaller-hooks-contrib
-        shell: bash
-
-      # macOS icon conversion
-      - name: Convert icon for macOS
-        if: matrix.os == 'macos-latest'
-        run: |
-          sips -s format png src/logo.ico --out logo.png
-          mkdir -p icon.iconset
-          sips -z 512 512 logo.png --out icon.iconset/icon_512x512.png
-          iconutil -c icns icon.iconset -o logo.icns
-
-      # 🔹 Debug cross-platform : Vérifie que spec/app.spec existe
-      - name: Debug repo files (Linux/macOS)
-        if: runner.os != 'Windows'
-        run: |
-          echo "=== Current directory ==="
-          pwd
-          echo "=== Root files ==="
+          echo "=== ROOT ==="
           ls -R
-          if [ -d spec ]; then
-            echo "Spec folder exists, contents:"
-            ls -R spec
-          else
-            echo "Spec folder does NOT exist!"
-          fi
-        shell: bash
 
-      - name: Debug repo files (Windows)
+      - name: Build with PyInstaller
+        run: |
+          python -m PyInstaller ./spec/app.spec
+
+      - name: Rename artifact (Windows)
         if: runner.os == 'Windows'
         run: |
-          Write-Host "=== Current directory ==="
-          Get-Location
-          Write-Host "=== Root files ==="
-          Get-ChildItem -Recurse
-          if (Test-Path spec) {
-            Write-Host "Spec folder exists, contents:"
-            Get-ChildItem spec -Recurse
-          } else {
-            Write-Host "Spec folder does NOT exist!"
-          }
-        shell: powershell
+          move dist\KodiLogMonitor\KodiLogMonitor.exe dist\KodiLogMonitor-windows.exe
 
-      # Build with PyInstaller
-      - name: Build app with PyInstaller
-        run: python -m PyInstaller ./spec/app.spec
-        shell: bash
-
-      # macOS bundle
-      - name: Package macOS .app
-        if: matrix.os == 'macos-latest'
+      - name: Rename artifact (macOS)
+        if: runner.os == 'macOS'
         run: |
-          mkdir -p KodiLogMonitor.app
-          cp -R dist/KodiLogMonitor/* KodiLogMonitor.app/
+          mv dist/KodiLogMonitor/KodiLogMonitor dist/KodiLogMonitor-macos
 
-      # Windows MSI
-      - name: Create Windows MSI
-        if: matrix.os == 'windows-latest'
+      - name: Rename artifact (Linux)
+        if: runner.os == 'Linux'
         run: |
-          choco install wixtoolset -y
-          candle build/installer.wxs -dProductVersion=${{ env.VERSION }} -dExePath=dist/KodiLogMonitor.exe
-          light build/installer.wixobj -o KodiLogMonitor-${{ env.VERSION }}.msi
-        shell: powershell
+          mv dist/KodiLogMonitor/KodiLogMonitor dist/KodiLogMonitor-linux
 
-      # Generate changelog
-      - name: Generate changelog
-        run: git log -10 --pretty=format:"- %s" > CHANGELOG.txt
-        shell: bash
-
-      # Package artifacts
-      - name: Package artifacts
-        run: |
-          mkdir package
-          cp -r dist/* package/ || true
-          cp CHANGELOG.txt package/
-          if [ -f KodiLogMonitor-${VERSION}.msi ]; then cp KodiLogMonitor-${VERSION}.msi package/; fi
-          cd package
-          zip -r KodiLogMonitor-${VERSION}-${{ matrix.os }}.zip *
-        shell: bash
-
-      - name: Upload build artifacts
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: KodiLogMonitor-${{ env.VERSION }}-${{ matrix.os }}
-          path: package/*.zip
+          name: KodiLogMonitor-${{ runner.os }}
+          path: dist/*
 
   release:
+
     needs: build
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
 
-      - name: Create GitHub Release
-        id: create_release
-        uses: actions/create-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          release_name: Release ${{ github.ref_name }}
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Download all build artifacts
+      - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          path: release-assets
+          path: artifacts
 
-      - name: Upload all release assets
-        shell: bash
-        run: |
-          for file in release-assets/*.zip; do
-            echo "Uploading $file ..."
-            curl -sL \
-              -X POST \
-              -H "Authorization: token $GITHUB_TOKEN" \
-              -H "Content-Type: application/zip" \
-              --data-binary @"$file" \
-              "$(jq -r .upload_url <<< "${{ steps.create_release.outputs.upload_url }}" | sed -e "s/{?name,label}//")?name=$(basename $file)"
-          done
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*
