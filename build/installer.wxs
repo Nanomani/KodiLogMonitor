@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Product Id="*" Name="KodiLogMonitor" Language="1033" Version="$(var.ProductVersion)" Manufacturer="YourName" UpgradeCode="PUT-GUID-HERE">
+    <Package InstallerVersion="500" Compressed="yes" InstallScope="perMachine" />
+
+    <!-- Define directories -->
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramFilesFolder">
+        <Directory Id="INSTALLFOLDER" Name="KodiLogMonitor" />
+      </Directory>
+    </Directory>
+
+    <!-- Add files -->
+    <DirectoryRef Id="INSTALLFOLDER">
+      <Component Id="KodiLogMonitorExe" Guid="PUT-GUID-HERE">
+        <File Id="KodiLogMonitorExe" Name="KodiLogMonitor.exe" Source="$(var.ExePath)" KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <!-- Shortcut in Start Menu -->
+    <Directory Id="ProgramMenuFolder">
+      <Directory Id="ApplicationProgramsFolder" Name="KodiLogMonitor">
+        <Component Id="ApplicationShortcut" Guid="PUT-GUID-HERE">
+          <Shortcut Id="startMenuShortcut"
+                    Name="KodiLogMonitor"
+                    Target="[INSTALLFOLDER]KodiLogMonitor.exe"
+                    WorkingDirectory="INSTALLFOLDER" />
+          <RemoveFolder Id="ApplicationProgramsFolder" On="uninstall" />
+          <RegistryValue Root="HKCU" Key="Software\KodiLogMonitor" Name="installed" Type="integer" Value="1" KeyPath="yes" />
+        </Component>
+      </Directory>
+    </Directory>
+
+    <Feature Id="DefaultFeature" Level="1">
+      <ComponentRef Id="KodiLogMonitorExe" />
+      <ComponentRef Id="ApplicationShortcut" />
+    </Feature>
+  </Product>
+</Wix>
