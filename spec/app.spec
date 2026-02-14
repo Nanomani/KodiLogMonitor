@@ -5,13 +5,25 @@ from PyInstaller.utils.hooks import collect_data_files
 from PyInstaller.building.build_main import Analysis, PYZ, EXE, COLLECT
 
 # Définir les chemins relatifs à la racine du repo
+
+datas = collect_data_files('src')
 cwd = Path.cwd()
 src_dir = cwd / "src"
 script_path = src_dir / "KodiLogMonitor.py"
 icon_path = cwd / "logo.ico"
 
 # Récupérer toutes les ressources si nécessaire (ici exemple avec Tkinter)
-datas = [(str(icon_path), ".")]
+datas = [(str(Path.cwd() / "logo.ico"), ".")]
+
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.zipfiles,
+    a.datas + datas,
+    strip=False,
+    upx=True,
+    name='KodiLogMonitor'
+)
 
 # Analyse du script
 a = Analysis(
