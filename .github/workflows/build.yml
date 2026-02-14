@@ -59,10 +59,36 @@ jobs:
           sips -z 512 512 logo.png --out icon.iconset/icon_512x512.png
           iconutil -c icns icon.iconset -o logo.icns
 
-      # 🔹 Debug: Vérifie que spec/app.spec existe
-      - name: Debug repo files
-        run: ls -R
+      # 🔹 Debug cross-platform : Vérifie que spec/app.spec existe
+      - name: Debug repo files (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: |
+          echo "=== Current directory ==="
+          pwd
+          echo "=== Root files ==="
+          ls -R
+          if [ -d spec ]; then
+            echo "Spec folder exists, contents:"
+            ls -R spec
+          else
+            echo "Spec folder does NOT exist!"
+          fi
         shell: bash
+
+      - name: Debug repo files (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          Write-Host "=== Current directory ==="
+          Get-Location
+          Write-Host "=== Root files ==="
+          Get-ChildItem -Recurse
+          if (Test-Path spec) {
+            Write-Host "Spec folder exists, contents:"
+            Get-ChildItem spec -Recurse
+          } else {
+            Write-Host "Spec folder does NOT exist!"
+          }
+        shell: powershell
 
       # Build with PyInstaller
       - name: Build app with PyInstaller
