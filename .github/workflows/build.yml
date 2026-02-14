@@ -41,27 +41,23 @@ jobs:
         run: |
           mkdir -p release
 
-        if [[ "$RUNNER_OS" == "Windows" ]]; then
-          pyinstaller --noconsole --onefile \
-                      --add-data "logo.ico;." \
-                      --icon="logo.ico" \
-                      --name "KodiLogMonitor" \
-                      src/KodiLogMonitor.py
-          cp dist/KodiLogMonitor.exe release/KodiLogMonitor-windows.exe
-        elif [[ "$RUNNER_OS" == "macOS" ]]; then
-          pyinstaller --noconsole --onefile \
-                      --add-data "logo.png:." \
-                      --icon="logo.icns" \
-                      --name "KodiLogMonitor" \
-                      src/KodiLogMonitor.py
-          cp dist/KodiLogMonitor release/KodiLogMonitor-macos
-        else
-          pyinstaller --noconsole --onefile \
-                      --add-data "logo.png:." \
-                      --name "KodiLogMonitor" \
-                      src/KodiLogMonitor.py
-          cp dist/KodiLogMonitor release/KodiLogMonitor-linux
-        fi
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            pyinstaller --noconsole --onefile \
+                  --add-data "src/logo.ico;." \
+                  --icon="src/logo.ico" \
+                  --name "KodiLogMonitor" src/KodiLogMonitor.py
+            cp dist/KodiLogMonitor.exe release/KodiLogMonitor-windows.exe
+          elif [ "$RUNNER_OS" == "macOS" ]; then
+            pyinstaller --noconsole --onefile \
+                        --add-data "logo.png:." \
+                        --icon="logo.icns" \
+                        --name "KodiLogMonitor" \
+                        src/KodiLogMonitor.py
+            cp -r dist/KodiLogMonitor release/KodiLogMonitor-macos
+          elif [ "$RUNNER_OS" == "Linux" ]; then
+            pyinstaller --onefile src/KodiLogMonitor.py -n KodiLogMonitor
+            cp dist/KodiLogMonitor release/KodiLogMonitor-linux
+          fi
           
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
