@@ -6,7 +6,8 @@
 
 A lightweight and intuitive real-time log viewer or a simple log editor for Kodi. It helps users and developers track events, troubleshoot errors, and monitor system status through a clean, color-coded interface.
 
-![screenshot_01](https://github.com/user-attachments/assets/a483407d-9225-40f2-bbe4-8f4e7bcf282f)
+![2026-02-14_223618](https://github.com/user-attachments/assets/0048895c-fbb0-486e-994c-5d64214bc1ce)
+
 
 ---
 
@@ -21,7 +22,7 @@ Kodi generates a log file that records everything happening in the background. T
 
 ### 🔍 Keyword Lists (v1.2.0+)
 You can now filter your logs using custom keyword lists:
-* **Custom Filtering**: Create a `.txt` file in the `keyword_lists` folder (one keyword or phrase per line).
+* **Custom Filtering**: Create a `.txt` file in the `keyword_list` folder (one keyword or phrase per line).
 * **Smart Highlighting**: The monitor only displays lines containing your keywords and highlights them for better visibility.
 * **Easy Management**: Use the 📁 button to open the folder and ♻️ to refresh your lists instantly.
 
