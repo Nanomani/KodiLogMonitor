@@ -21,12 +21,19 @@ jobs:
       - name: Extract version
         shell: bash
         run: |
-          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            VERSION=${GITHUB_REF#refs/tags/v}
+          echo "GITHUB_REF=$GITHUB_REF"
+      
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+              VERSION="${GITHUB_REF#refs/tags/v}"
+          elif [ -f build/version.txt ]; then
+              VERSION=$(cat build/version.txt)
           else
-            VERSION=$(cat build/version.txt)
+              VERSION="dev"
           fi
+      
+          echo "VERSION=$VERSION"
           echo "VERSION=$VERSION" >> $GITHUB_ENV
+
 
       - uses: actions/setup-python@v5
         with:
