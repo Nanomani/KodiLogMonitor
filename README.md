@@ -40,9 +40,8 @@ The code is now designed for easy styling. You can find the **UI THEME** section
 If you just want to use the tool without installing Python:
 
 1. Go to the **[Releases](../../releases)** section on the right.
-2. Download the latest `KodiLogMonitor.exe`.
+2. Download the latest for your OS.
 3. Run the file. No installation is required.
-*Note: This binary is pre-built for Windows.*
 
 ---
 
