@@ -39,10 +39,10 @@ If you prefer a cleaner interface, you can easily disable this option:
 5. Save the file and start the application.
 
 ℹ️ Notes
-1 = Enabled (default)
-0 = Disabled
 
-The modification requires that the application be shut down beforehand.
+* 1 = Enabled (default) 0 = Disabled
+* The software must be run at least once to create the configuration file.
+* The modification requires that the application be shut down beforehand.
 
 ---
 
