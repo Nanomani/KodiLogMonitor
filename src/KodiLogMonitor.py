@@ -216,6 +216,7 @@ LANGS = {
     }
 }
 
+
 class KodiLogMonitor:
     def __init__(self, root):
         self.root = root
@@ -250,6 +251,7 @@ class KodiLogMonitor:
         self.search_query = tk.StringVar()
         self.selected_list = tk.StringVar()
         self.font_size = 10
+        self.show_google_search = tk.BooleanVar(value=True)
 
         self.filter_colors = {
             "all": COLOR_ACCENT,
@@ -824,17 +826,24 @@ class KodiLogMonitor:
 
         # --- Context menu items ---
         self.menu_items = []
+
+        # Item 0: Copy
         self.menu_items.append(
-            add_custom_item(
-                lambda: self.root.focus_get().event_generate("<<Copy>>")
-            )
+            add_custom_item(lambda: self.root.focus_get().event_generate("<<Copy>>"))
         )
+
+        # Item 1: Select All
         self.menu_items.append(
-            add_custom_item(
-                lambda: self.txt_area.tag_add("sel", "1.0", "end")
-            )
+            add_custom_item(lambda: self.txt_area.tag_add("sel", "1.0", "end"))
         )
-        self.menu_items.append(add_custom_item(self.search_on_google))
+
+        # Item 2: Google Search (Stored in a variable for dynamic toggle)
+        self.google_menu_item = add_custom_item(self.search_on_google)
+        self.menu_items.append(self.google_menu_item)
+
+        # Initial visibility check based on loaded config
+        if not self.show_google_search.get():
+            self.google_menu_item.pack_forget()
 
         # --- Scrollbar configuration ---
         self.v_scroll = ttk.Scrollbar(
@@ -1256,7 +1265,18 @@ class KodiLogMonitor:
             self.start_monitoring(p)
 
     def show_context_menu(self, event):
+        """
+        Displays the custom context menu at the mouse position and
+        dynamically toggles the Google Search option based on config.
+        """
         self.txt_area.focus_set()
+
+        # Show or hide the Google Search item based on the user's preference
+        if self.show_google_search.get():
+            self.google_menu_item.pack(fill="x")
+        else:
+            self.google_menu_item.pack_forget()
+
         self.context_menu.geometry(f"+{event.x_root}+{event.y_root}")
         self.context_menu.deiconify()
         self.context_menu.lift()
@@ -1355,25 +1375,24 @@ class KodiLogMonitor:
 
     def save_session(self):
         """
-        Saves the current application state and user preferences to a config file.
+        Saves the current application state with perfectly aligned comments.
         """
         try:
-            # Build string for filter states (all, debug, info, warning, error)
             modes = ["all", "debug", "info", "warning", "error"]
-            filter_states = ",".join(
-                ["1" if self.filter_vars[m].get() else "0" for m in modes]
-            )
+            filter_states = ",".join(["1" if self.filter_vars[m].get() else "0" for m in modes])
 
-            # Write settings sequentially to the configuration file
             with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+                # We use a fixed width of 40 characters for the value part
+                w = 40
                 config_data = [
-                    str(self.log_file_path),
-                    str(self.current_lang.get()),
-                    "1" if self.load_full_file.get() else "0",
-                    str(self.font_size),
-                    str(self.window_geometry),
-                    str(self.selected_list.get()),
-                    filter_states
+                    f"{str(self.log_file_path):<{w}} # log_file_path",
+                    f"{str(self.current_lang.get()):<{w}} # language",
+                    f"{('1' if self.load_full_file.get() else '0'):<{w}} # load_full_file",
+                    f"{str(self.font_size):<{w}} # font_size",
+                    f"{str(self.window_geometry):<{w}} # window_geometry",
+                    f"{str(self.selected_list.get()):<{w}} # selected_keyword_list",
+                    f"{filter_states:<{w}} # filter_states (all,debug,info,warn,err)",
+                    f"{('1' if self.show_google_search.get() else '0'):<{w}} # show_google_search_menu"
                 ]
                 f.write("\n".join(config_data))
         except (IOError, OSError) as e:
@@ -1391,7 +1410,8 @@ class KodiLogMonitor:
 
         try:
             with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-                lines = f.read().splitlines()
+                # Use split('#')[0] to get only the value before the comment
+                lines = [line.split('#')[0].strip() for line in f.read().splitlines()]
 
                 # 1. Log file path
                 if len(lines) >= 1 and os.path.exists(lines[0]):
@@ -1433,6 +1453,13 @@ class KodiLogMonitor:
                         if i < len(modes):
                             self.filter_vars[modes[i]].set(state == "1")
 
+                # 8. Google Search Context Menu Visibility
+                if len(lines) >= 8:
+                    self.show_google_search.set(lines[7] == "1")
+                else:
+                    # Default to enabled if the line doesn't exist yet
+                    self.show_google_search.set(True)
+
         except (IOError, OSError, Exception) as e:
             # Print error for debugging purposes if needed
             print(f"Error loading configuration: {e}")
@@ -1444,6 +1471,7 @@ class KodiLogMonitor:
         # Automatically resume monitoring if a valid log file was found
         if self.log_file_path:
             self.start_monitoring(self.log_file_path, False, False)
+
 
 if __name__ == "__main__":
     # Windows-specific configurations for High DPI and Dark Mode title bar
