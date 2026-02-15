@@ -28,6 +28,23 @@ You can now filter your logs using custom keyword lists:
 
 ---
 
+### 💡 Google Search Context Menu (v1.3.2+)
+The application provides a convenient "Search on Google" option in the right-click context menu, allowing you to quickly look up any selected text from the logs.
+
+Disable the feature:
+If you prefer a cleaner interface, you can easily disable this option:
+1. Open the .kodi_monitor_config file located in the application directory.
+2. Locate the parameter show_google_search_menu (line 8).
+3. Change its value 1 to 0  
+5. Save the file and restart the application.
+
+ℹ️ Notes
+1 = Enabled (default)
+0 = Disabled
+Changes require a restart to take effect
+
+---
+
 ### 🎨 Customization (v1.2.0+)
 The code is now designed for easy styling. You can find the **UI THEME** section at the very beginning of the script to change:
 * **Interface Colors**: Modify backgrounds for the text area, header, and buttons.
