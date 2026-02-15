@@ -259,6 +259,10 @@ class KodiLogMonitor:
             "error": LOG_COLORS["error"]
         }
 
+        # --- Cursor visibility management ---
+        self.cursor_timer = None
+        self.cursor_visible = True
+
         self.setup_ui()
         self.load_session()
         self.root.geometry(self.window_geometry)
@@ -849,6 +853,14 @@ class KodiLogMonitor:
         # Focus on click to display the cursor
         self.txt_area.bind("<Button-1>", lambda event: self.txt_area.focus_set())
 
+        # Reset timer and show cursor on click, key press, or mouse movement
+        self.txt_area.bind("<Button-1>", self.reset_cursor_timer, add="+")
+        self.txt_area.bind("<Key>", self.reset_cursor_timer, add="+")
+        self.txt_area.bind("<Motion>", self.reset_cursor_timer, add="+")
+
+        # Start the initial timer
+        self.reset_cursor_timer()
+
         # Prevent typing while allowing navigation ("soft" read-only)
         allowed_keys = (
             "Up", "Down", "Left", "Right", "Next", "Prior", "Home", "End"
@@ -1250,6 +1262,30 @@ class KodiLogMonitor:
         self.context_menu.lift()
         self.context_menu.focus_set()
         self.context_menu.bind("<FocusOut>", lambda e: self.context_menu.withdraw())
+
+    def hide_cursor(self):
+        """
+        Hides the text cursor by setting the blink time to 0.
+        """
+        self.txt_area.config(insertontime=0)
+        self.cursor_visible = False
+        self.cursor_timer = None
+
+    def reset_cursor_timer(self, event=None):
+        """
+        Resets the inactivity timer and restores cursor visibility.
+        """
+        # Cancel existing timer if it exists
+        if self.cursor_timer:
+            self.root.after_cancel(self.cursor_timer)
+
+        # Restore cursor blink settings if it was hidden
+        if not self.cursor_visible:
+            self.txt_area.config(insertontime=600)
+            self.cursor_visible = True
+
+        # Set new timer for 5 seconds (5000 ms)
+        self.cursor_timer = self.root.after(5000, self.hide_cursor)
 
     def search_on_google(self):
         try:
