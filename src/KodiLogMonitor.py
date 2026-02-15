@@ -11,7 +11,7 @@ import subprocess
 from collections import deque
 
 # --- CONFIGURATION ---
-APP_VERSION = "v1.3.2"
+APP_VERSION = "v1.3.3"
 CONFIG_FILE = ".kodi_monitor_config"
 DEFAULT_GEOMETRY = "1680x1050"
 ICON_NAME = "logo.ico"
@@ -1328,33 +1328,18 @@ class KodiLogMonitor:
             self.save_session()
 
     def show_summary(self):
-        """
-        Extracts and displays the system summary (Kodi start block) in the text area.
-        """
         if not self.log_file_path:
             return
-
         try:
             with open(self.log_file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                content = f.read()
-                # Find all Kodi startup sequences in the log
-                summaries = list(re.finditer(
-                    r"(-+\n.*?Starting Kodi.*?-+\n)",
-                    content,
-                    re.DOTALL
-                ))
-
-                if summaries:
-                    # Get the translation for the summary header
-                    lang_key = self.current_lang.get()
-                    header = LANGS.get(lang_key, LANGS["en"])["sys_sum"]
-
-                    # Insert header and the last (most recent) startup sequence found
-                    self.txt_area.insert(tk.END, header, "summary")
-                    self.txt_area.insert(tk.END, summaries[-1].group(1), "summary")
+                c = f.read()
+                s = list(re.finditer(r"(-+\n.*?Starting Kodi.*?-+\n)", c, re.DOTALL))
+                if s:
+                    self.txt_area.insert(tk.END, LANGS.get(self.current_lang.get(), LANGS["EN"])["sys_sum"], "summary")
+                    self.txt_area.insert(tk.END, s[-1].group(1), "summary")
                     self.txt_area.see(tk.END)
-        except (IOError, OSError, re.error) as e:
-            print(f"Error reading summary: {e}")
+        except:
+            pass
 
     def export_log(self):
         """
