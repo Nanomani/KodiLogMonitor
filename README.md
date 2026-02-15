@@ -36,7 +36,7 @@ If you prefer a cleaner interface, you can easily disable this option:
 1. Open the .kodi_monitor_config file located in the application directory.
 2. Locate the parameter show_google_search_menu (line 8).
 3. Change its value 1 to 0  
-5. Save the file and restart the application.
+5. Save the file and start the application.
 
 ℹ️ Notes
 1 = Enabled (default)
