@@ -41,6 +41,7 @@ If you prefer a cleaner interface, you can easily disable this option:
 ℹ️ Notes
 1 = Enabled (default)
 0 = Disabled
+
 The modification requires that the application be shut down beforehand.
 
 ---
