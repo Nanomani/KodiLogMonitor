@@ -11,7 +11,7 @@ import subprocess
 from collections import deque
 
 # --- CONFIGURATION ---
-APP_VERSION = "v1.3.1"
+APP_VERSION = "v1.3.2"
 CONFIG_FILE = ".kodi_monitor_config"
 DEFAULT_GEOMETRY = "1680x1050"
 ICON_NAME = "logo.ico"
@@ -328,20 +328,26 @@ class KodiLogMonitor:
             self.root.after(0, self.show_loading, False)
 
     def bulk_insert(self, data_list):
+        """Insère un lot de données dans la zone de texte de manière optimisée."""
         if not self.running:
             return
+
         valid_data = [d for d in data_list if d is not None]
         if not valid_data:
             self.show_loading(False)
             return
+
         self.txt_area.config(state=tk.NORMAL)
+
         for text, tag in valid_data:
             self.insert_with_highlight(text, tag)
+
         if self.pending_jump_timestamp:
             self.jump_to_timestamp(self.pending_jump_timestamp)
             self.pending_jump_timestamp = None
         elif not self.is_paused.get():
             self.txt_area.see(tk.END)
+
         self.update_stats()
         self.show_loading(False)
 
@@ -375,14 +381,27 @@ class KodiLogMonitor:
         self.monitor_thread = threading.Thread(target=self.monitor_loop, daemon=True)
         self.monitor_thread.start()
 
-    def create_custom_button(self, parent, text, command, bg_color=COLOR_BTN_DEFAULT, fg_color=COLOR_TEXT_BRIGHT, font=None, padx=12, pady=3):
-        if font is None:
-            font = (self.emoji_font_family, 9, "bold")
-        lbl = tk.Label(parent, text=text, bg=bg_color, fg=fg_color, padx=padx, pady=pady, font=font, cursor="hand2")
-        lbl.bind("<Button-1>", lambda e: command())
-        lbl.bind("<Enter>", lambda e: lbl.config(bg=COLOR_BTN_ACTIVE))
-        lbl.bind("<Leave>", lambda e: lbl.config(bg=bg_color))
-        return lbl
+    def create_custom_button(
+            self, parent, text, command,
+            bg_color=COLOR_BTN_DEFAULT,
+            fg_color=COLOR_TEXT_BRIGHT,
+            font=None, padx=12, pady=3
+        ):
+            """Crée un bouton personnalisé à partir d'un label Tkinter."""
+            if font is None:
+                font = (self.emoji_font_family, 9, "bold")
+
+            label = tk.Label(
+                parent, text=text, bg=bg_color, fg=fg_color,
+                padx=padx, pady=pady, font=font, cursor="hand2"
+            )
+
+            # Liaison des événements (PEP 8 : 'event' au lieu de 'e')
+            label.bind("<Button-1>", lambda event: command())
+            label.bind("<Enter>", lambda event: label.config(bg=COLOR_BTN_ACTIVE))
+            label.bind("<Leave>", lambda event: label.config(bg=bg_color))
+
+            return label
 
     def setup_ui(self):
         self.root.grid_columnconfigure(0, weight=1)
@@ -392,16 +411,18 @@ class KodiLogMonitor:
         style.theme_use('clam')
 
         # --- DARK STYLE FOR COMBOBOX ---
-        style.configure("TCombobox",
-                        fieldbackground=COLOR_BTN_DEFAULT,
-                        background=COLOR_BTN_DEFAULT,
-                        foreground=COLOR_TEXT_BRIGHT,
-                        bordercolor=COLOR_BG_HEADER,
-                        darkcolor=COLOR_BTN_DEFAULT,
-                        lightcolor=COLOR_BG_HEADER,
-                        arrowcolor=COLOR_TEXT_BRIGHT,
-                        arrowsize=20,
-                        insertcolor=COLOR_TEXT_BRIGHT)
+        style.configure(
+            "TCombobox",
+            fieldbackground=COLOR_BTN_DEFAULT,
+            background=COLOR_BTN_DEFAULT,
+            foreground=COLOR_TEXT_BRIGHT,
+            bordercolor=COLOR_BG_HEADER,
+            darkcolor=COLOR_BTN_DEFAULT,
+            lightcolor=COLOR_BG_HEADER,
+            arrowcolor=COLOR_TEXT_BRIGHT,
+            arrowsize=20,
+            insertcolor=COLOR_TEXT_BRIGHT
+        )
 
         style.map("TCombobox",
                   fieldbackground=[("readonly", COLOR_BTN_DEFAULT), ("focus", COLOR_BTN_DEFAULT)],
@@ -409,13 +430,14 @@ class KodiLogMonitor:
 
         # --- DARK STYLE FOR SCROLLBAR ---
         style.configure("Vertical.TScrollbar",
-                        gripcount=0,
-                        background=SCROLL_THUMB_DEFAULT,
-                        troughcolor=COLOR_BG_HEADER,
-                        bordercolor=COLOR_BG_HEADER,
-                        lightcolor=COLOR_BG_HEADER,
-                        darkcolor=COLOR_BG_HEADER,
-                        arrowcolor=COLOR_TEXT_DIM)
+            gripcount=0,
+            background=SCROLL_THUMB_DEFAULT,
+            troughcolor=COLOR_BG_HEADER,
+            bordercolor=COLOR_BG_HEADER,
+            lightcolor=COLOR_BG_HEADER,
+            darkcolor=COLOR_BG_HEADER,
+            arrowcolor=COLOR_TEXT_DIM
+        )
 
         style.map("Vertical.TScrollbar",
                   background=[("active", SCROLL_THUMB_HOVER), ("pressed", SCROLL_THUMB_HOVER)])
@@ -434,91 +456,295 @@ class KodiLogMonitor:
         h_left = tk.Frame(header, bg=COLOR_BG_HEADER)
         h_left.pack(side=tk.LEFT, fill=tk.Y)
 
+        # --- Main action buttons ---
+        # Note: Using a helper method to keep button creation consistent
         self.btn_log = self.create_custom_button(h_left, "", self.open_file)
         self.btn_log.pack(side=tk.LEFT, padx=5)
+
         self.btn_sum = self.create_custom_button(h_left, "", self.show_summary)
         self.btn_sum.pack(side=tk.LEFT, padx=5)
+
         self.btn_exp = self.create_custom_button(h_left, "", self.export_log)
         self.btn_exp.pack(side=tk.LEFT, padx=5)
+
         self.btn_clr = self.create_custom_button(h_left, "", self.clear_console)
         self.btn_clr.pack(side=tk.LEFT, padx=10)
 
-        tk.Frame(h_left, bg=COLOR_SEPARATOR, width=1).pack(side=tk.LEFT, fill=tk.Y, padx=5)
+        # --- Visual separator and Filters area ---
+        # Thin vertical frame acting as a UI separator
+        tk.Frame(
+            h_left,
+            bg=COLOR_SEPARATOR,
+            width=1
+        ).pack(side=tk.LEFT, fill=tk.Y, padx=5)
+
         self.filter_frame = tk.Frame(h_left, bg=COLOR_BG_HEADER)
         self.filter_frame.pack(side=tk.LEFT, padx=5)
 
+        # Dictionary to store filter toggle widgets
         self.filter_widgets = {}
-        for mode in ["all", "debug", "info", "warning", "error"]:
-            cb = tk.Checkbutton(self.filter_frame, variable=self.filter_vars[mode], indicatoron=0,
-                                fg=COLOR_TEXT_BRIGHT, font=(self.emoji_font_family, 8, "bold"), relief="flat", borderwidth=0,
-                                padx=10, pady=5, cursor="hand2", command=lambda m=mode: self.on_filter_toggle(m),
-                                highlightthickness=0, highlightbackground=COLOR_BG_HEADER)
+
+        # --- Filter toggle buttons generation ---
+        filter_modes = ["all", "debug", "info", "warning", "error"]
+
+        for mode in filter_modes:
+            # Create a toggleable checkbutton for each log level
+            cb = tk.Checkbutton(
+                self.filter_frame,
+                variable=self.filter_vars[mode],
+                indicatoron=0,
+                fg=COLOR_TEXT_BRIGHT,
+                font=(self.emoji_font_family, 8, "bold"),
+                relief="flat",
+                borderwidth=0,
+                padx=10,
+                pady=5,
+                cursor="hand2",
+                command=lambda m=mode: self.on_filter_toggle(m),
+                highlightthickness=0,
+                highlightbackground=COLOR_BG_HEADER
+            )
             cb.pack(side=tk.LEFT, padx=5)
-            cb.bind("<Enter>", lambda e, w=cb, m=mode: self.on_hover_filter(w, m, True))
-            cb.bind("<Leave>", lambda e, w=cb, m=mode: self.on_hover_filter(w, m, False))
+
+            # Bind hover events for visual feedback
+            # Using 'event' instead of 'e' as per PEP 8 naming conventions
+            cb.bind(
+                "<Enter>",
+                lambda event, w=cb, m=mode: self.on_hover_filter(w, m, True)
+            )
+            cb.bind(
+                "<Leave>",
+                lambda event, w=cb, m=mode: self.on_hover_filter(w, m, False)
+            )
+
+            # Store widget reference for later updates
             self.filter_widgets[mode] = cb
 
+        # --- Language selection (header right) ---
         h_right = tk.Frame(header, bg=COLOR_BG_HEADER)
         h_right.pack(side=tk.RIGHT, fill=tk.Y)
-        self.combo_lang = ttk.Combobox(h_right, textvariable=self.current_lang, values=sorted(LANGS.keys()), state="readonly", width=4, style="TCombobox")
+
+        self.combo_lang = ttk.Combobox(
+            h_right,
+            textvariable=self.current_lang,
+            values=sorted(LANGS.keys()),
+            state="readonly",
+            width=4,
+            style="TCombobox"
+        )
         self.combo_lang.pack(side=tk.LEFT, padx=5)
-        self.combo_lang.bind("<<ComboboxSelected>>", lambda e: self.change_language())
+
+        # Bind language change event
+        # PEP 8: use 'event' instead of 'e' for better clarity
+        self.combo_lang.bind(
+            "<<ComboboxSelected>>",
+            lambda event: self.change_language()
+        )
 
         # Sub Header
+        # --- Sub-header (secondary toolbar) ---
         sub_header = tk.Frame(self.root, bg=COLOR_BG_HEADER, padx=10, pady=4)
         sub_header.grid(row=1, column=0, sticky="ew", pady=(0, 5))
 
+        # Left side of the sub-header
         sh_left = tk.Frame(sub_header, bg=COLOR_BG_HEADER)
         sh_left.pack(side=tk.LEFT, fill=tk.Y)
+
+        # Keyword management box
         kw_box = tk.Frame(sh_left, bg=COLOR_BG_HEADER)
         kw_box.pack(side=tk.LEFT)
-        self.combo_lists = ttk.Combobox(kw_box, textvariable=self.selected_list, state="readonly", width=18, style="TCombobox")
+
+        # Keyword list selection combobox
+        self.combo_lists = ttk.Combobox(
+            kw_box,
+            textvariable=self.selected_list,
+            state="readonly",
+            width=18,
+            style="TCombobox"
+        )
         self.combo_lists.pack(side=tk.LEFT, padx=5)
         self.combo_lists.bind("<<ComboboxSelected>>", self.on_list_selected)
 
-        self.create_custom_button(kw_box, "♻️", self.refresh_keyword_list, bg_color=COLOR_BTN_SECONDARY, padx=8, pady=2).pack(side=tk.LEFT, padx=5)
-        self.create_custom_button(kw_box, "📁", self.open_keyword_folder, bg_color=COLOR_BTN_SECONDARY, padx=8, pady=2).pack(side=tk.LEFT, padx=5)
+        # Keyword action buttons (Refresh and Open folder)
+        self.create_custom_button(
+            kw_box,
+            "♻️",
+            self.refresh_keyword_list,
+            bg_color=COLOR_BTN_SECONDARY,
+            padx=8,
+            pady=2
+        ).pack(side=tk.LEFT, padx=5)
 
+        self.create_custom_button(
+            kw_box,
+            "📁",
+            self.open_keyword_folder,
+            bg_color=COLOR_BTN_SECONDARY,
+            padx=8,
+            pady=2
+        ).pack(side=tk.LEFT, padx=5)
+
+        # --- Search Box Section ---
         search_box = tk.Frame(sh_left, bg=COLOR_BG_MAIN, padx=8)
         search_box.pack(side=tk.LEFT, padx=15)
-        tk.Label(search_box, text="🔍", bg=COLOR_BG_MAIN, fg=COLOR_TEXT_DIM, font=(self.emoji_font_family, 9)).pack(side=tk.LEFT)
-        self.search_entry = tk.Entry(search_box, textvariable=self.search_query, bg=COLOR_BG_MAIN, fg=COLOR_TEXT_BRIGHT, borderwidth=0, width=22, insertbackground=COLOR_TEXT_BRIGHT, font=(self.main_font_family, 9), relief="flat", highlightthickness=1, highlightbackground=COLOR_BG_MAIN, highlightcolor=COLOR_ACCENT)
-        self.search_entry.pack(side=tk.LEFT, padx=5, pady=4)
-        self.btn_clear_search = tk.Label(search_box, text="×", bg=COLOR_BG_MAIN, fg=COLOR_TEXT_DIM, font=(self.main_font_family, 11, "bold"), cursor="hand2")
-        self.btn_clear_search.bind("<Button-1>", lambda e: self.clear_search())
 
+        # Search icon
+        tk.Label(
+            search_box,
+            text="🔍",
+            bg=COLOR_BG_MAIN,
+            fg=COLOR_TEXT_DIM,
+            font=(self.emoji_font_family, 9)
+        ).pack(side=tk.LEFT)
+
+        # Search entry field
+        self.search_entry = tk.Entry(
+            search_box,
+            textvariable=self.search_query,
+            bg=COLOR_BG_MAIN,
+            fg=COLOR_TEXT_BRIGHT,
+            borderwidth=0,
+            width=22,
+            insertbackground=COLOR_TEXT_BRIGHT,
+            font=(self.main_font_family, 9),
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground=COLOR_BG_MAIN,
+            highlightcolor=COLOR_ACCENT
+        )
+        self.search_entry.pack(side=tk.LEFT, padx=5, pady=4)
+
+        # Clear search button (X)
+        self.btn_clear_search = tk.Label(
+            search_box,
+            text="×",
+            bg=COLOR_BG_MAIN,
+            fg=COLOR_TEXT_DIM,
+            font=(self.main_font_family, 11, "bold"),
+            cursor="hand2"
+        )
+        self.btn_clear_search.pack(side=tk.LEFT)
+        self.btn_clear_search.bind(
+            "<Button-1>",
+            lambda event: self.clear_search()
+        )
+
+        # --- Options Box & Style ---
         opt_box = tk.Frame(sh_left, bg=COLOR_BG_HEADER)
         opt_box.pack(side=tk.LEFT)
-        opt_btn_style = {"indicatoron": 0, "bg": COLOR_BTN_DEFAULT, "fg": COLOR_TEXT_BRIGHT, "relief": "flat", "font": (self.main_font_family, 10, "bold"), "padx": 10, "pady": 2, "highlightthickness": 0, "borderwidth": 0, "cursor": "hand2", "highlightbackground": COLOR_BG_HEADER}
+
+        # Common style for option buttons (Checkbuttons used as toggles)
+        opt_btn_style = {
+            "indicatoron": 0,
+            "bg": COLOR_BTN_DEFAULT,
+            "fg": COLOR_TEXT_BRIGHT,
+            "relief": "flat",
+            "font": (self.main_font_family, 10, "bold"),
+            "padx": 10,
+            "pady": 2,
+            "highlightthickness": 0,
+            "borderwidth": 0,
+            "cursor": "hand2",
+            "highlightbackground": COLOR_BG_HEADER
+        }
 
         def add_hover(widget):
-            widget.bind("<Enter>", lambda e: widget.config(bg=COLOR_BTN_ACTIVE))
-            widget.bind("<Leave>", lambda e: widget.config(bg=COLOR_BTN_DEFAULT))
+            """Add visual hover effects to a widget."""
+            # PEP 8: use 'event' instead of 'e' for clarity in lambdas
+            widget.bind(
+                "<Enter>",
+                lambda event: widget.config(bg=COLOR_BTN_ACTIVE)
+            )
+            widget.bind(
+                "<Leave>",
+                lambda event: widget.config(bg=COLOR_BTN_DEFAULT)
+            )
 
-        self.cb_inf = tk.Checkbutton(opt_box, text="∞", variable=self.load_full_file, selectcolor=COLOR_ACCENT, command=self.toggle_full_load, **opt_btn_style)
+        # --- Infinity (Full Load) Toggle ---
+        self.cb_inf = tk.Checkbutton(
+            opt_box,
+            text="∞",
+            variable=self.load_full_file,
+            selectcolor=COLOR_ACCENT,
+            command=self.toggle_full_load,
+            **opt_btn_style
+        )
         self.cb_inf.pack(side=tk.LEFT, padx=5)
         add_hover(self.cb_inf)
-        self.cb_wrap = tk.Checkbutton(opt_box, text="↵", variable=self.wrap_mode, selectcolor=COLOR_ACCENT, command=self.apply_wrap_mode, **opt_btn_style)
+
+        # --- Word Wrap Toggle ---
+        self.cb_wrap = tk.Checkbutton(
+            opt_box,
+            text="↵",
+            variable=self.wrap_mode,
+            selectcolor=COLOR_ACCENT,
+            command=self.apply_wrap_mode,
+            **opt_btn_style
+        )
         self.cb_wrap.pack(side=tk.LEFT, padx=5)
         add_hover(self.cb_wrap)
-        self.cb_pause = tk.Checkbutton(opt_box, text="||", variable=self.is_paused, selectcolor=COLOR_DANGER, command=self.toggle_pause_scroll, **opt_btn_style)
+
+        # --- Pause Monitoring Toggle ---
+        self.cb_pause = tk.Checkbutton(
+            opt_box,
+            text="||",
+            variable=self.is_paused,
+            selectcolor=COLOR_DANGER,
+            command=self.toggle_pause_scroll,
+            **opt_btn_style
+        )
         self.cb_pause.pack(side=tk.LEFT, padx=5)
         add_hover(self.cb_pause)
-        self.btn_reset = self.create_custom_button(opt_box, "🔄  RESET", self.reset_all_filters, fg_color=COLOR_WARNING, font=(self.emoji_font_family, 8, "bold"), padx=10, pady=4)
+
+        # --- Reset Filters Button ---
+        self.btn_reset = self.create_custom_button(
+            opt_box,
+            "🔄  RESET",
+            self.reset_all_filters,
+            fg_color=COLOR_WARNING,
+            font=(self.emoji_font_family, 8, "bold"),
+            padx=10,
+            pady=4
+        )
         self.btn_reset.pack(side=tk.LEFT, padx=5)
 
+        # --- Font size controls (sub-header right) ---
         sh_right = tk.Frame(sub_header, bg=COLOR_BG_HEADER)
         sh_right.pack(side=tk.RIGHT, fill=tk.Y)
-        self.btn_dec_font = self.create_custom_button(sh_right, "-", self.decrease_font, padx=10, pady=3)
+
+        self.btn_dec_font = self.create_custom_button(
+            sh_right, "-", self.decrease_font, padx=10, pady=3
+        )
         self.btn_dec_font.pack(side=tk.LEFT, padx=5)
-        self.btn_inc_font = self.create_custom_button(sh_right, "+", self.increase_font, padx=10, pady=3)
+
+        self.btn_inc_font = self.create_custom_button(
+            sh_right, "+", self.increase_font, padx=10, pady=3
+        )
         self.btn_inc_font.pack(side=tk.LEFT, padx=5)
-        self.font_label = tk.Label(sh_right, text=str(self.font_size), bg=COLOR_BG_HEADER, fg=COLOR_TEXT_BRIGHT, width=3, font=(self.main_font_family, 9, "bold"))
+
+        self.font_label = tk.Label(
+            sh_right,
+            text=str(self.font_size),
+            bg=COLOR_BG_HEADER,
+            fg=COLOR_TEXT_BRIGHT,
+            width=3,
+            font=(self.main_font_family, 9, "bold")
+        )
         self.font_label.pack(side=tk.LEFT)
 
-        # MAIN CONTAINER (Text Area + Scrollbar)
+        # --- Main Log Display Area ---
         self.main_container = tk.Frame(self.root, bg=COLOR_BG_MAIN)
-        self.main_container.grid(row=2, column=0, sticky="nsew", padx=10, pady=(0, 10))
+
+        # Grid placement with specific padding (top=0, bottom=10)
+        self.main_container.grid(
+            row=2,
+            column=0,
+            sticky="nsew",
+            padx=10,
+            pady=(0, 10)
+        )
+
+        # Configure grid weight to allow the container to expand
         self.main_container.grid_columnconfigure(0, weight=1)
         self.main_container.grid_rowconfigure(0, weight=1)
 
@@ -540,64 +766,159 @@ class KodiLogMonitor:
             exportselection=False
         )
 
-        # Menu contextuel personnalisé pour éviter la bordure blanche de Windows
+        # --- Custom Context Menu (Right-click) ---
+        # Create a hidden top-level window for the menu
         self.context_menu = tk.Toplevel(self.root)
         self.context_menu.withdraw()
-        self.context_menu.overrideredirect(True)
-        self.context_menu.configure(bg=COLOR_SEPARATOR, padx=1, pady=1)
 
+        # Remove window borders and title bar for a professional look
+        self.context_menu.overrideredirect(True)
+
+        # Outer border configuration (using COLOR_SEPARATOR as border color)
+        self.context_menu.configure(
+            bg=COLOR_SEPARATOR,
+            padx=1,
+            pady=1
+        )
+
+        # Inner container for menu items
         self.menu_inner = tk.Frame(self.context_menu, bg=COLOR_BTN_DEFAULT)
         self.menu_inner.pack(fill="both", expand=True)
 
         def add_custom_item(command):
-            item = tk.Label(self.menu_inner, text="", bg=COLOR_BTN_DEFAULT, fg=COLOR_TEXT_BRIGHT,
-                            font=(self.main_font_family, 9), padx=15, pady=6, anchor="w", cursor="hand2")
+            """Add a stylized clickable item to the custom context menu."""
+            item = tk.Label(
+                self.menu_inner,
+                text="",
+                bg=COLOR_BTN_DEFAULT,
+                fg=COLOR_TEXT_BRIGHT,
+                font=(self.main_font_family, 9),
+                padx=15,
+                pady=6,
+                anchor="w",
+                cursor="hand2"
+            )
             item.pack(fill="x")
-            item.bind("<Enter>", lambda e: item.config(bg=COLOR_ACCENT))
-            item.bind("<Leave>", lambda e: item.config(bg=COLOR_BTN_DEFAULT))
-            item.bind("<Button-1>", lambda e: [command(), self.context_menu.withdraw()])
+
+            # PEP 8: Use 'event' instead of 'e' for better clarity in lambdas
+            item.bind(
+                "<Enter>",
+                lambda event: item.config(bg=COLOR_ACCENT)
+            )
+            item.bind(
+                "<Leave>",
+                lambda event: item.config(bg=COLOR_BTN_DEFAULT)
+            )
+
+            # Execute command and hide menu on click
+            item.bind(
+                "<Button-1>",
+                lambda event: [command(), self.context_menu.withdraw()]
+            )
+
             return item
 
+        # --- Context menu items ---
         self.menu_items = []
-        self.menu_items.append(add_custom_item(lambda: self.root.focus_get().event_generate("<<Copy>>")))
-        self.menu_items.append(add_custom_item(lambda: self.txt_area.tag_add("sel", "1.0", "end")))
+        self.menu_items.append(
+            add_custom_item(
+                lambda: self.root.focus_get().event_generate("<<Copy>>")
+            )
+        )
+        self.menu_items.append(
+            add_custom_item(
+                lambda: self.txt_area.tag_add("sel", "1.0", "end")
+            )
+        )
         self.menu_items.append(add_custom_item(self.search_on_google))
 
-        self.v_scroll = ttk.Scrollbar(self.main_container, orient="vertical", command=self.txt_area.yview, style="Vertical.TScrollbar")
+        # --- Scrollbar configuration ---
+        self.v_scroll = ttk.Scrollbar(
+            self.main_container,
+            orient="vertical",
+            command=self.txt_area.yview,
+            style="Vertical.TScrollbar"
+        )
         self.txt_area.configure(yscrollcommand=self.v_scroll.set)
 
+        # --- Text area layout ---
         self.txt_area.grid(row=0, column=0, sticky="nsew")
         self.v_scroll.grid(row=0, column=1, sticky="ns")
 
-        # Focus on the click to display the cursor
-        self.txt_area.bind("<Button-1>", lambda e: self.txt_area.focus_set())
+        # --- Text area bindings ---
+        # Focus on click to display the cursor
+        self.txt_area.bind("<Button-1>", lambda event: self.txt_area.focus_set())
 
-        # Prevents the user from typing text (“soft” read-only)
-        self.txt_area.bind("<Key>", lambda e: "break" if e.keysym not in ("Up", "Down", "Left", "Right", "Next", "Prior", "Home", "End") else None)
+        # Prevent typing while allowing navigation ("soft" read-only)
+        allowed_keys = (
+            "Up", "Down", "Left", "Right", "Next", "Prior", "Home", "End"
+        )
+        self.txt_area.bind(
+            "<Key>",
+            lambda event: "break" if event.keysym not in allowed_keys else None
+        )
 
-        self.txt_area.bind("<Button-1>", lambda e: self.txt_area.focus_set())
-
-        # Right-click link
+        # Context menu and interactions
         self.txt_area.bind("<Button-3>", self.show_context_menu)
-
         self.txt_area.bind("<Double-Button-1>", self.on_double_click_line)
 
-        # Overlay for loading
+        # --- Loading overlay ---
         self.overlay = tk.Frame(self.main_container, bg=COLOR_BG_MAIN)
-        self.loading_label = tk.Label(self.overlay, text="", bg=COLOR_BG_MAIN, fg=COLOR_TEXT_BRIGHT, font=(self.main_font_family, 12, "bold"))
+        self.loading_label = tk.Label(
+            self.overlay,
+            text="",
+            bg=COLOR_BG_MAIN,
+            fg=COLOR_TEXT_BRIGHT,
+            font=(self.main_font_family, 12, "bold")
+        )
         self.loading_label.pack(expand=True)
 
+        # --- Footer Section ---
         footer = tk.Frame(self.root, bg=COLOR_BG_FOOTER, padx=15, pady=3)
         footer.grid(row=3, column=0, sticky="ew")
+
         self.footer_var = tk.StringVar()
         self.stats_var = tk.StringVar()
         self.limit_var = tk.StringVar()
         self.paused_var = tk.StringVar()
-        tk.Label(footer, textvariable=self.footer_var, anchor=tk.W, fg=COLOR_TEXT_BRIGHT, bg=COLOR_BG_FOOTER, font=(self.emoji_font_family, 8, "bold")).pack(side=tk.LEFT)
-        tk.Label(footer, textvariable=self.stats_var, anchor=tk.W, fg=COLOR_TEXT_BRIGHT, bg=COLOR_BG_FOOTER, font=(self.emoji_font_family, 8, "bold")).pack(side=tk.LEFT)
-        tk.Label(footer, textvariable=self.limit_var, anchor=tk.W, fg=COLOR_WARNING, bg=COLOR_BG_FOOTER, font=(self.emoji_font_family, 8, "bold")).pack(side=tk.LEFT)
-        tk.Label(footer, textvariable=self.paused_var, anchor=tk.W, fg=COLOR_DANGER, bg=COLOR_BG_FOOTER, font=(self.emoji_font_family, 8, "bold"), padx=10).pack(side=tk.LEFT)
-        tk.Label(footer, text=f"KODI LOG MONITOR {APP_VERSION}", anchor=tk.E, fg=COLOR_TEXT_MAIN, bg=COLOR_BG_FOOTER, font=(self.main_font_family, 8, "bold"), padx=10).pack(side=tk.RIGHT)
+
+        # Shared label style to reduce repetition
+        footer_style = {
+            "anchor": tk.W,
+            "bg": COLOR_BG_FOOTER,
+            "font": (self.emoji_font_family, 8, "bold")
+        }
+
+        tk.Label(
+            footer, textvariable=self.footer_var,
+            fg=COLOR_TEXT_BRIGHT, **footer_style
+        ).pack(side=tk.LEFT)
+
+        tk.Label(
+            footer, textvariable=self.stats_var,
+            fg=COLOR_TEXT_BRIGHT, **footer_style
+        ).pack(side=tk.LEFT)
+
+        tk.Label(
+            footer, textvariable=self.limit_var,
+            fg=COLOR_WARNING, **footer_style
+        ).pack(side=tk.LEFT)
+
+        tk.Label(
+            footer, textvariable=self.paused_var,
+            fg=COLOR_DANGER, padx=10, **footer_style
+        ).pack(side=tk.LEFT)
+
+        # App version display
+        tk.Label(
+            footer,
+            text=f"KODI LOG MONITOR {APP_VERSION}",
+            anchor=tk.E,
+            fg=COLOR_TEXT_MAIN,
+            bg=COLOR_BG_FOOTER,
+            font=(self.main_font_family, 8, "bold"),
+            padx=10
+        ).pack(side=tk.RIGHT)
 
     def on_hover_filter(self, widget, mode, is_entering):
         if self.filter_vars[mode].get():
