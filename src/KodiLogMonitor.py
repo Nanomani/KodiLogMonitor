@@ -524,33 +524,44 @@ class KodiLogMonitor:
 
         # cursor
         self.txt_area = tk.Text(self.main_container, wrap=tk.NONE, bg=COLOR_BG_MAIN,
-                        fg=COLOR_TEXT_MAIN,
-                        font=(self.mono_font_family, self.font_size),
-                        borderwidth=0,
-                        highlightthickness=0,
-                        padx=5, pady=5,
-                        undo=False,
-                        selectforeground="#ffffff",
-                        insertwidth=4,
-                        insertontime=600,
-                        insertofftime=300,
-                        insertbackground=COLOR_TEXT_BRIGHT,
-                        selectbackground=COLOR_ACCENT
-                        )
-
-        # Creating the context menu (right-click)
-        self.context_menu = tk.Menu(
-            self.txt_area,
-            tearoff=0,
-            bg=COLOR_BG_HEADER,
-            fg=COLOR_TEXT_BRIGHT,
-            activebackground=COLOR_ACCENT,
-            font=(self.main_font_family, 9)
+            fg=COLOR_TEXT_MAIN,
+            font=(self.mono_font_family, self.font_size),
+            borderwidth=0,
+            highlightthickness=0,
+            padx=5, pady=5,
+            undo=False,
+            selectforeground="#ffffff",
+            insertwidth=4,
+            insertontime=600,
+            insertofftime=300,
+            insertbackground=COLOR_TEXT_BRIGHT,
+            selectbackground=COLOR_ACCENT,
+            inactiveselectbackground=COLOR_ACCENT,
+            exportselection=False
         )
 
-        self.context_menu.add_command(label="", command=lambda: self.root.focus_get().event_generate("<<Copy>>"))
-        self.context_menu.add_command(label="", command=lambda: self.txt_area.tag_add("sel", "1.0", "end"))
-        self.context_menu.add_command(label="", command=self.search_on_google)
+        # Menu contextuel personnalisé pour éviter la bordure blanche de Windows
+        self.context_menu = tk.Toplevel(self.root)
+        self.context_menu.withdraw()
+        self.context_menu.overrideredirect(True)
+        self.context_menu.configure(bg=COLOR_SEPARATOR, padx=1, pady=1)
+
+        self.menu_inner = tk.Frame(self.context_menu, bg=COLOR_BTN_DEFAULT)
+        self.menu_inner.pack(fill="both", expand=True)
+
+        def add_custom_item(command):
+            item = tk.Label(self.menu_inner, text="", bg=COLOR_BTN_DEFAULT, fg=COLOR_TEXT_BRIGHT,
+                            font=(self.main_font_family, 9), padx=15, pady=6, anchor="w", cursor="hand2")
+            item.pack(fill="x")
+            item.bind("<Enter>", lambda e: item.config(bg=COLOR_ACCENT))
+            item.bind("<Leave>", lambda e: item.config(bg=COLOR_BTN_DEFAULT))
+            item.bind("<Button-1>", lambda e: [command(), self.context_menu.withdraw()])
+            return item
+
+        self.menu_items = []
+        self.menu_items.append(add_custom_item(lambda: self.root.focus_get().event_generate("<<Copy>>")))
+        self.menu_items.append(add_custom_item(lambda: self.txt_area.tag_add("sel", "1.0", "end")))
+        self.menu_items.append(add_custom_item(self.search_on_google))
 
         self.v_scroll = ttk.Scrollbar(self.main_container, orient="vertical", command=self.txt_area.yview, style="Vertical.TScrollbar")
         self.txt_area.configure(yscrollcommand=self.v_scroll.set)
@@ -859,10 +870,10 @@ class KodiLogMonitor:
         self.update_stats()
         self.update_filter_button_colors()
 
-        if hasattr(self, 'context_menu'):
-            self.context_menu.entryconfigure(0, label=l["copy"])
-            self.context_menu.entryconfigure(1, label=l["sel_all"])
-            self.context_menu.entryconfigure(2, label=l["search_google"])
+        if hasattr(self, 'menu_items'):
+            self.menu_items[0].config(text=l["copy"])
+            self.menu_items[1].config(text=l["sel_all"])
+            self.menu_items[2].config(text=l["search_google"])
 
     def clear_console(self):
         self.txt_area.config(state=tk.NORMAL)
@@ -912,23 +923,20 @@ class KodiLogMonitor:
             self.start_monitoring(p)
 
     def show_context_menu(self, event):
-        # Focus is also forced on the text area when right-clicking
         self.txt_area.focus_set()
-        try:
-            # Displays the menu at the coordinates of the click
-            self.context_menu.tk_popup(event.x_root, event.y_root)
-        finally:
-            self.context_menu.grab_release()
+        self.context_menu.geometry(f"+{event.x_root}+{event.y_root}")
+        self.context_menu.deiconify()
+        self.context_menu.lift()
+        self.context_menu.focus_set()
+        self.context_menu.bind("<FocusOut>", lambda e: self.context_menu.withdraw())
 
     def search_on_google(self):
         try:
-            # Récupère le texte sélectionné
             selected_text = self.txt_area.get(tk.SEL_FIRST, tk.SEL_LAST)
             if selected_text.strip():
                 url = f"https://www.google.com/search?q={selected_text.strip()}"
                 webbrowser.open(url)
         except tk.TclError:
-            # Arrive si rien n'est sélectionné
             pass
 
     def increase_font(self):
