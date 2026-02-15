@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 import threading
+import webbrowser
 import os
 import time
 import re
@@ -10,7 +11,7 @@ import subprocess
 from collections import deque
 
 # --- CONFIGURATION ---
-APP_VERSION = "v1.3.0"
+APP_VERSION = "v1.3.1"
 CONFIG_FILE = ".kodi_monitor_config"
 DEFAULT_GEOMETRY = "1680x1050"
 ICON_NAME = "logo.ico"
@@ -96,7 +97,10 @@ LANGS = {
         "warn_msg": "Le fichier fait {:.1f} Mo.\nLe chargement complet risque de faire planter l'application.\n\nVeuillez consulter le fichier manuellement.",
         "perf_title": "Performance",
         "perf_msg": "Charger le fichier complet pour voir le contexte ?\n(Cela peut être lent sur les gros fichiers)",
-        "search_ph": "Rechercher..."
+        "search_ph": "Rechercher...",
+        "copy": "Copier",
+        "sel_all": "Tout sélectionner",
+        "search_google": "Rechercher sur Google"
     },
     "EN": {
         "log": "📂  LOG",
@@ -121,7 +125,10 @@ LANGS = {
         "warn_msg": "The file is {:.1f} MB.\nLoading the full file may crash the application.\n\nPlease check the file manually.",
         "perf_title": "Performance",
         "perf_msg": "Load the full file to see the context?\n(This might be slow on large files)",
-        "search_ph": "Search..."
+        "search_ph": "Search...",
+        "copy": "Copy",
+        "sel_all": "Select All",
+        "search_google": "Search on Google"
     },
     "ES": {
         "log": "📂  LOG",
@@ -146,7 +153,10 @@ LANGS = {
         "warn_msg": "El archivo tiene {:.1f} MB.\nCargar el archivo completo peut colapsar la aplicación.\n\nPor favor, consulte el archivo manualmente.",
         "perf_title": "Rendimiento",
         "perf_msg": "¿Cargar el archivo completo para ver el contexto?\n(Puede ser lento)",
-        "search_ph": "Buscar..."
+        "search_ph": "Buscar...",
+        "copy": "Copiar",
+        "sel_all": "Seleccionar todo",
+        "search_google": "uscar en Google"
     },
     "DE": {
         "log": "📂  LOG",
@@ -171,7 +181,10 @@ LANGS = {
         "warn_msg": "Die Datei ist {:.1f} MB groß.\nDas Laden der vollständigen Datei kann die App zum Absturz bringen.\n\nBitte prüfen Sie die Datei manuell.",
         "perf_title": "Leistung",
         "perf_msg": "Vollständige Datei laden, um Kontext zu sehen?\n(Kann bei großen Dateien langsam sein)",
-        "search_ph": "Suchen..."
+        "search_ph": "Suchen...",
+        "copy": "Kopieren",
+        "sel_all": "Alles auswählen",
+        "search_google": "Auf Google suchen"
     },
     "IT": {
         "log": "📂  LOG",
@@ -196,7 +209,10 @@ LANGS = {
         "warn_msg": "Il file è di {:.1f} MB.\nIl caricamento completo potrebbe causare il crash dell'app.\n\nSi prega di consultare il file manualmente.",
         "perf_title": "Prestazioni",
         "perf_msg": "Caricare il file completo per vedere il contesto?\n(Potrebbe essere lento su file grandi)",
-        "search_ph": "Cerca..."
+        "search_ph": "Cerca...",
+        "copy": "Copia",
+        "sel_all": "Seleziona tutto",
+        "search_google": "Cerca su Google"
     }
 }
 
@@ -332,6 +348,10 @@ class KodiLogMonitor:
     def append_to_gui(self, text, tag):
         if not self.running:
             return
+
+        if self.is_paused.get():
+            return
+
         self.txt_area.config(state=tk.NORMAL)
         self.insert_with_highlight(text, tag)
         if not self.is_paused.get():
@@ -502,14 +522,52 @@ class KodiLogMonitor:
         self.main_container.grid_columnconfigure(0, weight=1)
         self.main_container.grid_rowconfigure(0, weight=1)
 
-        self.txt_area = tk.Text(self.main_container, wrap=tk.NONE, bg=COLOR_BG_MAIN, fg=COLOR_TEXT_MAIN,
-                                font=(self.mono_font_family, self.font_size), borderwidth=0,
-                                highlightthickness=0, padx=5, pady=5, undo=False)
+        # cursor
+        self.txt_area = tk.Text(self.main_container, wrap=tk.NONE, bg=COLOR_BG_MAIN,
+                        fg=COLOR_TEXT_MAIN,
+                        font=(self.mono_font_family, self.font_size),
+                        borderwidth=0,
+                        highlightthickness=0,
+                        padx=5, pady=5,
+                        undo=False,
+                        selectforeground="#ffffff",
+                        insertwidth=4,
+                        insertontime=600,
+                        insertofftime=300,
+                        insertbackground=COLOR_TEXT_BRIGHT,
+                        selectbackground=COLOR_ACCENT
+                        )
+
+        # Creating the context menu (right-click)
+        self.context_menu = tk.Menu(
+            self.txt_area,
+            tearoff=0,
+            bg=COLOR_BG_HEADER,
+            fg=COLOR_TEXT_BRIGHT,
+            activebackground=COLOR_ACCENT,
+            font=(self.main_font_family, 9)
+        )
+
+        self.context_menu.add_command(label="", command=lambda: self.root.focus_get().event_generate("<<Copy>>"))
+        self.context_menu.add_command(label="", command=lambda: self.txt_area.tag_add("sel", "1.0", "end"))
+        self.context_menu.add_command(label="", command=self.search_on_google)
+
         self.v_scroll = ttk.Scrollbar(self.main_container, orient="vertical", command=self.txt_area.yview, style="Vertical.TScrollbar")
         self.txt_area.configure(yscrollcommand=self.v_scroll.set)
 
         self.txt_area.grid(row=0, column=0, sticky="nsew")
         self.v_scroll.grid(row=0, column=1, sticky="ns")
+
+        # Focus on the click to display the cursor
+        self.txt_area.bind("<Button-1>", lambda e: self.txt_area.focus_set())
+
+        # Prevents the user from typing text (“soft” read-only)
+        self.txt_area.bind("<Key>", lambda e: "break" if e.keysym not in ("Up", "Down", "Left", "Right", "Next", "Prior", "Home", "End") else None)
+
+        self.txt_area.bind("<Button-1>", lambda e: self.txt_area.focus_set())
+
+        # Right-click link
+        self.txt_area.bind("<Button-3>", self.show_context_menu)
 
         self.txt_area.bind("<Double-Button-1>", self.on_double_click_line)
 
@@ -559,11 +617,18 @@ class KodiLogMonitor:
 
     def update_tags_config(self):
         c_font = (self.mono_font_family, self.font_size)
-        for t in ["debug", "info", "warning", "error", "summary"]:
-            self.txt_area.tag_config(t, foreground=LOG_COLORS[t], font=(c_font[0], self.font_size))
+
+        self.txt_area.tag_configure("sel", foreground=COLOR_TEXT_BRIGHT)
+
+        for tag_name, color in LOG_COLORS.items():
+            if tag_name not in ["highlight_bg", "highlight_fg"]:
+                self.txt_area.tag_configure(tag_name, foreground=color, font=c_font)
+
         self.txt_area.tag_config("highlight", background=LOG_COLORS["highlight_bg"], foreground=LOG_COLORS["highlight_fg"], font=(c_font[0], self.font_size))
+
         self.txt_area.configure(bg=COLOR_BG_MAIN, font=c_font)
         self.font_label.config(text=str(self.font_size))
+        self.txt_area.tag_raise("sel")
 
     def on_filter_toggle(self, clicked_mode):
         if clicked_mode == "all":
@@ -794,6 +859,11 @@ class KodiLogMonitor:
         self.update_stats()
         self.update_filter_button_colors()
 
+        if hasattr(self, 'context_menu'):
+            self.context_menu.entryconfigure(0, label=l["copy"])
+            self.context_menu.entryconfigure(1, label=l["sel_all"])
+            self.context_menu.entryconfigure(2, label=l["search_google"])
+
     def clear_console(self):
         self.txt_area.config(state=tk.NORMAL)
         self.txt_area.delete('1.0', tk.END)
@@ -840,6 +910,26 @@ class KodiLogMonitor:
         p = filedialog.askopenfilename(filetypes=[("Log files", "*.log"), ("All files", "*.*")])
         if p:
             self.start_monitoring(p)
+
+    def show_context_menu(self, event):
+        # Focus is also forced on the text area when right-clicking
+        self.txt_area.focus_set()
+        try:
+            # Displays the menu at the coordinates of the click
+            self.context_menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            self.context_menu.grab_release()
+
+    def search_on_google(self):
+        try:
+            # Récupère le texte sélectionné
+            selected_text = self.txt_area.get(tk.SEL_FIRST, tk.SEL_LAST)
+            if selected_text.strip():
+                url = f"https://www.google.com/search?q={selected_text.strip()}"
+                webbrowser.open(url)
+        except tk.TclError:
+            # Arrive si rien n'est sélectionné
+            pass
 
     def increase_font(self):
         self.font_size += 1
