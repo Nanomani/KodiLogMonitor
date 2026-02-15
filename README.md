@@ -6,7 +6,8 @@
 
 A lightweight and intuitive real-time log viewer or a simple log editor for Kodi. It helps users and developers track events, troubleshoot errors, and monitor system status through a clean, color-coded interface.
 
-![screenshot_01](https://github.com/user-attachments/assets/a483407d-9225-40f2-bbe4-8f4e7bcf282f)
+![2026-02-14_224905](https://github.com/user-attachments/assets/407ef77c-5949-43c1-ae30-549b4d454d5c)
+
 
 ---
 
@@ -21,7 +22,7 @@ Kodi generates a log file that records everything happening in the background. T
 
 ### 🔍 Keyword Lists (v1.2.0+)
 You can now filter your logs using custom keyword lists:
-* **Custom Filtering**: Create a `.txt` file in the `keyword_lists` folder (one keyword or phrase per line).
+* **Custom Filtering**: Create a `.txt` file in the `keyword_list` folder (one keyword or phrase per line).
 * **Smart Highlighting**: The monitor only displays lines containing your keywords and highlights them for better visibility.
 * **Easy Management**: Use the 📁 button to open the folder and ♻️ to refresh your lists instantly.
 
@@ -30,7 +31,7 @@ You can now filter your logs using custom keyword lists:
 ### 🎨 Customization (v1.2.0+)
 The code is now designed for easy styling. You can find the **UI THEME** section at the very beginning of the script to change:
 * **Interface Colors**: Modify backgrounds for the text area, header, and buttons.
-* **Log & Highlight Colors**: Change the hex codes for `info`, `warning`, `error`, and the keyword `highlight`.
+* **Log & Highlight Colors**: Change the hex codes for `info`, `warning`, `error`, `debug`, and the keyword `highlight`.
 * **Centralized Design**: No need to search through the functions; everything is at the top of the file.
 
 ---
@@ -39,9 +40,8 @@ The code is now designed for easy styling. You can find the **UI THEME** section
 If you just want to use the tool without installing Python:
 
 1. Go to the **[Releases](../../releases)** section on the right.
-2. Download the latest `KodiLogMonitor.exe`.
+2. Download the latest for your OS.
 3. Run the file. No installation is required.
-*Note: This binary is pre-built for Windows.*
 
 ---
 
