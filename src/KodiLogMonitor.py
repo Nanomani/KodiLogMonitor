@@ -1272,76 +1272,174 @@ class KodiLogMonitor:
             self.save_session()
 
     def show_summary(self):
+        """
+        Extracts and displays the system summary (Kodi start block) in the text area.
+        """
         if not self.log_file_path:
             return
+
         try:
             with open(self.log_file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                c = f.read()
-                s = list(re.finditer(r"(-+\n.*?Starting Kodi.*?-+\n)", c, re.DOTALL))
-                if s:
-                    self.txt_area.insert(tk.END, LANGS.get(self.current_lang.get(), LANGS["EN"])["sys_sum"], "summary")
-                    self.txt_area.insert(tk.END, s[-1].group(1), "summary")
+                content = f.read()
+                # Find all Kodi startup sequences in the log
+                summaries = list(re.finditer(
+                    r"(-+\n.*?Starting Kodi.*?-+\n)",
+                    content,
+                    re.DOTALL
+                ))
+
+                if summaries:
+                    # Get the translation for the summary header
+                    lang_key = self.current_lang.get()
+                    header = LANGS.get(lang_key, LANGS["en"])["sys_sum"]
+
+                    # Insert header and the last (most recent) startup sequence found
+                    self.txt_area.insert(tk.END, header, "summary")
+                    self.txt_area.insert(tk.END, summaries[-1].group(1), "summary")
                     self.txt_area.see(tk.END)
-        except:
-            pass
+        except (IOError, OSError, re.error) as e:
+            print(f"Error reading summary: {e}")
 
     def export_log(self):
-        p = filedialog.asksaveasfilename(defaultextension=".txt", initialfile="kodi_extract.txt")
-        if p:
-            with open(p, "w", encoding="utf-8") as f:
-                f.write(self.txt_area.get("1.0", tk.END))
+        """
+        Saves the current content of the text area to a file chosen by the user.
+        """
+        save_path = filedialog.asksaveasfilename(
+            defaultextension=".txt",
+            initialfile="kodi_extract.txt"
+        )
+
+        if save_path:
+            try:
+                with open(save_path, "w", encoding="utf-8") as f:
+                    # Retrieve all text from the start (1.0) to the end
+                    f.write(self.txt_area.get("1.0", tk.END))
+            except IOError as e:
+                print(f"Error exporting log: {e}")
 
     def save_session(self):
+        """
+        Saves the current application state and user preferences to a config file.
+        """
         try:
-            f_states = ",".join(["1" if self.filter_vars[m].get() else "0" for m in ["all", "debug", "info", "warning", "error"]])
+            # Build string for filter states (all, debug, info, warning, error)
+            modes = ["all", "debug", "info", "warning", "error"]
+            filter_states = ",".join(
+                ["1" if self.filter_vars[m].get() else "0" for m in modes]
+            )
+
+            # Write settings sequentially to the configuration file
             with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-                f.write(f"{self.log_file_path}\n{self.current_lang.get()}\n{'1' if self.load_full_file.get() else '0'}\n{self.font_size}\n{self.window_geometry}\n{self.selected_list.get()}\n{f_states}")
-        except:
-            pass
+                config_data = [
+                    str(self.log_file_path),
+                    str(self.current_lang.get()),
+                    "1" if self.load_full_file.get() else "0",
+                    str(self.font_size),
+                    str(self.window_geometry),
+                    str(self.selected_list.get()),
+                    filter_states
+                ]
+                f.write("\n".join(config_data))
+        except (IOError, OSError) as e:
+            print(f"Error saving session: {e}")
 
     def load_session(self):
-        if os.path.exists(CONFIG_FILE):
-            try:
-                with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-                    ls = f.read().splitlines()
-                    if len(ls) >= 1 and os.path.exists(ls[0]):
-                        self.log_file_path = ls[0]
-                    if len(ls) >= 2 and ls[1] in LANGS:
-                        self.current_lang.set(ls[1])
-                    if len(ls) >= 3:
-                        self.load_full_file.set(ls[2] == "1")
-                    if len(ls) >= 4:
-                        self.font_size = int(ls[3])
-                    if len(ls) >= 5:
-                        self.window_geometry = ls[4]
-                    if len(ls) >= 6:
-                        self.selected_list.set(ls[5] if ls[5] not in [v["none"] for v in LANGS.values()] else LANGS[self.current_lang.get()]["none"])
-                    if len(ls) >= 7:
-                        states = ls[6].split(",")
-                        modes = ["all", "debug", "info", "warning", "error"]
-                        for i, s in enumerate(states):
-                            if i < len(modes):
-                                self.filter_vars[modes[i]].set(s == "1")
-            except:
-                pass
+        """
+        Load previous session settings from the configuration file.
+        """
+        if not os.path.exists(CONFIG_FILE):
+            # No config file, perform basic UI updates and return
+            self.retranslate_ui(False)
+            self.update_tags_config()
+            return
+
+        try:
+            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                lines = f.read().splitlines()
+
+                # 1. Log file path
+                if len(lines) >= 1 and os.path.exists(lines[0]):
+                    self.log_file_path = lines[0]
+
+                # 2. Current language
+                if len(lines) >= 2 and lines[1] in LANGS:
+                    self.current_lang.set(lines[1])
+
+                # 3. Load full file preference
+                if len(lines) >= 3:
+                    self.load_full_file.set(lines[2] == "1")
+
+                # 4. Font size
+                if len(lines) >= 4:
+                    try:
+                        self.font_size = int(lines[3])
+                    except ValueError:
+                        pass
+
+                # 5. Window geometry
+                if len(lines) >= 5:
+                    self.window_geometry = lines[4]
+
+                # 6. Selected keyword list
+                if len(lines) >= 6:
+                    none_values = [v["none"] for v in LANGS.values()]
+                    if lines[5] not in none_values:
+                        self.selected_list.set(lines[5])
+                    else:
+                        current_none = LANGS[self.current_lang.get()]["none"]
+                        self.selected_list.set(current_none)
+
+                # 7. Filter states
+                if len(lines) >= 7:
+                    states = lines[6].split(",")
+                    modes = ["all", "debug", "info", "warning", "error"]
+                    for i, state in enumerate(states):
+                        if i < len(modes):
+                            self.filter_vars[modes[i]].set(state == "1")
+
+        except (IOError, OSError, Exception) as e:
+            # Print error for debugging purposes if needed
+            print(f"Error loading configuration: {e}")
+
+        # Finalize UI setup after loading data
         self.retranslate_ui(False)
         self.update_tags_config()
+
+        # Automatically resume monitoring if a valid log file was found
         if self.log_file_path:
             self.start_monitoring(self.log_file_path, False, False)
 
-
 if __name__ == "__main__":
+    # Windows-specific configurations for High DPI and Dark Mode title bar
     if sys.platform == "win32":
+        # 1. Enable High DPI awareness to prevent blurry UI on 4K/Laptop screens
         try:
             from ctypes import windll
             windll.shcore.SetProcessDpiAwareness(1)
-        except:
+        except (ImportError, AttributeError, OSError):
+            # Fallback if the system doesn't support Shcore.dll
             pass
+
     root = tk.Tk()
-    try:
-        from ctypes import windll, byref, sizeof, c_int
-        windll.dwmapi.DwmSetWindowAttribute(windll.user32.GetParent(root.winfo_id()), 35, byref(c_int(1)), sizeof(c_int))
-    except:
-        pass
+
+    # 2. Apply Windows Dark Mode to the title bar (Win 10/11)
+    if sys.platform == "win32":
+        try:
+            from ctypes import windll, byref, sizeof, c_int
+            # Attribute 35: DWMWA_USE_IMMERSIVE_DARK_MODE
+            # This makes the title bar background dark to match the app theme
+            hwnd = windll.user32.GetParent(root.winfo_id())
+            dark_mode = c_int(1)
+            windll.dwmapi.DwmSetWindowAttribute(
+                hwnd,
+                35,
+                byref(dark_mode),
+                sizeof(dark_mode)
+            )
+        except (ImportError, AttributeError, OSError):
+            # Fallback if DWMAPI is unavailable or version is incompatible
+            pass
+
+    # Initialize and run the application
     app = KodiLogMonitor(root)
     root.mainloop()
