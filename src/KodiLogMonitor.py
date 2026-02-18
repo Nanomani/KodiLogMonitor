@@ -11,7 +11,7 @@ import subprocess
 from collections import deque
 
 # --- CONFIGURATION ---
-APP_VERSION = "v1.3.3"
+APP_VERSION = "v1.3.4"
 CONFIG_FILE = ".kodi_monitor_config"
 DEFAULT_GEOMETRY = "1680x1050"
 ICON_NAME = "logo.ico"
@@ -47,14 +47,12 @@ LOG_COLORS = {
     "highlight_fg": "#000000"     # Black text for search highlights
 }
 
-
 def get_system_font():
     if sys.platform == "darwin":
-        return "Helvetica"
+        return ("Helvetica", "Arial", "sans-serif")
     if sys.platform == "win32":
-        return "Segoe UI"
-    return "DejaVu Sans"
-
+        return ("Segoe UI", "Tahoma", "Arial", "sans-serif")
+    return ("DejaVu Sans", "Verdana", "sans-serif")
 
 def get_mono_font():
     if sys.platform == "darwin":
@@ -89,8 +87,9 @@ LANGS = {
         "sys_sum": "\n--- RÉSUMÉ SYSTÈME ---\n",
         "loading": "Chargement...",
         "reset": "\n--- FICHIER RÉINITIALISÉ PAR KODI ---\n",
-        "stats_simple": " | 📈 TOTAL : {} lignes | 📁 {}",
-        "limit": " | ⚠️ LIMITÉ AUX 1000 DERNIÈRES LIGNES",
+        "stats_simple": "📈 {} lignes",
+        "file_size_text": "📁 {}",
+        "limit": "⚠️ Limité aux 1000 dernières lignes",
         "none": "Aucun",
         "paused": "⏸️ EN PAUSE",
         "warn_title": "Fichier Volumineux",
@@ -100,7 +99,13 @@ LANGS = {
         "search_ph": "Rechercher...",
         "copy": "Copier",
         "sel_all": "Tout sélectionner",
-        "search_google": "Rechercher sur Google"
+        "search_google": "Rechercher sur Google",
+        "paste": "Coller",
+        "clear": "Effacer",
+        "inactive": "Inactif",
+        "t_auto": "Auto",
+        "t_light": "Clair",
+        "t_dark": "Sombre"
     },
     "EN": {
         "log": "📂  LOG",
@@ -117,8 +122,9 @@ LANGS = {
         "sys_sum": "\n--- SYSTEM SUMMARY ---\n",
         "loading": "Loading...",
         "reset": "\n--- FILE RESET BY KODI ---\n",
-        "stats_simple": " | 📈 TOTAL : {} lines | 📁 {}",
-        "limit": " | ⚠️ LIMITED TO LAST 1000 LINES",
+        "stats_simple": "📈 {} lines",
+        "file_size_text": "📁 {}",
+        "limit": "⚠️ Limited to last 1000 lines",
         "none": "None",
         "paused": "⏸️ PAUSED",
         "warn_title": "Large File",
@@ -128,7 +134,13 @@ LANGS = {
         "search_ph": "Search...",
         "copy": "Copy",
         "sel_all": "Select All",
-        "search_google": "Search on Google"
+        "search_google": "Search on Google",
+        "paste": "Paste",
+        "clear": "Clear",
+        "inactive": "Inactive",
+        "t_auto": "Auto",
+        "t_light": "Light",
+        "t_dark": "Dark"
     },
     "ES": {
         "log": "📂  LOG",
@@ -145,8 +157,9 @@ LANGS = {
         "sys_sum": "\n--- RESUMEN DEL SISTEMA ---\n",
         "loading": "Cargando...",
         "reset": "\n--- ARCHIVO REINICIADO POR KODI ---\n",
-        "stats_simple": " | 📈 TOTAL : {} líneas | 📁 {}",
-        "limit": " | ⚠️ LIMITADO A 1000 LÍNEAS",
+        "stats_simple": "📈 {} líneas",
+        "file_size_text": "📁 {}",
+        "limit": "⚠️ Limitado a 1000 líneas",
         "none": "Ninguno",
         "paused": "⏸️ EN PAUSA",
         "warn_title": "Archivo Grande",
@@ -156,7 +169,13 @@ LANGS = {
         "search_ph": "Buscar...",
         "copy": "Copiar",
         "sel_all": "Seleccionar todo",
-        "search_google": "uscar en Google"
+        "search_google": "uscar en Google",
+        "paste": "Pegar",
+        "clear": "Borrar",
+        "inactive": "Inactivo",
+        "t_auto": "Auto",
+        "t_light": "Claro",
+        "t_dark": "Oscuro"
     },
     "DE": {
         "log": "📂  LOG",
@@ -173,8 +192,9 @@ LANGS = {
         "sys_sum": "\n--- SYSTEMÜBERSICHT ---\n",
         "loading": "Ladevorgang...",
         "reset": "\n--- DATEI VON KODI ZURÜCKGESETZT ---\n",
-        "stats_simple": " | 📈 GESAMT: {} Zeilen | 📁 {}",
-        "limit": " | ⚠️ AUF DIE LETZTEN 1000 ZEILEN BEGRENZT",
+        "stats_simple": "📈 {} Zeilen",
+        "file_size_text": "📁 {}",
+        "limit": "⚠️ Auf die letzten 1000 zeilen begrenzt",
         "none": "Keine",
         "paused": "⏸️ PAUSE",
         "warn_title": "Große Datei",
@@ -184,7 +204,13 @@ LANGS = {
         "search_ph": "Suchen...",
         "copy": "Kopieren",
         "sel_all": "Alles auswählen",
-        "search_google": "Auf Google suchen"
+        "search_google": "Auf Google suchen",
+        "paste": "Einfügen",
+        "clear": "Löschen",
+        "inactive": "Inaktiv",
+        "t_auto": "Auto",
+        "t_light": "Hell",
+        "t_dark": "Dunkel"
     },
     "IT": {
         "log": "📂  LOG",
@@ -201,8 +227,9 @@ LANGS = {
         "sys_sum": "\n--- RIEPILOGO SISTEMA ---\n",
         "loading": "Caricamento...",
         "reset": "\n--- FILE RESETTATO DA KODI ---\n",
-        "stats_simple": " | 📈 TOTALE: {} righe | 📁 {}",
-        "limit": " | ⚠️ LIMITATO ALLE ULTIME 1000 RIGHE",
+        "stats_simple": "📈 {} righe",
+        "file_size_text": "📁 {}",
+        "limit": "⚠️ Limitato alle ultime 1000 righe",
         "none": "Nessuno",
         "paused": "⏸️ IN PAUSA",
         "warn_title": "File di Grandi Dimensioni",
@@ -212,7 +239,13 @@ LANGS = {
         "search_ph": "Cerca...",
         "copy": "Copia",
         "sel_all": "Seleziona tutto",
-        "search_google": "Cerca su Google"
+        "search_google": "Cerca su Google",
+        "paste": "Incolla",
+        "clear": "Cancella",
+        "inactive": "Inattivo",
+        "t_auto": "Auto",
+        "t_light": "Chiaro",
+        "t_dark": "Scuro"
     }
 }
 
@@ -223,6 +256,11 @@ class KodiLogMonitor:
         self.root.title(f"Kodi Log Monitor")
         self.window_geometry = DEFAULT_GEOMETRY
         self.root.configure(bg=COLOR_BG_MAIN)
+        self.last_activity_time = time.time()
+        self.inactivity_limit = 300
+        self.last_line_count = 0
+        self.last_pause_state = False
+        self.last_limit_state = False
 
         self.main_font_family = get_system_font()
         self.mono_font_family = get_mono_font()
@@ -239,6 +277,7 @@ class KodiLogMonitor:
         self.wrap_mode = tk.BooleanVar(value=False)
         self.is_paused = tk.BooleanVar(value=False)
         self.current_lang = tk.StringVar(value=self.detect_os_language())
+        self.theme_mode = tk.StringVar(value="Auto")  # Options: Auto, Light, Dark
 
         self.filter_vars = {
             "all": tk.BooleanVar(value=True),
@@ -276,8 +315,18 @@ class KodiLogMonitor:
 
         self.root.after(5000, self.scheduled_stats_update)
 
+        if sys.platform == "win32":
+            self.update_windows_title_bar()
+            self.listen_for_theme_changes()
+
     def on_closing(self):
         self.running = False
+
+        if sys.platform == "win32" and hasattr(self, 'old_wndproc'):
+            from ctypes import windll
+            hwnd = windll.user32.GetParent(self.root.winfo_id())
+            windll.user32.SetWindowLongPtrW(hwnd, -4, self.old_wndproc)
+
         self.window_geometry = self.root.geometry()
         self.save_session()
         self.root.destroy()
@@ -314,27 +363,57 @@ class KodiLogMonitor:
 
                 while self.running:
                     if not os.path.exists(self.log_file_path):
+                        self.root.after(0, self.update_status_color, COLOR_WARNING) # Orange
                         break
+
                     current_size = os.path.getsize(self.log_file_path)
                     if current_size < last_pos:
                         self.root.after(0, self.start_monitoring, self.log_file_path, False, False)
                         return
 
+                    # --- monitor_loop ---
                     line = f.readline()
                     if not line:
+                        # On ne fait le calcul que si la détection n'est pas désactivée (différent de 0)
+                        if self.inactivity_limit > 0:
+                            elapsed = time.time() - self.last_activity_time
+
+                            if elapsed >= self.inactivity_limit:
+                                self.root.after(0, self.update_status_color, COLOR_DANGER)
+
+                                # Calculating and displaying time (HH:MM)
+                                l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
+                                mins, secs = divmod(int(elapsed), 60)
+                                timer_str = f"{l_ui['inactive']} : {mins:02d}:{secs:02d}"
+                                self.root.after(0, self.inactivity_timer_var.set, timer_str)
+                            else:
+                                self.root.after(0, self.update_status_color, "#666666")
+                                self.root.after(0, self.inactivity_timer_var.set, "")
+                        else:
+                            # If inactivity_limit is 0, it remains gray with no message.
+                            self.root.after(0, self.update_status_color, "#666666")
+                            self.root.after(0, self.inactivity_timer_var.set, "")
+
                         self.root.after(0, self.update_stats)
                         time.sleep(0.4)
                         continue
+
+                    # --- ACTIVITY LOGIC ---
+                    # A line is read: the timer is reset and we move on to Green
+                    self.last_activity_time = time.time()
+                    self.root.after(0, self.update_status_color, "#4CAF50")  # green
+                    self.root.after(0, self.inactivity_timer_var.set, "")
 
                     last_pos = f.tell()
                     data = self.get_line_data(line)
                     if data and not self.is_duplicate(data[0]):
                         self.root.after(0, self.append_to_gui, data[0], data[1])
+
         except:
             self.root.after(0, self.show_loading, False)
 
     def bulk_insert(self, data_list):
-        """Insère un lot de données dans la zone de texte de manière optimisée."""
+        """Inserts a batch of data into the text box in an optimized manner."""
         if not self.running:
             return
 
@@ -371,6 +450,8 @@ class KodiLogMonitor:
         self.update_stats()
 
     def start_monitoring(self, path, save=True, retranslate=True):
+        self.last_activity_time = time.time()
+        self.inactivity_timer_var.set("")
         self.running = True
         self.seen_lines.clear()
         self.log_file_path = path
@@ -393,7 +474,7 @@ class KodiLogMonitor:
             fg_color=COLOR_TEXT_BRIGHT,
             font=None, padx=12, pady=3
         ):
-            """Crée un bouton personnalisé à partir d'un label Tkinter."""
+
             if font is None:
                 font = (self.emoji_font_family, 9, "bold")
 
@@ -402,7 +483,6 @@ class KodiLogMonitor:
                 padx=padx, pady=pady, font=font, cursor="hand2"
             )
 
-            # Liaison des événements (PEP 8 : 'event' au lieu de 'e')
             label.bind("<Button-1>", lambda event: command())
             label.bind("<Enter>", lambda event: label.config(bg=COLOR_BTN_ACTIVE))
             label.bind("<Leave>", lambda event: label.config(bg=bg_color))
@@ -427,7 +507,9 @@ class KodiLogMonitor:
             lightcolor=COLOR_BG_HEADER,
             arrowcolor=COLOR_TEXT_BRIGHT,
             arrowsize=20,
-            insertcolor=COLOR_TEXT_BRIGHT
+            insertcolor=COLOR_TEXT_BRIGHT,
+            font=(self.main_font_family, 10),
+            postoffset=(0, 0, 0, 0)
         )
 
         style.map("TCombobox",
@@ -442,7 +524,9 @@ class KodiLogMonitor:
             bordercolor=COLOR_BG_HEADER,
             lightcolor=COLOR_BG_HEADER,
             darkcolor=COLOR_BG_HEADER,
-            arrowcolor=COLOR_TEXT_DIM
+            arrowcolor=COLOR_TEXT_DIM,
+            width=24,
+            arrowsize=24
         )
 
         style.map("Vertical.TScrollbar",
@@ -451,6 +535,13 @@ class KodiLogMonitor:
         self.root.option_add("*TCombobox*Listbox.background", COLOR_BTN_DEFAULT)
         self.root.option_add("*TCombobox*Listbox.foreground", COLOR_TEXT_BRIGHT)
         self.root.option_add("*TCombobox*Listbox.selectBackground", COLOR_ACCENT)
+        self.root.option_add("*TCombobox*Listbox.font", (self.main_font_family, 10))
+        self.root.option_add("*TCombobox*Listbox.itemHeight", 40)
+        self.root.option_add("*TCombobox*Listbox.padding", 4)
+        self.root.option_add("*TCombobox*Listbox.lineSpacing", 2)
+        self.root.option_add("*TCombobox*Listbox.listvariable", "")
+        self.root.option_add("*TCombobox*Listbox.selectborderwidth", 0)
+        self.root.option_add("*TCombobox*Listbox.activestyle", "none")
 
         if sys.platform.startswith("linux"):
             self.root.option_add("*TCombobox*Listbox.selectForeground", COLOR_TEXT_BRIGHT)
@@ -467,22 +558,28 @@ class KodiLogMonitor:
         self.btn_log = self.create_custom_button(h_left, "", self.open_file)
         self.btn_log.pack(side=tk.LEFT, padx=5)
 
-        self.btn_sum = self.create_custom_button(h_left, "", self.show_summary)
-        self.btn_sum.pack(side=tk.LEFT, padx=5)
-
         self.btn_exp = self.create_custom_button(h_left, "", self.export_log)
         self.btn_exp.pack(side=tk.LEFT, padx=5)
+
+        # --- Addition of the separator ---
+        tk.Frame(
+            h_left,
+            bg=COLOR_SEPARATOR,
+            width=2
+        ).pack(side=tk.LEFT, fill=tk.Y, padx=20)
+
+        self.btn_sum = self.create_custom_button(h_left, "", self.show_summary)
+        self.btn_sum.pack(side=tk.LEFT, padx=5)
 
         self.btn_clr = self.create_custom_button(h_left, "", self.clear_console)
         self.btn_clr.pack(side=tk.LEFT, padx=10)
 
-        # --- Visual separator and Filters area ---
-        # Thin vertical frame acting as a UI separator
+        # --- Addition of the separator ---
         tk.Frame(
             h_left,
             bg=COLOR_SEPARATOR,
-            width=1
-        ).pack(side=tk.LEFT, fill=tk.Y, padx=5)
+            width=2
+        ).pack(side=tk.LEFT, fill=tk.Y, padx=20)
 
         self.filter_frame = tk.Frame(h_left, bg=COLOR_BG_HEADER)
         self.filter_frame.pack(side=tk.LEFT, padx=5)
@@ -491,7 +588,7 @@ class KodiLogMonitor:
         self.filter_widgets = {}
 
         # --- Filter toggle buttons generation ---
-        filter_modes = ["all", "debug", "info", "warning", "error"]
+        filter_modes = ["all", "info", "warning", "error", "debug"]
 
         for mode in filter_modes:
             # Create a toggleable checkbutton for each log level
@@ -530,12 +627,29 @@ class KodiLogMonitor:
         h_right = tk.Frame(header, bg=COLOR_BG_HEADER)
         h_right.pack(side=tk.RIGHT, fill=tk.Y)
 
+
+        # --- Theme selection dropdown ---
+        self.combo_theme = ttk.Combobox(
+            h_right,
+            values=[],
+            state="readonly",
+            width=12,
+            style="TCombobox"
+        )
+
+        self.combo_theme.pack(side=tk.LEFT, padx=5)
+
+        if sys.platform != "win32":
+            self.combo_theme.pack_forget()
+
+        self.combo_theme.bind("<<ComboboxSelected>>", self.on_theme_change)
+
         self.combo_lang = ttk.Combobox(
             h_right,
             textvariable=self.current_lang,
             values=sorted(LANGS.keys()),
             state="readonly",
-            width=4,
+            width=5,
             style="TCombobox"
         )
         self.combo_lang.pack(side=tk.LEFT, padx=5)
@@ -565,7 +679,7 @@ class KodiLogMonitor:
             kw_box,
             textvariable=self.selected_list,
             state="readonly",
-            width=18,
+            width=20,
             style="TCombobox"
         )
         self.combo_lists.pack(side=tk.LEFT, padx=5)
@@ -590,9 +704,17 @@ class KodiLogMonitor:
             pady=2
         ).pack(side=tk.LEFT, padx=5)
 
+
+        # --- Addition of the separator ---
+        tk.Frame(
+            sh_left,
+            bg=COLOR_SEPARATOR,
+            width=2
+        ).pack(side=tk.LEFT, fill=tk.Y, padx=20, pady=5)
+
         # --- Search Box Section ---
         search_box = tk.Frame(sh_left, bg=COLOR_BG_MAIN, padx=8)
-        search_box.pack(side=tk.LEFT, padx=15)
+        search_box.pack(side=tk.LEFT, padx=5)
 
         # Search icon
         tk.Label(
@@ -616,9 +738,11 @@ class KodiLogMonitor:
             relief="flat",
             highlightthickness=1,
             highlightbackground=COLOR_BG_MAIN,
-            highlightcolor=COLOR_ACCENT
+            highlightcolor=COLOR_BG_MAIN
         )
         self.search_entry.pack(side=tk.LEFT, padx=5, pady=4)
+
+        self.search_entry.bind("<Button-3>", self.show_search_context_menu)
 
         # Clear search button (X)
         self.btn_clear_search = tk.Label(
@@ -634,6 +758,13 @@ class KodiLogMonitor:
             "<Button-1>",
             lambda event: self.clear_search()
         )
+
+        # --- Addition of the separator ---
+        tk.Frame(
+            sh_left,
+            bg=COLOR_SEPARATOR,
+            width=2
+        ).pack(side=tk.LEFT, fill=tk.Y, padx=20, pady=5)
 
         # --- Options Box & Style ---
         opt_box = tk.Frame(sh_left, bg=COLOR_BG_HEADER)
@@ -701,6 +832,13 @@ class KodiLogMonitor:
         )
         self.cb_pause.pack(side=tk.LEFT, padx=5)
         add_hover(self.cb_pause)
+
+        # --- Addition of the separator ---
+        tk.Frame(
+            opt_box,
+            bg=COLOR_SEPARATOR,
+            width=2
+        ).pack(side=tk.LEFT, fill=tk.Y, padx=20, pady=5)
 
         # --- Reset Filters Button ---
         self.btn_reset = self.create_custom_button(
@@ -776,8 +914,6 @@ class KodiLogMonitor:
         # Create a hidden top-level window for the menu
         self.context_menu = tk.Toplevel(self.root)
         self.context_menu.withdraw()
-
-        # Remove window borders and title bar for a professional look
         self.context_menu.overrideredirect(True)
 
         # Outer border configuration (using COLOR_SEPARATOR as border color)
@@ -791,6 +927,20 @@ class KodiLogMonitor:
         self.menu_inner = tk.Frame(self.context_menu, bg=COLOR_BTN_DEFAULT)
         self.menu_inner.pack(fill="both", expand=True)
 
+        self.search_context_menu = tk.Toplevel(self.root)
+        self.search_context_menu.withdraw()
+        self.search_context_menu.overrideredirect(True)
+        self.search_context_menu.configure(
+            bg=COLOR_SEPARATOR,
+            padx=1,
+            pady=1
+        )
+
+        self.search_menu_inner = tk.Frame(self.search_context_menu, bg=COLOR_BTN_DEFAULT)
+        self.search_menu_inner.pack(fill="both", expand=True)
+
+        self._build_search_menu_items()
+
         def add_custom_item(command):
             """Add a stylized clickable item to the custom context menu."""
             item = tk.Label(
@@ -798,9 +948,9 @@ class KodiLogMonitor:
                 text="",
                 bg=COLOR_BTN_DEFAULT,
                 fg=COLOR_TEXT_BRIGHT,
-                font=(self.main_font_family, 9),
+                font=(self.main_font_family, 10),
                 padx=15,
-                pady=6,
+                pady=7,
                 anchor="w",
                 cursor="hand2"
             )
@@ -829,7 +979,7 @@ class KodiLogMonitor:
 
         # Item 0: Copy
         self.menu_items.append(
-            add_custom_item(lambda: self.root.focus_get().event_generate("<<Copy>>"))
+            add_custom_item(self.copy_selection)
         )
 
         # Item 1: Select All
@@ -895,11 +1045,45 @@ class KodiLogMonitor:
         self.loading_label.pack(expand=True)
 
         # --- Footer Section ---
-        footer = tk.Frame(self.root, bg=COLOR_BG_FOOTER, padx=15, pady=3)
+        footer = tk.Frame(self.root, bg=COLOR_BG_FOOTER, padx=15, pady=5) # Padding Y légèrement augmenté
         footer.grid(row=3, column=0, sticky="ew")
+
+        # 1. Indicator Light
+        self.status_indicator = tk.Canvas(
+            footer, width=20, height=20,
+            bg=COLOR_BG_FOOTER, highlightthickness=0
+        )
+        self.status_indicator.pack(side=tk.LEFT, padx=(20, 12))
+
+        # Creation of the circle
+        self.status_circle = self.status_indicator.create_oval(
+            2, 2, 18, 18,
+            fill=COLOR_WARNING,
+            outline="#c4c4c4",
+            width=1
+        )
+
+        # 2. Inactivity timer
+        self.inactivity_timer_var = tk.StringVar(value="")
+        self.inactivity_label = tk.Label(
+            footer,
+            textvariable=self.inactivity_timer_var,
+            bg=COLOR_BG_FOOTER,
+            fg=COLOR_DANGER,
+            font=("Segoe UI", 9, "bold")
+        )
+        self.inactivity_label.pack(side=tk.LEFT, padx=(0, 10))
+
+        # --- Addition of the separator ---
+        tk.Frame(
+            footer,
+            bg=COLOR_SEPARATOR,
+            width=2
+        ).pack(side=tk.LEFT, fill=tk.Y, padx=10, pady=2)
 
         self.footer_var = tk.StringVar()
         self.stats_var = tk.StringVar()
+        self.size_var = tk.StringVar()
         self.limit_var = tk.StringVar()
         self.paused_var = tk.StringVar()
 
@@ -910,25 +1094,50 @@ class KodiLogMonitor:
             "font": (self.emoji_font_family, 8, "bold")
         }
 
+        # 3. The file path (📍)
         tk.Label(
             footer, textvariable=self.footer_var,
             fg=COLOR_TEXT_BRIGHT, **footer_style
         ).pack(side=tk.LEFT)
 
-        tk.Label(
+        # --- Addition of the separator ---
+        self.sep_lines = tk.Frame(footer, bg=COLOR_SEPARATOR, width=2)
+
+        #4. Total number of lines (📈)
+        self.label_lines = tk.Label(
             footer, textvariable=self.stats_var,
             fg=COLOR_TEXT_BRIGHT, **footer_style
-        ).pack(side=tk.LEFT)
+        )
 
-        tk.Label(
-            footer, textvariable=self.limit_var,
-            fg=COLOR_WARNING, **footer_style
-        ).pack(side=tk.LEFT)
+        # --- Addition of the separator ---
+        self.sep_size = tk.Frame(footer, bg=COLOR_SEPARATOR, width=2)
 
-        tk.Label(
-            footer, textvariable=self.paused_var,
-            fg=COLOR_DANGER, padx=10, **footer_style
-        ).pack(side=tk.LEFT)
+        # 5. File size (📁)
+        self.label_size = tk.Label(
+            footer, textvariable=self.size_var,
+            fg=COLOR_TEXT_BRIGHT, **footer_style
+        )
+
+        # --- Addition of the separators and labels ---
+        self.sep_limit = tk.Frame(footer, bg=COLOR_SEPARATOR, width=2)
+
+        # 6. Lines limited to 1000 (⚠️)
+        self.label_limit = tk.Label(
+            footer,
+            textvariable=self.limit_var,
+            fg=COLOR_WARNING,
+            **footer_style
+        )
+
+        self.sep_pause = tk.Frame(footer, bg=COLOR_SEPARATOR, width=2)
+
+        # 7. Paused (⏸️)
+        self.label_pause = tk.Label(
+            footer,
+            textvariable=self.paused_var,
+            fg=COLOR_DANGER,
+            **footer_style
+        )
 
         # App version display
         tk.Label(
@@ -983,22 +1192,24 @@ class KodiLogMonitor:
         self.font_label.config(text=str(self.font_size))
         self.txt_area.tag_raise("sel")
 
+    # Button all
     def on_filter_toggle(self, clicked_mode):
         if clicked_mode == "all":
             if self.filter_vars["all"].get():
-                for mode in ["debug", "info", "warning", "error"]:
+                for mode in ["info", "warning", "error", "debug"]:
                     self.filter_vars[mode].set(False)
             else:
-                if not any(self.filter_vars[m].get() for m in ["debug", "info", "warning", "error"]):
+                if not any(self.filter_vars[m].get() for m in ["info", "warning", "error", "debug"]):
                     self.filter_vars["all"].set(True)
         else:
             if self.filter_vars[clicked_mode].get():
                 self.filter_vars["all"].set(False)
             else:
-                if not any(self.filter_vars[m].get() for m in ["debug", "info", "warning", "error"]):
+                if not any(self.filter_vars[m].get() for m in ["info", "warning", "error", "debug"]):
                     self.filter_vars["all"].set(True)
         self.update_filter_button_colors()
 
+    # Button reset
     def reset_all_filters(self):
         self.running = False
         l = LANGS.get(self.current_lang.get(), LANGS["EN"])
@@ -1006,12 +1217,46 @@ class KodiLogMonitor:
         self.selected_list.set(l["none"])
         self.is_paused.set(False)
         self.filter_vars["all"].set(True)
-        for mode in ["debug", "info", "warning", "error"]:
+        for mode in ["info", "warning", "error", "debug"]:
             self.filter_vars[mode].set(False)
         self.txt_area.config(state=tk.NORMAL)
         self.txt_area.delete('1.0', tk.END)
         if self.log_file_path:
             self.root.after(100, lambda: self.start_monitoring(self.log_file_path, save=False, retranslate=False))
+
+    def get_line_data(self, line):
+        if not line or not line.strip():
+            return None
+        low = line.lower()
+        q = self.search_query.get().lower()
+        current_tag = None
+        if " error " in low:
+            current_tag = "error"
+        elif " warning " in low:
+            current_tag = "warning"
+        elif " info " in low:
+            current_tag = "info"
+        elif " debug " in low:
+            current_tag = "debug"
+        if not self.filter_vars["all"].get():
+            if current_tag is None or not self.filter_vars.get(current_tag, tk.BooleanVar(value=False)).get():
+                return None
+        if q and q not in low:
+            return None
+        l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
+        if self.selected_list.get() != l_ui["none"]:
+            kw = self.get_keywords_from_file()
+            if kw and not any(k.lower() in low for k in kw):
+                return None
+        return (line, current_tag)
+
+    def update_filter_button_colors(self):
+        for mode, cb in self.filter_widgets.items():
+            if self.filter_vars[mode].get():
+                bg = self.filter_colors[mode]
+                cb.config(bg=bg, selectcolor=bg)
+            else:
+                cb.config(bg=COLOR_BTN_DEFAULT, selectcolor=COLOR_BTN_DEFAULT)
 
     def on_double_click_line(self, event):
         if not self.log_file_path:
@@ -1056,7 +1301,7 @@ class KodiLogMonitor:
         self.pending_jump_timestamp = timestamp
         self.is_paused.set(True)
         self.filter_vars["all"].set(True)
-        for m in ["debug", "info", "warning", "error"]:
+        for m in ["info", "warning", "error", "debug"]:
             self.filter_vars[m].set(False)
         self.search_query.set("")
         self.load_full_file.set(True)
@@ -1073,32 +1318,6 @@ class KodiLogMonitor:
             end_line = f"{idx} lineend"
             self.txt_area.tag_add("highlight", start_line, end_line)
             self.root.after(3000, lambda: self.txt_area.tag_remove("highlight", "1.0", tk.END))
-
-    def get_line_data(self, line):
-        if not line or not line.strip():
-            return None
-        low = line.lower()
-        q = self.search_query.get().lower()
-        current_tag = None
-        if " error " in low:
-            current_tag = "error"
-        elif " warning " in low:
-            current_tag = "warning"
-        elif " info " in low:
-            current_tag = "info"
-        elif " debug " in low:
-            current_tag = "debug"
-        if not self.filter_vars["all"].get():
-            if current_tag is None or not self.filter_vars.get(current_tag, tk.BooleanVar(value=False)).get():
-                return None
-        if q and q not in low:
-            return None
-        l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
-        if self.selected_list.get() != l_ui["none"]:
-            kw = self.get_keywords_from_file()
-            if kw and not any(k.lower() in low for k in kw):
-                return None
-        return (line, current_tag)
 
     def insert_with_highlight(self, text, base_tag):
         l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
@@ -1136,16 +1355,87 @@ class KodiLogMonitor:
 
     def update_stats(self):
         if not self.log_file_path:
+            self.sep_lines.pack_forget()
+            self.label_lines.pack_forget()
+            self.sep_size.pack_forget()
+            self.label_size.pack_forget()
             return
+
+        # 1. Recovery of current states
+        try:
+            current_text = self.stats_var.get()
+            current_count = int(''.join(filter(str.isdigit, current_text)))
+        except (ValueError, TypeError):
+            current_count = -1
+
+        current_pause = self.is_paused.get()
+        current_limit = self.load_full_file.get() # Etat du mode "Infini"
+
+        # 2. UPDATE CONDITION:
+        # Refresh only if one of these 3 elements has changed
+        if (current_count == self.last_line_count and
+            current_pause == self.last_pause_state and
+            current_limit == self.last_limit_state):
+            return
+
+        # 3. Memorization of new states
+        self.last_line_count = current_count
+        self.last_pause_state = current_pause
+        self.last_limit_state = current_limit
+
         l = LANGS.get(self.current_lang.get(), LANGS["EN"])
-        self.limit_var.set(l["limit"] if not self.load_full_file.get() else "")
-        self.paused_var.set(f" | {l['paused']}" if self.is_paused.get() else "")
+
+        self.sep_lines.pack_forget()
+        self.label_lines.pack_forget()
+        self.sep_size.pack_forget()
+        self.label_size.pack_forget()
+        self.sep_limit.pack_forget()
+        self.label_limit.pack_forget()
+        self.sep_pause.pack_forget()
+        self.label_pause.pack_forget()
+
+        # --- TOTAL NUMBER OF LINES ---
+        if self.stats_var.get() and "N/A" not in self.stats_var.get():
+            self.sep_lines.pack(side=tk.LEFT, fill=tk.Y, padx=20, pady=2)
+            self.label_lines.pack(side=tk.LEFT)
+        else:
+            self.sep_lines.pack_forget()
+            self.label_lines.pack_forget()
+
+        # --- Bloc FILE SIZE ---
+        if self.size_var.get() and "N/A" not in self.size_var.get():
+            self.sep_size.pack(side=tk.LEFT, fill=tk.Y, padx=20, pady=2)
+            self.label_size.pack(side=tk.LEFT)
+        else:
+            self.sep_size.pack_forget()
+            self.label_size.pack_forget()
+
+        # --- Bloc LIMIT ---
+        if not self.load_full_file.get():
+            self.limit_var.set(l["limit"])
+            self.sep_limit.pack(side=tk.LEFT, fill=tk.Y, padx=20, pady=2)
+            self.label_limit.pack(side=tk.LEFT)
+        else:
+            self.limit_var.set("")
+            self.sep_limit.pack_forget()
+            self.label_limit.pack_forget()
+
+        # --- Bloc PAUSE ---
+        if self.is_paused.get():
+            self.paused_var.set(l["paused"])
+            self.sep_pause.pack(side=tk.LEFT, fill=tk.Y, padx=20, pady=2)
+            self.label_pause.pack(side=tk.LEFT)
+        else:
+            self.paused_var.set("")
+            self.sep_pause.pack_forget()
+            self.label_pause.pack_forget()
 
     def scheduled_stats_update(self):
         if self.running and self.log_file_path:
             size_str, real_total = self.get_file_info()
             l = LANGS.get(self.current_lang.get(), LANGS["EN"])
-            self.stats_var.set(l["stats_simple"].format(real_total, size_str))
+            self.stats_var.set(l["stats_simple"].format(real_total))
+            self.size_var.set(l["file_size_text"].format(size_str))
         self.root.after(5000, self.scheduled_stats_update)
 
     def get_file_info(self):
@@ -1190,32 +1480,66 @@ class KodiLogMonitor:
         if trigger_monitor:
             self.trigger_refresh()
 
-    def update_filter_button_colors(self):
-        for mode, cb in self.filter_widgets.items():
-            if self.filter_vars[mode].get():
-                bg = self.filter_colors[mode]
-                cb.config(bg=bg, selectcolor=bg)
-            else:
-                cb.config(bg=COLOR_BTN_DEFAULT, selectcolor=COLOR_BTN_DEFAULT)
-
     def retranslate_ui(self, refresh_monitor=True):
         l = LANGS.get(self.current_lang.get(), LANGS["EN"])
         self.btn_log.config(text=l["log"])
         self.btn_sum.config(text=l["sum"])
         self.btn_exp.config(text=l["exp"])
         self.btn_clr.config(text=l["clr"])
-        tm = {"all": "all", "debug": "debug", "info": "info", "warning": "warn", "error": "err"}
+
+        tm = {"all": "all", "info": "info", "warning": "warn", "error": "err", "debug": "debug"}
         for mode, cb in self.filter_widgets.items():
             cb.config(text=l[tm[mode]])
+
         self.footer_var.set(l["sel"] if not self.log_file_path else f"📍 {self.log_file_path}")
         self.refresh_keyword_list(trigger_monitor=refresh_monitor)
         self.update_stats()
         self.update_filter_button_colors()
+        self._build_search_menu_items()
 
         if hasattr(self, 'menu_items'):
             self.menu_items[0].config(text=l["copy"])
             self.menu_items[1].config(text=l["sel_all"])
             self.menu_items[2].config(text=l["search_google"])
+
+        # Update Theme Combobox values
+        self.combo_theme['values'] = [l["t_auto"], l["t_light"], l["t_dark"]]
+
+        # Update displayed text based on current internal state
+        mapping = {"Auto": "t_auto", "Light": "t_light", "Dark": "t_dark"}
+        # Always "Auto", "Light", or "Dark"
+        current_key = self.theme_mode.get()
+        self.combo_theme.set(l[mapping.get(current_key, "t_auto")])
+
+        if self.is_paused.get():
+            self.paused_var.set(l["paused"])
+        else:
+            self.paused_var.set("")
+
+        if not self.load_full_file.get():
+            self.limit_var.set(l["limit"])
+        else:
+            self.limit_var.set("")
+
+        self.update_stats()
+
+    def on_theme_change(self, event):
+        """Map translated selection back to internal keys and apply."""
+        l = LANGS.get(self.current_lang.get(), LANGS["EN"])
+        selection = self.combo_theme.get()
+
+        # Reverse mapping: Translated string -> Internal key
+        if selection == l["t_light"]:
+            self.theme_mode.set("Light")
+        elif selection == l["t_dark"]:
+            self.theme_mode.set("Dark")
+        else:
+            self.theme_mode.set("Auto")
+
+        self.combo_theme.selection_clear()
+        self.root.focus_set()
+        self.update_windows_title_bar()
+        self.save_session()
 
     def clear_console(self):
         self.txt_area.config(state=tk.NORMAL)
@@ -1291,6 +1615,104 @@ class KodiLogMonitor:
         self.cursor_visible = False
         self.cursor_timer = None
 
+    def update_windows_title_bar(self):
+        """Apply theme to the Windows title bar."""
+        if sys.platform == "win32":
+            try:
+                from ctypes import windll, byref, sizeof, c_int
+                self.root.update_idletasks()
+
+                # Use GA_ROOT to get the real window handle
+                hwnd = windll.user32.GetAncestor(self.root.winfo_id(), 2)
+
+                mode = self.theme_mode.get()
+                if mode == "Dark":
+                    is_dark = 1
+                elif mode == "Light":
+                    is_dark = 0
+                else:
+                    is_dark = get_windows_theme()
+
+                # Attribute 20: Immersive Dark Mode
+                windll.dwmapi.DwmSetWindowAttribute(
+                    hwnd, 20, byref(c_int(is_dark)), sizeof(c_int(is_dark))
+                )
+
+                # Attribute 34: Title bar color (BGR)
+                color = 0x002d2d2d if is_dark else 0x00FFFFFF
+                windll.dwmapi.DwmSetWindowAttribute(
+                    hwnd, 34, byref(c_int(color)), sizeof(c_int(color))
+                )
+
+                # Refresh frame
+                windll.user32.SetWindowPos(hwnd, 0, 0, 0, 0, 0, 0x0020 | 0x0002 | 0x0001 | 0x0004)
+            except Exception:
+                pass
+
+    def update_status_color(self, color):
+        if hasattr(self, 'status_indicator'):
+            self.status_indicator.itemconfig(self.status_circle, fill=color)
+
+    def listen_for_theme_changes(self):
+        """Intercepte le message WM_SETTINGCHANGE de manière sécurisée (64-bit compatible)."""
+        if sys.platform != "win32":
+            return
+
+        from ctypes import windll, WINFUNCTYPE, c_int64, c_void_p, c_uint64
+
+        WM_SETTINGCHANGE = 0x001A
+        GWLP_WNDPROC = -4
+
+        # 1. Strict type definition to avoid "Access Violation"
+        # We use c_int64 and c_void_p to properly support 64 bits
+        WNDPROC = WINFUNCTYPE(c_int64, c_void_p, c_uint64, c_uint64, c_int64)
+
+        windll.user32.CallWindowProcW.argtypes = [c_void_p, c_void_p, c_uint64, c_uint64, c_int64]
+        windll.user32.CallWindowProcW.restype = c_int64
+
+        windll.user32.SetWindowLongPtrW.argtypes = [c_void_p, c_int64, c_void_p]
+        windll.user32.SetWindowLongPtrW.restype = c_void_p
+
+        def wndproc(hwnd, msg, wparam, lparam):
+            if msg == WM_SETTINGCHANGE:
+                # We use after so as not to block the main Windows thread.
+                self.root.after(200, self.update_windows_title_bar)
+
+            # Using the original saved pointer
+            return windll.user32.CallWindowProcW(self.old_wndproc, hwnd, msg, wparam, lparam)
+
+        try:
+            # Retrieving the correct handle (the parent of winfo_id for Tkinter)
+            hwnd = windll.user32.GetParent(self.root.winfo_id())
+
+            # We keep a reference to the function to prevent it from being deleted by the Garbage Collector.
+            self.new_wndproc = WNDPROC(wndproc)
+
+            # Replacement of the procedure
+            self.old_wndproc = windll.user32.SetWindowLongPtrW(hwnd, GWLP_WNDPROC, self.new_wndproc)
+        except Exception as e:
+            print(f"Erreur d'initialisation du listener de thème : {e}")
+
+    def check_theme_periodically(self):
+        """Checks the Windows theme every 2 seconds in a secure manner."""
+        if not self.running:
+            return
+
+        try:
+            # We retrieve the current theme via your existing function.
+            current_is_dark = get_windows_theme()
+
+            # If this is your first time or if the theme has changed
+            if not hasattr(self, '_last_recorded_theme') or self._last_recorded_theme != current_is_dark:
+                self.check_theme_periodically()
+                self._last_recorded_theme = current_is_dark
+
+        except Exception:
+            pass
+
+        # We will restart the verification in 2000ms (2 seconds).
+        self.root.after(2000, self.check_theme_periodically)
+
     def reset_cursor_timer(self, event=None):
         """
         Resets the inactivity timer and restores cursor visibility.
@@ -1315,6 +1737,67 @@ class KodiLogMonitor:
                 webbrowser.open(url)
         except tk.TclError:
             pass
+
+    def copy_selection(self):
+        try:
+            selected_text = self.txt_area.get(tk.SEL_FIRST, tk.SEL_LAST)
+            if selected_text:
+                self.root.clipboard_clear()
+                self.root.clipboard_append(selected_text)
+        except tk.TclError:
+            pass
+
+    def show_search_context_menu(self, event):
+        # Hide the other menu if it is open
+        self.context_menu.withdraw()
+
+        # The search menu is displayed.
+        self.search_context_menu.geometry(f"+{event.x_root}+{event.y_root}")
+        self.search_context_menu.deiconify()
+        self.search_context_menu.lift()
+        self.search_context_menu.focus_set()
+
+    def _build_search_menu_items(self):
+        l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
+
+        for widget in self.search_menu_inner.winfo_children():
+            widget.destroy()
+
+        # Paste button
+        btn_paste = tk.Label(
+            self.search_menu_inner,
+            text=l_ui["paste"],
+            bg=COLOR_BTN_DEFAULT,
+            fg=COLOR_TEXT_BRIGHT,
+            font=(self.main_font_family, 10),
+            padx=15,
+            pady=7,
+            anchor="w",
+            cursor="hand2"
+        )
+
+        btn_paste.pack(fill="x")
+        btn_paste.bind("<Enter>", lambda e: btn_paste.config(bg=COLOR_ACCENT))
+        btn_paste.bind("<Leave>", lambda e: btn_paste.config(bg=COLOR_BTN_DEFAULT))
+        btn_paste.bind("<Button-1>", lambda e: [self.search_entry.event_generate("<<Paste>>"), self.search_context_menu.withdraw()])
+
+        # Clear button
+        btn_clear = tk.Label(
+            self.search_menu_inner,
+            text=l_ui["clear"],
+            bg=COLOR_BTN_DEFAULT,
+            fg=COLOR_TEXT_BRIGHT,
+            font=(self.main_font_family, 10),
+            padx=15,
+            pady=7,
+            anchor="w",
+            cursor="hand2"
+        )
+
+        btn_clear.pack(fill="x")
+        btn_clear.bind("<Enter>", lambda e: btn_clear.config(bg=COLOR_ACCENT))
+        btn_clear.bind("<Leave>", lambda e: btn_clear.config(bg=COLOR_BTN_DEFAULT))
+        btn_clear.bind("<Button-1>", lambda e: [self.search_query.set(""), self.search_context_menu.withdraw()])
 
     def increase_font(self):
         self.font_size += 1
@@ -1363,7 +1846,7 @@ class KodiLogMonitor:
         Saves the current application state with perfectly aligned comments.
         """
         try:
-            modes = ["all", "debug", "info", "warning", "error"]
+            modes = ["all", "info", "warning", "error", "debug"]
             filter_states = ",".join(["1" if self.filter_vars[m].get() else "0" for m in modes])
 
             with open(CONFIG_FILE, "w", encoding="utf-8") as f:
@@ -1377,7 +1860,9 @@ class KodiLogMonitor:
                     f"{str(self.window_geometry):<{w}} # window_geometry",
                     f"{str(self.selected_list.get()):<{w}} # selected_keyword_list",
                     f"{filter_states:<{w}} # filter_states (all,debug,info,warn,err)",
-                    f"{('1' if self.show_google_search.get() else '0'):<{w}} # show_google_search_menu"
+                    f"{('1' if self.show_google_search.get() else '0'):<{w}} # show_google_search_menu",
+                    f"{str(self.theme_mode.get()):<{w}} # theme_mode",
+                    f"{str(self.inactivity_limit):<{w}} # inactivity_limit_seconds"
                 ]
                 f.write("\n".join(config_data))
         except (IOError, OSError) as e:
@@ -1433,7 +1918,7 @@ class KodiLogMonitor:
                 # 7. Filter states
                 if len(lines) >= 7:
                     states = lines[6].split(",")
-                    modes = ["all", "debug", "info", "warning", "error"]
+                    modes = ["all", "info", "warning", "error", "debug"]
                     for i, state in enumerate(states):
                         if i < len(modes):
                             self.filter_vars[modes[i]].set(state == "1")
@@ -1444,6 +1929,17 @@ class KodiLogMonitor:
                 else:
                     # Default to enabled if the line doesn't exist yet
                     self.show_google_search.set(True)
+
+                # 9. theme windows light, dark, auto
+                if len(lines) >= 9:
+                    self.theme_mode.set(lines[8])
+
+                # 10. Inactivity Limit
+                if len(lines) >= 10:
+                    try:
+                        self.inactivity_limit = int(lines[9])
+                    except ValueError:
+                        self.inactivity_limit = 300
 
         except (IOError, OSError, Exception) as e:
             # Print error for debugging purposes if needed
@@ -1458,37 +1954,64 @@ class KodiLogMonitor:
             self.start_monitoring(self.log_file_path, False, False)
 
 
+if sys.platform == "win32":
+    import winreg
+else:
+    winreg = None
+
+
+def get_windows_theme():
+    """
+    Check the Windows Registry to see if the user prefers Dark Mode.
+    Returns: 1 for Dark Mode, 0 for Light Mode.
+    """
+    try:
+        registry = winreg.ConnectRegistry(None, winreg.HKEY_CURRENT_USER)
+        key = winreg.OpenKey(registry, r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize")
+        value, _ = winreg.QueryValueEx(key, "AppsUseLightTheme")
+        winreg.CloseKey(key)
+        return 0 if value == 1 else 1 # 1 = Dark, 0 = Light
+    except Exception:
+        return 1 # Default to Dark Mode if check fails
+
+
 if __name__ == "__main__":
-    # Windows-specific configurations for High DPI and Dark Mode title bar
     if sys.platform == "win32":
-        # 1. Enable High DPI awareness to prevent blurry UI on 4K/Laptop screens
         try:
-            from ctypes import windll
+            from ctypes import windll, byref, sizeof, c_int
             windll.shcore.SetProcessDpiAwareness(1)
-        except (ImportError, AttributeError, OSError):
-            # Fallback if the system doesn't support Shcore.dll
+        except Exception:
             pass
 
     root = tk.Tk()
 
-    # 2. Apply Windows Dark Mode to the title bar (Win 10/11)
     if sys.platform == "win32":
         try:
             from ctypes import windll, byref, sizeof, c_int
-            # Attribute 35: DWMWA_USE_IMMERSIVE_DARK_MODE
-            # This makes the title bar background dark to match the app theme
+            root.update()
             hwnd = windll.user32.GetParent(root.winfo_id())
-            dark_mode = c_int(1)
-            windll.dwmapi.DwmSetWindowAttribute(
-                hwnd,
-                35,
-                byref(dark_mode),
-                sizeof(dark_mode)
-            )
-        except (ImportError, AttributeError, OSError):
-            # Fallback if DWMAPI is unavailable or version is incompatible
-            pass
 
-    # Initialize and run the application
+            # 1. Detect user theme preference
+            is_dark = get_windows_theme() # Returns 1 (Dark) or 0 (Light)
+
+            # 2. Apply Immersive Dark Mode attribute (20)
+            # This ensures the window buttons (Min/Max/Close) adapt their color
+            windll.dwmapi.DwmSetWindowAttribute(
+                hwnd, 20, byref(c_int(is_dark)), sizeof(c_int(is_dark))
+            )
+
+            # 3. Apply custom caption color (Attribute 34)
+            # If Dark: use Grey (0x002d2d2d), if Light: let Windows decide (or use White)
+            if is_dark:
+                caption_color = c_int(0x002d2d2d) # Grey BGR
+                windll.dwmapi.DwmSetWindowAttribute(hwnd, 34, byref(caption_color), sizeof(caption_color))
+            else:
+                # Default Light color (White/Light Grey)
+                caption_color = c_int(0x00FFFFFF)
+                windll.dwmapi.DwmSetWindowAttribute(hwnd, 34, byref(caption_color), sizeof(caption_color))
+
+        except Exception as e:
+            print(f"Theme detection error: {e}")
+
     app = KodiLogMonitor(root)
     root.mainloop()
