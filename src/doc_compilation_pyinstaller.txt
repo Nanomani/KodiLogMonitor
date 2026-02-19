@@ -1,0 +1,43 @@
+
+
+sudo apt install pipx
+pipx ensurepath
+
+
+================================================
+compilation Windows :
+================================================
+
+pip install pywebview
+pyinstaller --noconsole --onefile --add-data "logo.ico:." --icon="logo.ico" --name "KodiLogMonitor" KodiLogMonitor.py
+
+
+================================================
+compilation Mac OS :
+================================================
+
+pipx install pyinstaller
+source ~/.bashrc
+pip3 install --user pyinstaller
+
+pyinstaller --noconsole --onefile --add-data "logo.png:." --icon="logo.icns" --name "KodiLogMonitor" KodiLogMonitor.py
+
+
+================================================
+compilation Linux :
+================================================
+
+sudo apt update
+
+sudo apt-get install python3
+sudo apt install python3-tk
+sudo apt install fonts-noto-color-emoji
+
+sudo apt install python3-pip -y
+sudo apt install pipx
+pipx install pyinstaller
+pipx ensurepath
+source ~/.bashrc
+
+pyinstaller --noconsole --onefile --add-data "logo.png:." --icon=logo.png --name "KodiLogMonitor" KodiLogMonitor.py
+
