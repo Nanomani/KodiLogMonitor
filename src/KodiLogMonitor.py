@@ -12,7 +12,7 @@ from collections import deque
 from urllib.parse import quote
 
 # --- CONFIGURATION ---
-APP_VERSION = "v1.3.5"
+APP_VERSION = "v1.3.6"
 CONFIG_FILE = ".kodi_monitor_config"
 DEFAULT_GEOMETRY = "1680x1050"
 ICON_NAME = "logo.ico"
@@ -32,6 +32,7 @@ COLOR_SEPARATOR = "#444444"      # Vertical line color between button groups
 COLOR_TEXT_MAIN = "#d4d4d4"      # Primary text color (log text)
 COLOR_TEXT_DIM = "#888888"       # Dimmed text color for icons/placeholders
 COLOR_TEXT_BRIGHT = "#ffffff"    # Bright white text for buttons and headers
+COLOR_TEXT_GREY = "#9e9e9e"      # Grey text for label footer app + version
 COLOR_BTN_SECONDARY = "#454545"  # Slightly different grey for secondary small buttons
 
 # COLORS FOR THE CUSTOM SCROLLBAR
@@ -328,6 +329,10 @@ class KodiLogMonitor:
 
         self.root.geometry(self.window_geometry)
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+        # --- KEYBOARD SHORTCUTS ---
+        self.root.bind("<space>", self.toggle_pause_from_keyboard)
+        self.txt_area.bind("<space>", self.toggle_pause_from_keyboard)
 
         # --- FILTER CHANGE ---
         for key, var in self.filter_vars.items():
@@ -1244,16 +1249,21 @@ class KodiLogMonitor:
             **footer_style
         )
 
-        # App version display
-        tk.Label(
+        # --- GitHub link in the footer ---
+        github_label = tk.Label(
             footer,
-            text=f"KODI LOG MONITOR {APP_VERSION}",
-            anchor=tk.E,
-            fg=COLOR_TEXT_MAIN,
+            text=f"Kodi Log Monitor {APP_VERSION}",
             bg=COLOR_BG_FOOTER,
+            fg=COLOR_TEXT_GREY,
             font=(self.main_font_family, 8, "bold"),
-            padx=10
-        ).pack(side=tk.RIGHT)
+            cursor="hand2"
+        )
+        github_label.pack(side=tk.RIGHT, padx=5)
+
+        # Click and hover effect binding
+        github_label.bind("<Button-1>", self.open_github_link)
+        github_label.bind("<Enter>", lambda e: github_label.config(fg=COLOR_TEXT_BRIGHT))
+        github_label.bind("<Leave>", lambda e: github_label.config(fg=COLOR_TEXT_GREY))
 
     def on_hover_filter(self, widget, mode, is_entering):
         if is_entering:
@@ -1912,6 +1922,25 @@ class KodiLogMonitor:
         if not self.is_paused.get() and self.log_file_path:
             self.txt_area.see(tk.END)
         self.update_stats()
+
+    def toggle_pause_from_keyboard(self, event=None):
+        current_focus = self.root.focus_get()
+
+        # 1. Do nothing if the user types in the search bar.
+        if current_focus == self.search_entry:
+            return None  # Laisse l'espace s'écrire normalement
+
+        # 2. Toggle the pause state
+        self.is_paused.set(not self.is_paused.get())
+
+        #3. Call the UI update function (button, scrolling).
+        self.toggle_pause_scroll()
+
+        # 4. IMPORTANT: We return "break" to prevent Tkinter from scrolling the text
+        return "break"
+
+    def open_github_link(self, event=None):
+        webbrowser.open_new("https://github.com/Nanomani/KodiLogMonitor")
 
     def on_search_change(self, *args):
         if self.search_query.get():
