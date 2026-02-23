@@ -26,8 +26,9 @@ You can now filter your logs using custom keyword lists:
 * **Smart Highlighting**: The monitor only displays lines containing your keywords and highlights them for better visibility.
 * **Easy Management**: Use the 📁 button to open the folder and ♻️ to refresh your lists instantly.
 
----
+Some sample: [here](https://github.com/Nanomani/KodiLogMonitor/tree/main/keyword_list)
 
+---
 ### 💡 Google Search Context Menu (v1.3.2+)
 The application provides a convenient "Search on Google" option in the right-click context menu, allowing you to quickly look up any selected text from the logs.
 
