@@ -7,7 +7,8 @@
 
 A lightweight and intuitive real-time log viewer or a simple log editor for Kodi. It helps users and developers track events, troubleshoot errors, and monitor system status through a clean, color-coded interface.
 
-![2026-02-19_003827](https://github.com/user-attachments/assets/12426c12-b3b9-4fdd-92b6-acc80a08f9e4)
+![2026-02-24_013832](https://github.com/user-attachments/assets/a6b53fc2-a1e5-4137-87cf-dbfb3fa8f411)
+
 
 ---
 
