@@ -93,5 +93,5 @@ If you want to run the script manually or explore the code:
 Ensure you have Python 3.x installed, then:
 ```bash
 git clone [https://github.com/YOUR_USERNAME/YOUR_REPO.git](https://github.com/YOUR_USERNAME/YOUR_REPO.git)
-cd YOUR_REPO
-python kodi_log_monitor.py
+cd YOUR_REPO/src
+python main.py
