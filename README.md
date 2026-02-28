@@ -69,14 +69,6 @@ If you prefer a cleaner interface, you can easily disable this option:
 
 ---
 
-### 🎨 Customization (v1.2.0+)
-The code is now designed for easy styling. You can find the **UI THEME** section at the very beginning of the script to change:
-* **Interface Colors**: Modify backgrounds for the text area, header, and buttons.
-* **Log & Highlight Colors**: Change the hex codes for `info`, `warning`, `error`, `debug`, and the keyword `highlight`.
-* **Centralized Design**: No need to search through the functions; everything is at the top of the file.
-
----
-
 ### 🚀 For Regular Users
 If you just want to use the tool without installing Python:
 
