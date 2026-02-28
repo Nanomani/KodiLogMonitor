@@ -30,6 +30,26 @@ You can now filter your logs using custom keyword lists:
 Some sample: [here](https://github.com/Nanomani/KodiLogMonitor/tree/main/keyword_list)
 
 ---
+
+### ⌨️ Shortcuts (v1.3.7+)
+
+Quick keyboard shortcuts to navigate and control the application efficiently.  
+**Tip**: Press **F1** at any time to display help.  
+```
+Space        : Pause / Resume auto-scroll  
+Ctrl + O     : Open log file  
+Ctrl + S     : Export log  
+Ctrl + F     : Search keyword  
+Ctrl + G     : Clear console display  
+Ctrl + L     : Toggle word wrap  
+Ctrl + T     : Unlimited mode (∞) / 1000 lines  
+S            : Show system summary (also accessible via F1)  
+A            : Show Info, Warn, Error, Debug  
+I, W, E, D   : Filter Info, Warn, Error or Debug  
+Ctrl + R     : Reset all filters  
+```
+---
+
 ### 💡 Google Search Context Menu (v1.3.2+)
 The application provides a convenient "Search on Google" option in the right-click context menu, allowing you to quickly look up any selected text from the logs.
 
