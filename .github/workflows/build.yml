@@ -45,22 +45,22 @@ jobs:
           
           if [ "$RUNNER_OS" == "Windows" ]; then
             pyinstaller --noconsole --onefile \
-                  --add-data "src/logo.ico;." \
-                  --icon="src/logo.ico" \
-                  --name "KodiLogMonitor" src/KodiLogMonitor.py
+                  --add-data "src/assets/logo.ico;." \
+                  --icon="src/assets/logo.ico" \
+                  --name "KodiLogMonitor" src/main.py
             mv dist/KodiLogMonitor.exe release/KodiLogMonitor-windows.exe
 
           elif [ "$RUNNER_OS" == "macOS" ]; then
             # On force l'architecture cible
             arch -${{ matrix.arch }} pyinstaller --noconsole --onefile \
-                  --add-data "src/logo.png:." \
-                  --icon="src/logo.icns" \
+                  --add-data "src/assets/logo.png:." \
+                  --icon="src/assets/logo.icns" \
                   --name "KodiLogMonitor-${{ matrix.artifact_name }}" \
-                  src/KodiLogMonitor.py
+                  src/main.py
             mv dist/KodiLogMonitor-${{ matrix.artifact_name }} release/
 
           elif [ "$RUNNER_OS" == "Linux" ]; then
-            pyinstaller --onefile src/KodiLogMonitor.py -n KodiLogMonitor
+            pyinstaller --onefile src/main.py -n KodiLogMonitor
             mv dist/KodiLogMonitor release/KodiLogMonitor-linux
           fi
           
