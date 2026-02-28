@@ -35,7 +35,7 @@ Some sample: [here](https://github.com/Nanomani/KodiLogMonitor/tree/main/keyword
 ### ⌨️ Shortcuts (v1.3.7+)
 
 Quick keyboard shortcuts to navigate and control the application efficiently.  
-**Tip**: Press **F1** at any time to display help.  
+**Tip**: Press **F1** or the button **?** at any time to display help.  
 ```
 Space        : Pause / Resume auto-scroll  
 Ctrl + O     : Open log file  
