@@ -91,7 +91,7 @@ python main.py
 
 ---
 
-### 🎨 Project Structure (v1.3.7+)
+### 📝 Project Structure (v1.3.7+)
 ```
 src/
 │
