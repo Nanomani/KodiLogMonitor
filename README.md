@@ -87,3 +87,30 @@ Ensure you have Python 3.x installed, then:
 git clone [https://github.com/YOUR_USERNAME/YOUR_REPO.git](https://github.com/YOUR_USERNAME/YOUR_REPO.git)
 cd YOUR_REPO/src
 python main.py
+```
+
+---
+
+### 🎨 Project Structure (v1.3.7+)
+```
+src/
+│
+├── main.py                 # Entry point: Initializes the Tkinter root and starts the application.  
+├── config.py               # Configuration: Defines global constants, colors, and file paths.  
+├── languages.py            # Localization: Contains dictionary for multi-language UI support.  
+├── utils.py                # Utilities: Helper functions for fonts, system themes, and OS detection.  
+│  
+├── ui/                     # User Interface Package  
+│   ├── __init__.py         # Package initialization.  
+│   ├── app.py              # Main Class: Assembles all mixins to build the core application logic.  
+│   ├── ui_builder.py       # UI Construction: Methods to build widgets, styles, and layout (setup_ui).  
+│   ├── actions.py          # User Interactions: Handles file opening, exporting, and help windows.  
+│   ├── log_display.py      # Log Rendering: Manages text insertion, highlighting, and filtering logic.  
+│   ├── monitor.py          # Threaded Monitoring: Background loop for real-time log file reading.  
+│   └── session.py          # Persistence: Saves and loads user settings (language, filters, window size).  
+│  
+└── assets/                 # Graphics Resources  
+    ├── logo.ico            # Windows application icon.  
+    ├── logo.png            # Generic image asset.  
+    └── logo.icns           # macOS application icon.  
+```
