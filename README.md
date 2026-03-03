@@ -15,9 +15,9 @@ A lightweight and intuitive real-time log viewer or a simple log editor for Kodi
 
 ### 🎯 What is it for?
 Kodi generates a log file that records everything happening in the background. This application allows you to:
-* **Monitor in real-time**: See new log lines instantly as they are written (tail -f style).
+* **Monitor in real-time**: See new log lines instantly as they are written.
 * **Identify issues**: Errors are highlighted in red and warnings in orange for quick spotting.
-* **Filter easily**: Focus on specific levels (Error, Warning, Info) or search for keywords.
+* **Filter easily**: Focus on specific levels (Error, Warning, Info, Debug) or search for keywords.
 * **Analyze setup**: Access a quick system summary to check your Kodi version and environment.
 
 ---
