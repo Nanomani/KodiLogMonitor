@@ -506,13 +506,14 @@ class UIBuilderMixin:
         )
         self.btn_inc_font.pack(side=tk.LEFT, padx=5)
 
+        # Label Font size
         self.font_label = tk.Label(
             sh_right,
             text=str(self.font_size),
             bg=COLOR_BG_HEADER,
             fg=COLOR_TEXT_BRIGHT,
             width=3,
-            font=(self.main_font_family, 9, "bold"),
+            font=(self.main_font_family, 9),
         )
         self.font_label.pack(side=tk.LEFT)
 
