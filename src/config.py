@@ -6,7 +6,7 @@ This module defines application metadata, file paths, and the visual color palet
 import os
 
 # --- CONFIGURATION ---
-APP_VERSION = "v1.3.8"
+APP_VERSION = "v1.3.7"
 CONFIG_FILE = ".kodi_monitor_config"
 DEFAULT_GEOMETRY = "1680x1050"
 ICON_NAME = "logo.ico"
