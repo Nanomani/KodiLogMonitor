@@ -59,39 +59,32 @@ class LogDisplayMixin:
         return (line, current_tag)
 
     def bulk_insert(self, data_list):
-        """
-        Inserts a batch of log lines into the text area efficiently.
-        Clears the area before insertion if used for filtering.
-
-        Args:
-            data_list (list): A list of tuples containing (text, tag).
-        """
-        """Insère un lot de données dans la zone de texte."""
+        """Inserts a set of data into the text box."""
         if not self.running:
             return
 
-        # Data cleansing
         valid_data = [d for d in data_list if d is not None]
-
         self.txt_area.config(state=tk.NORMAL)
-        # Empty before inserting the filter result
-        self.txt_area.delete("1.0", tk.END)
 
         if not valid_data:
-            # If nothing is found, the error message is displayed.
-            l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
-            message = (
-                f"\n\n\n\n\t\t\t{l_ui.get('no_match', 'Aucune occurrence trouvée')}"
-            )
+            current_text = self.txt_area.get("1.0", tk.END).strip()
 
-            # Insert the message with a specific tag (optional for color)
-            # self.txt_area.insert(tk.END, message, "error")
+            if current_text != "" and "Aucune" not in current_text:
+                self.show_loading(False)
+                self.update_stats()
+                return
+
+            l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
+            message = f"\n\n\n\n\t\t\t{l_ui.get('no_match', 'Aucune occurrence trouvée')}"
+
+            self.txt_area.delete('1.0', tk.END)
             self.txt_area.insert(tk.END, message, "warning")
             self.show_loading(False)
             self.update_stats()
             return
 
-        # If data exists, it is inserted normally.
+        self.txt_area.delete('1.0', tk.END)
+
         for text, tag in valid_data:
             self.insert_with_highlight(text, tag)
 
@@ -104,7 +97,6 @@ class LogDisplayMixin:
         self.update_stats()
         self.show_loading(False)
 
-    # adding new logs
     def append_to_gui(self, text, tag):
         """
         Appends a single log line to the end of the text area.

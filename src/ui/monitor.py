@@ -33,7 +33,16 @@ class MonitorMixin:
                     data = self.get_line_data(line)
                     if data and not self.is_duplicate(data[0]):
                         to_display.append(data)
-                self.root.after(0, self.bulk_insert, to_display)
+                
+                if to_display:
+                    self.root.after(0, self.bulk_insert, to_display)
+                else:
+                    is_filtering = any(v.get() for k, v in self.filter_vars.items() if k != "all")
+                    
+                    if not self.load_full_file.get() and not is_filtering:
+                        self.root.after(0, self.bulk_insert, to_display)
+                    else:
+                        self.root.after(1000, lambda: self.bulk_insert(to_display) if (self.running and not self.txt_area.get("1.0", tk.END).strip()) else None)
 
                 while self.running:
                     try:
