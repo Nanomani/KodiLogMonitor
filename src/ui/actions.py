@@ -21,6 +21,7 @@ class ActionsMixin:
         )
         if path:
             self.start_monitoring(path, is_manual=False)
+        return "break"
 
     def export_log(self, event=None):
         """
