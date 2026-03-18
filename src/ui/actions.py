@@ -39,6 +39,40 @@ class ActionsMixin:
             except IOError as e:
                 print(f"Error exporting log: {e}")
 
+    def upload_to_pastebin(self):
+        """Copie le contenu complet du log et ouvre paste.kodi.tv avec traduction."""
+        l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
+
+        if not self.log_file_path or not os.path.exists(self.log_file_path):
+            messagebox.showwarning(
+                l_ui.get("attn", "Attention"),
+                l_ui.get("no_log", "No log file loaded.")
+            )
+            return
+
+        try:
+            # Lecture du fichier complet
+            with open(self.log_file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                content = f.read()
+
+            # Copie dans le presse-papier
+            self.root.clipboard_clear()
+            self.root.clipboard_append(content)
+            self.root.update()
+
+            # Ouverture du lien
+            webbrowser.open(self.paste_url)
+
+            # Message de confirmation temporaire dans la barre de statut
+            msg_confirm = l_ui.get("copy_ok", "Log copied! Paste it on the site.")
+            self.inactivity_timer_var.set(msg_confirm)
+
+            # Efface le message après 5 secondes
+            self.root.after(5000, lambda: self.inactivity_timer_var.set(""))
+
+        except Exception as e:
+            messagebox.showerror("Erreur", f"Unable to read the file : {e}")
+
     def show_summary(self):
         """Displays the system summary and pauses the log to stop it from scrolling."""
         if not self.log_file_path or not os.path.exists(self.log_file_path):
@@ -87,7 +121,6 @@ class ActionsMixin:
 
         except Exception as e:
             print(f"Erreur résumé : {e}")
-
 
     def show_help(self):
         """
@@ -558,6 +591,7 @@ class ActionsMixin:
         self.btn_log.config(text=l["log"])
         self.btn_sum.config(text=l["sum"])
         self.btn_exp.config(text=l["exp"])
+        self.btn_upl.config(text=l["upl"])
         self.btn_clr.config(text=l["clr"])
 
         tm = {

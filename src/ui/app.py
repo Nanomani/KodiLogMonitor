@@ -39,6 +39,7 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
 
         self.set_window_icon()
         self.log_file_path = ""
+        self.paste_url = "https://paste.kodi.tv/"
         self.running = False
         self.monitor_thread = None
         self.seen_lines = __import__('collections').deque(maxlen=200)

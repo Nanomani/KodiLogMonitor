@@ -13,24 +13,23 @@ class SessionMixin:
         """
         try:
             modes = ["all", "info", "warning", "error", "debug"]
-            filter_states = ",".join(
-                ["1" if self.filter_vars[m].get() else "0" for m in modes]
-            )
+            filter_states = ",".join(["1" if self.filter_vars[m].get() else "0" for m in modes])
 
             with open(CONFIG_FILE, "w", encoding="utf-8") as f:
                 # We use a fixed width of 40 characters for the value part
-                w = 50
+                w = 40
                 config_data = [
-                    f"{str(self.log_file_path):<{w}} # Log file path",
-                    f"{str(self.current_lang.get()):<{w}} # Language",
-                    f"{('1' if self.load_full_file.get() else '0'):<{w}} # Load full file",
-                    f"{str(self.font_size):<{w}} # Font size",
-                    f"{str(self.window_geometry):<{w}} # Window geometry",
-                    f"{str(self.selected_list.get()):<{w}} # Selected keyword list",
-                    f"{filter_states:<{w}} # Filter_states (ALL, INFO, WARNING, ERROR, DEBUG)",
-                    f"{('1' if self.show_google_search.get() else '0'):<{w}} # Show google search menu",
-                    f"{str(self.theme_mode.get()):<{w}} # Theme mode",
-                    f"{str(self.inactivity_limit):<{w}} # Inactivity limit seconds (0 disable)",
+                    f"{str(self.log_file_path):<{w}} # log_file_path",
+                    f"{str(self.current_lang.get()):<{w}} # language",
+                    f"{('1' if self.load_full_file.get() else '0'):<{w}} # load_full_file",
+                    f"{str(self.font_size):<{w}} # font_size",
+                    f"{str(self.window_geometry):<{w}} # window_geometry",
+                    f"{str(self.selected_list.get()):<{w}} # selected_keyword_list",
+                    f"{filter_states:<{w}} # filter_states (all,debug,info,warn,err)",
+                    f"{('1' if self.show_google_search.get() else '0'):<{w}} # show_google_search_menu",
+                    f"{str(self.theme_mode.get()):<{w}} # theme_mode",
+                    f"{str(self.inactivity_limit):<{w}} # inactivity_limit_seconds",
+                    f"{str(self.paste_url):<{w}} # url for upload"
                 ]
                 f.write("\n".join(config_data))
         except (IOError, OSError) as e:
@@ -108,6 +107,12 @@ class SessionMixin:
                         self.inactivity_limit = int(lines[9])
                     except ValueError:
                         self.inactivity_limit = 300
+
+                # 11. Paste URL (AJOUT)
+                if len(lines) >= 11:
+                    self.paste_url = lines[10].strip()
+                else:
+                    self.paste_url = "https://paste.kodi.tv/"
 
         except (IOError, OSError, Exception) as e:
             # Print error for debugging purposes if needed

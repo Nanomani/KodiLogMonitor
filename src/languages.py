@@ -5,6 +5,7 @@ LANGS = {
         "log": "📂  LOG",
         "sum": "📝  RÉSUMÉ",
         "exp": "💾  EXPORT",
+        "upl": "☁️  UPLOAD",
         "clr": "🗑️  VIDER",
         "all": "TOUT",
         "debug": "DEBUG",
@@ -39,6 +40,9 @@ LANGS = {
         "t_dark": "Sombre",
         "win_help_title": "Aide",
         "help_title": "Raccourcis Clavier",
+        "no_log": "Aucun fichier log chargé.",
+        "copy_ok": "Log copié ! Collez-le sur le site.",
+        "attn": "Attention",
         "help_text": (
             "F1 : Afficher aide\n"
             "↑ ↓ : Défilement du log\n"
@@ -59,6 +63,7 @@ LANGS = {
         "log": "📂  LOG",
         "sum": "📝  SUMMARY",
         "exp": "💾  EXPORT",
+        "upl": "☁️  UPLOAD",
         "clr": "CLEAR",
         "all": "ALL",
         "debug": "DEBUG",
@@ -93,6 +98,9 @@ LANGS = {
         "t_dark": "Dark",
         "win_help_title": "Help",
         "help_title": "Keyboard Shortcuts",
+        "no_log": "No log file loaded.",
+        "copy_ok": "Log copied! Paste it on the website.",
+        "attn": "Attention",
         "help_text": (
             "F1 : Show help\n"
             "↑ ↓ : Scroll log\n"
@@ -113,6 +121,7 @@ LANGS = {
         "log": "📂  LOG",
         "sum": "📝  RESUMEN",
         "exp": "💾  EXPORTAR",
+        "upl": "☁️  SUBIR",
         "clr": "LIMPIAR",
         "all": "TODO",
         "debug": "DEBUG",
@@ -147,6 +156,9 @@ LANGS = {
         "t_dark": "Oscuro",
         "win_help_title": "Ayuda",
         "help_title": "Atajos de Teclado",
+        "no_log": "No se a cargado aucun archivo de log.",
+        "copy_ok": "¡Log copiado! Pégalo en el sitio web.",
+        "attn": "Atención",
         "help_text": (
             "F1 : Mostrar ayuda\n"
             "↑ ↓ : Desplazamiento del log\n"
@@ -167,6 +179,7 @@ LANGS = {
         "log": "📂  LOG",
         "sum": "📝  ÜBERSICHT",
         "exp": "💾  EXPORT",
+        "upl": "☁️  HOCHLADEN",
         "clr": "LEEREN",
         "all": "ALLE",
         "debug": "DEBUG",
@@ -201,6 +214,9 @@ LANGS = {
         "t_dark": "Dunkel",
         "win_help_title": "Hilfe",
         "help_title": "Tastaturkürzel",
+        "no_log": "Keine Log-Datei geladen.",
+        "copy_ok": "Log kopiert! Füge es auf der Website ein.",
+        "attn": "Achtung",
         "help_text": (
             "F1 : Hilfe anzeigen\n"
             "↑ ↓ : Log durchsuchen\n"
@@ -221,6 +237,7 @@ LANGS = {
         "log": "📂  LOG",
         "sum": "📝  RIEPILOGO",
         "exp": "💾  ESPORTA",
+        "upl": "☁️  CARICA",
         "clr": "PULISCI",
         "all": "TUTTO",
         "debug": "DEBUG",
@@ -255,6 +272,9 @@ LANGS = {
         "t_dark": "Scuro",
         "win_help_title": "Aiuto",
         "help_title": "Scorciatoie da Tastiera",
+        "no_log": "Nessun file log caricato.",
+        "copy_ok": "Log copiato! Incollalo sul sito web.",
+        "attn": "Attenzione",
         "help_text": (
             "F1 : Mostra aiuto\n"
             "↑ ↓ : Scorrimento del log\n"

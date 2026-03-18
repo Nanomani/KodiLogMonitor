@@ -206,6 +206,9 @@ class UIBuilderMixin:
         self.btn_exp = self.create_custom_button(h_left, "", self.export_log)
         self.btn_exp.pack(side=tk.LEFT, padx=5)
 
+        self.btn_upl = self.create_custom_button(h_left, "", self.upload_to_pastebin)
+        self.btn_upl.pack(side=tk.LEFT, padx=5)
+
         # --- Addition of the separator ---
         tk.Frame(h_left, bg=COLOR_SEPARATOR, width=2).pack(
             side=tk.LEFT, fill=tk.Y, padx=20
