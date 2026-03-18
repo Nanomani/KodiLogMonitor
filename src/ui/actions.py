@@ -40,18 +40,54 @@ class ActionsMixin:
                 print(f"Error exporting log: {e}")
 
     def show_summary(self):
-        if not self.log_file_path:
+        """Displays the system summary and pauses the log to stop it from scrolling."""
+        if not self.log_file_path or not os.path.exists(self.log_file_path):
             return
+
+        self.is_paused.set(True)
+        self.update_stats()
+
+        l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
+        summary_content = []
+        found_header = False
+
+        self.txt_area.tag_configure("summary_color", foreground="#00E5FF")
+
         try:
             with open(self.log_file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                c = f.read()
-                s = list(re.finditer(r"(-+\n.*?Starting Kodi.*?-+\n)", c, re.DOTALL))
-                if s:
-                    self.txt_area.insert(tk.END, LANGS.get(self.current_lang.get(), LANGS["EN"])["sys_sum"], "summary")
-                    self.txt_area.insert(tk.END, s[-1].group(1), "summary")
-                    self.txt_area.see(tk.END)
-        except Exception:
-            pass
+                for line in f:
+                    if "info <general>: --------" in line:
+                        if not found_header:
+                            found_header = True
+                            summary_content.append(line)
+                            continue
+                        else:
+                            summary_content.append(line)
+                            break
+
+                    if found_header:
+                        summary_content.append(line)
+
+                    # Security for large files
+                    if len(summary_content) > 100:
+                        break
+
+            if summary_content:
+                self.txt_area.config(state=tk.NORMAL)
+                self.txt_area.delete('1.0', tk.END)
+
+                header_title = l_ui.get("sys_sum", "\n--- RÉSUMÉ SYSTÈME ---\n")
+                self.txt_area.insert(tk.END, f"{header_title}\n")
+
+                for s_line in summary_content:
+                    self.txt_area.insert(tk.END, s_line, "summary_color")
+
+                self.txt_area.config(state=tk.DISABLED)
+                self.txt_area.see("1.0")
+
+        except Exception as e:
+            print(f"Erreur résumé : {e}")
+
 
     def show_help(self):
         """
