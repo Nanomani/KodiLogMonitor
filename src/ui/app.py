@@ -25,7 +25,16 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
     def __init__(self, root):
         self.root = root
         self.root.title("Kodi Log Monitor")
-        self.window_geometry = DEFAULT_GEOMETRY
+
+        # --- 4K DYNAMIC DETECTION ---
+        screen_width = self.root.winfo_screenwidth()
+
+        # If the screen is wider than 2560 pixels
+        if screen_width > 2560:
+            self.window_geometry = DEFAULT_GEOMETRY_4K
+        else:
+            self.window_geometry = DEFAULT_GEOMETRY
+
         self.root.configure(bg=COLOR_BG_MAIN)
         self.last_activity_time = time.time()
         self.inactivity_limit = 300

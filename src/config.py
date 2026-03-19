@@ -8,7 +8,8 @@ import os
 # --- CONFIGURATION ---
 APP_VERSION = "v1.3.8"
 CONFIG_FILE = ".kodi_monitor_config"
-DEFAULT_GEOMETRY = "1680x1050"
+DEFAULT_GEOMETRY = "1680x900+90+18"
+DEFAULT_GEOMETRY_4K = "3118x1688+203+189"
 ICON_NAME = "logo.ico"
 KEYWORD_DIR = "keyword_list"
 
