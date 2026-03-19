@@ -39,8 +39,8 @@ class ActionsMixin:
             except IOError as e:
                 print(f"Error exporting log: {e}")
 
-    def upload_to_pastebin(self):
-        """Copie le contenu complet du log et ouvre paste.kodi.tv avec traduction."""
+    def upload_to_pastebin(self, event=None):
+        """Copy the entire log and open paste.kodi.tv with the translation."""
         l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
 
         if not self.log_file_path or not os.path.exists(self.log_file_path):
@@ -51,23 +51,23 @@ class ActionsMixin:
             return
 
         try:
-            # Lecture du fichier complet
+            # Read the entire file
             with open(self.log_file_path, 'r', encoding='utf-8', errors='ignore') as f:
                 content = f.read()
 
-            # Copie dans le presse-papier
+            # Copy to clipboard
             self.root.clipboard_clear()
             self.root.clipboard_append(content)
             self.root.update()
 
-            # Ouverture du lien
+            # Open the link
             webbrowser.open(self.paste_url)
 
-            # Message de confirmation temporaire dans la barre de statut
+            # Temporary confirmation message in the status bar
             msg_confirm = l_ui.get("copy_ok", "Log copied! Paste it on the site.")
             self.inactivity_timer_var.set(msg_confirm)
 
-            # Efface le message après 5 secondes
+            # Deletes the message after 5 seconds
             self.root.after(5000, lambda: self.inactivity_timer_var.set(""))
 
         except Exception as e:

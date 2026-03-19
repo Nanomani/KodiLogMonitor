@@ -98,6 +98,11 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
         self.txt_area.bind("<Control-s>", self.export_log)
         self.txt_area.bind("<Control-S>", self.export_log)
 
+        self.root.bind("<Control-p>", self.upload_to_pastebin)
+        self.root.bind("<Control-P>", self.upload_to_pastebin)
+        self.txt_area.bind("<Control-p>", self.upload_to_pastebin)
+        self.txt_area.bind("<Control-P>", self.upload_to_pastebin)
+
         self.root.bind("<Control-f>", self.focus_search_entry)
         self.root.bind("<Control-F>", self.focus_search_entry)
         self.txt_area.bind("<Control-f>", self.focus_search_entry)
