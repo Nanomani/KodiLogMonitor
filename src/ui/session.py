@@ -32,7 +32,9 @@ class SessionMixin:
                     f"{str(self.paste_url):<{w}} # Url for upload",
                     f"{str(self.max_size_mb):<{w}} # Max size Mo limit (10 Mo default)",
                     f"{str(self.skip_version):<{w}} # Skip latest version",
-                    f"{('1' if self.updates_enabled else '0'):<{w}} # Updates enabled 1 disable 0"
+                    f"{('1' if self.updates_enabled else '0'):<{w}} # Updates enabled 1 disable 0",
+                    f"{str(SINGLE_INSTANCE_HOST):<{w}} # Single instance host",
+                    f"{str(SINGLE_INSTANCE_PORT):<{w}} # Single instance port"
                 ]
                 f.write("\n".join(config_data))
         except (IOError, OSError) as e:
@@ -131,6 +133,19 @@ class SessionMixin:
                 # 14. Updates Enabled
                 if len(lines) >= 14:
                     self.updates_enabled = (lines[13] == "1")
+
+                # 15. Single Instance Host (AJOUT)
+                if len(lines) >= 15:
+                    global SINGLE_INSTANCE_HOST
+                    SINGLE_INSTANCE_HOST = lines[14].strip()
+
+                # 16. Single Instance Port (AJOUT)
+                if len(lines) >= 16:
+                    try:
+                        global SINGLE_INSTANCE_PORT
+                        SINGLE_INSTANCE_PORT = int(lines[15].strip())
+                    except ValueError:
+                        pass
 
         except (IOError, OSError, Exception) as e:
             # Print error for debugging purposes if needed

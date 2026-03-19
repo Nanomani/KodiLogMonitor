@@ -345,7 +345,7 @@ class ActionsMixin:
             text=l_ui.get("upd_msg", ""),
             bg=COLOR_BG_HEADER,
             fg=COLOR_TEXT_MAIN,
-            font=("Segoe UI", 10), justify="center").pack(fill="both", expand=True, pady=(0, 20)
+            font=("Segoe UI", 10), justify="center").pack(fill="both", expand=True, pady=(10, 20)
         )
 
         # --- BUTTON AREA CENTERED ---

@@ -9,32 +9,35 @@ import sys
 import tkinter as tk
 
 from utils import get_windows_theme
+from utils import check_single_instance
 from ui.app import KodiLogMonitor
 
 if __name__ == "__main__":
+    check_single_instance()
+
     if sys.platform == "win32":
         try:
-            # On importe une seule fois pour tout le bloc
+            # We import it once for the entire block
             from ctypes import windll, byref, sizeof, c_int
 
-            # 1. Gestion de la netteté (DPI)
+            # 1. Sharpness Management (DPI)
             windll.shcore.SetProcessDpiAwareness(1)
 
             root = tk.Tk()
             root.update()
 
-            # 2. Récupération de l'identifiant de la fenêtre (HWND)
+            # 2. Retrieving the window handle (HWND)
             hwnd = windll.user32.GetParent(root.winfo_id())
 
-            # 3. Détection du thème Windows
-            IS_DARK = get_windows_theme()  # Retourne 1 (Sombre) ou 0 (Clair)
+            # 3. Detecting the Windows theme
+            IS_DARK = get_windows_theme()  # Returns 1 (Dark) or 0 (Light)
 
-            # 4. Application du mode sombre immersif (Attribut 20)
+            # 4. Enable immersive dark mode (Attribute 20)
             windll.dwmapi.DwmSetWindowAttribute(
                 hwnd, 20, byref(c_int(IS_DARK)), sizeof(c_int(IS_DARK))
             )
 
-            # 5. Application de la couleur de la barre de titre (Attribut 34)
+            # 5. Applying the title bar color (Attribute 34)
             if IS_DARK:
                 caption_color = c_int(0x002D2D2D)  # Gris foncé BGR
             else:
@@ -45,12 +48,12 @@ if __name__ == "__main__":
             )
 
         except (ImportError, AttributeError, OSError) as e:
-            # Si tk.Tk() n'est pas encore créé en cas d'erreur DPI
+            # If tk.Tk() has not yet been created when a DPI error occurs
             if "root" not in locals():
                 root = tk.Tk()
             print(f"[ERROR] Windows UI styling failed: {e}")
     else:
-        # Pour Linux / MacOS
+        # For Linux / macOS
         root = tk.Tk()
 
     app = KodiLogMonitor(root)

@@ -13,7 +13,7 @@ LANGS = {
         "warn": "WARNING",
         "err": "ERROR",
         "ready": "Prêt",
-        "sel": "Sélectionnez un log.",
+        "sel": "Sélectionnez un fichier LOG.",
         "sys_sum": "\n--- RÉSUMÉ SYSTÈME ---\n",
         "loading": "Chargement...",
         "reset": "\n--- FICHIER RÉINITIALISÉ PAR KODI ---\n",
@@ -40,8 +40,8 @@ LANGS = {
         "t_dark": "Sombre",
         "win_help_title": "Aide",
         "help_title": "Raccourcis Clavier",
-        "no_log": "Aucun fichier log chargé.",
-        "copy_ok": "Log copié ! Collez-le sur le site.",
+        "no_log": "Aucun fichier LOG chargé.",
+        "copy_ok": "LOG copié ! Collez-le sur le site.",
         "attn": "Attention",
         "upd_title": "Mise à jour disponible",
         "upd_new_ver": "NOUVELLE VERSION DISPONIBLE :",
@@ -51,13 +51,14 @@ LANGS = {
         "upd_btn_dis": "DÉSACTIVER",
         "upd_confirm_title": "Confirmation",
         "upd_confirm_msg": "Désactiver définitivement les notifications de mise à jour ?",
+        "already_running": "Une instance de ce programme est déjà en cours d'exécution.",
         "help_text": (
             "F1 : Afficher aide\n"
-            "↑ ↓ : Défilement du log\n"
+            "↑ ↓ : Défilement du LOG\n"
             "Espace : Pause / Reprise du défilement auto\n"
-            "Ctrl + O : Ouvrir un fichier log\n"
-            "Ctrl + S : Exporter le log\n"
-            "Ctrl + P : Uploader le log\n"
+            "Ctrl + O : Ouvrir un fichier LOG\n"
+            "Ctrl + S : Exporter le LOG\n"
+            "Ctrl + P : Uploader le LOG\n"
             "Ctrl + F : Rechercher mot clé\n"
             "Ctrl + G : Vider l'affichage de la console\n"
             "Ctrl + L : Retour à la ligne auto\n"
@@ -80,7 +81,7 @@ LANGS = {
         "warn": "WARNING",
         "err": "ERROR",
         "ready": "Ready",
-        "sel": "Select a log.",
+        "sel": "Select a LOG file.",
         "sys_sum": "\n--- SYSTEM SUMMARY ---\n",
         "loading": "Loading...",
         "reset": "\n--- FILE RESET BY KODI ---\n",
@@ -107,8 +108,8 @@ LANGS = {
         "t_dark": "Dark",
         "win_help_title": "Help",
         "help_title": "Keyboard Shortcuts",
-        "no_log": "No log file loaded.",
-        "copy_ok": "Log copied! Paste it on the website.",
+        "no_log": "No LOG file loaded.",
+        "copy_ok": "LOG copied! Paste it on the website.",
         "attn": "Attention",
         "upd_title": "Update Available",
         "upd_new_ver": "NEW VERSION AVAILABLE:",
@@ -118,13 +119,14 @@ LANGS = {
         "upd_btn_dis": "DISABLE",
         "upd_confirm_title": "Confirm",
         "upd_confirm_msg": "Disable update notifications permanently?",
+        "already_running": "An instance of this program is already running.",
         "help_text": (
             "F1 : Show help\n"
-            "↑ ↓ : Scroll log\n"
+            "↑ ↓ : Scroll LOG\n"
             "Space : Pause / Resume auto-scroll\n"
-            "Ctrl + O : Open log file\n"
-            "Ctrl + S : Export log\n"
-            "Ctrl + P : Upload log\n"
+            "Ctrl + O : Open LOG file\n"
+            "Ctrl + S : Export LOG\n"
+            "Ctrl + P : Upload LOG\n"
             "Ctrl + F : Search keyword\n"
             "Ctrl + G : Clear console display\n"
             "Ctrl + L : Toggle word wrap\n"
@@ -147,7 +149,7 @@ LANGS = {
         "warn": "AVISO",
         "err": "ERROR",
         "ready": "Listo",
-        "sel": "Seleccione un log.",
+        "sel": "Seleccione un archivo LOG.",
         "sys_sum": "\n--- RESUMEN DEL SISTEMA ---\n",
         "loading": "Cargando...",
         "reset": "\n--- ARCHIVO REINICIADO POR KODI ---\n",
@@ -174,8 +176,8 @@ LANGS = {
         "t_dark": "Oscuro",
         "win_help_title": "Ayuda",
         "help_title": "Atajos de Teclado",
-        "no_log": "No se a cargado aucun archivo de log.",
-        "copy_ok": "¡Log copiado! Pégalo en el sitio web.",
+        "no_log": "No se a cargado aucun archivo de LOG.",
+        "copy_ok": "¡LOG copiado! Pégalo en el sitio web.",
         "attn": "Atención",
         "upd_title": "Actualización disponible",
         "upd_new_ver": "NUEVA VERSIÓN DISPONIBLE:",
@@ -185,13 +187,14 @@ LANGS = {
         "upd_btn_dis": "DESACTIVAR",
         "upd_confirm_title": "Confirmar",
         "upd_confirm_msg": "¿Desactivar permanentemente las notificaciones de actualización?",
+        "already_running": "Una instancia de este programa ya está en ejecución.",
         "help_text": (
             "F1 : Mostrar ayuda\n"
-            "↑ ↓ : Desplazamiento del log\n"
+            "↑ ↓ : Desplazamiento del LOG\n"
             "Espacio : Pausa / Reanudar desplazamiento automático\n"
-            "Ctrl + O : Abrir archivo de log\n"
-            "Ctrl + S : Exportar log\n"
-            "Ctrl + P : Subir log\n"
+            "Ctrl + O : Abrir archivo de LOG\n"
+            "Ctrl + S : Exportar LOG\n"
+            "Ctrl + P : Subir LOG\n"
             "Ctrl + F : Buscar palabra clave\n"
             "Ctrl + G : Limpiar pantalla de la consola\n"
             "Ctrl + L : Ajuste de línea automático\n"
@@ -214,7 +217,7 @@ LANGS = {
         "warn": "WARNUNG",
         "err": "FEHLER",
         "ready": "Bereit",
-        "sel": "Wählen Sie ein Log.",
+        "sel": "Wählen Sie eine LOG-Datei aus.",
         "sys_sum": "\n--- SYSTEMÜBERSICHT ---\n",
         "loading": "Ladevorgang...",
         "reset": "\n--- DATEI VON KODI ZURÜCKGESETZT ---\n",
@@ -242,7 +245,7 @@ LANGS = {
         "win_help_title": "Hilfe",
         "help_title": "Tastaturkürzel",
         "no_log": "Keine Log-Datei geladen.",
-        "copy_ok": "Log kopiert! Füge es auf der Website ein.",
+        "copy_ok": "LOG kopiert! Füge es auf der Website ein.",
         "attn": "Achtung",
         "upd_title": "Update verfügbar",
         "upd_new_ver": "NEUE VERSION VERFÜGBAR:",
@@ -252,13 +255,14 @@ LANGS = {
         "upd_btn_dis": "DEAKTIVIEREN",
         "upd_confirm_title": "Bestätigen",
         "upd_confirm_msg": "Update-Benachrichtigungen dauerhaft deaktivieren?",
+        "already_running": "Eine Instanz dieses Programms sird bereits ausgeführt.",
         "help_text": (
             "F1 : Hilfe anzeigen\n"
-            "↑ ↓ : Log durchsuchen\n"
+            "↑ ↓ : LOG durchsuchen\n"
             "Leertaste : Pause / Automatisches Scrollen fortsetzen\n"
             "Strg + O : Log-Datei öffnen\n"
-            "Strg + S : Log exportieren\n"
-            "Ctrl + P : Log hochladen\n"
+            "Strg + S : LOG exportieren\n"
+            "Ctrl + P : LOG hochladen\n"
             "Strg + F : Stichwort suchen\n"
             "Strg + G : Konsolenanzeige leeren\n"
             "Strg + L : Automatischer Zeilenumbruch\n"
@@ -281,7 +285,7 @@ LANGS = {
         "warn": "AVVISO",
         "err": "ERRORE",
         "ready": "Pronto",
-        "sel": "Seleziona un log.",
+        "sel": "Seleziona un file LOG.",
         "sys_sum": "\n--- RIEPILOGO SISTEMA ---\n",
         "loading": "Caricamento...",
         "reset": "\n--- FILE RESETTATO DA KODI ---\n",
@@ -308,8 +312,8 @@ LANGS = {
         "t_dark": "Scuro",
         "win_help_title": "Aiuto",
         "help_title": "Scorciatoie da Tastiera",
-        "no_log": "Nessun file log caricato.",
-        "copy_ok": "Log copiato! Incollalo sul sito web.",
+        "no_log": "Nessun file LOG caricato.",
+        "copy_ok": "LOG copiato! Incollalo sul sito web.",
         "attn": "Attenzione",
         "upd_title": "Aggiornamento disponibile",
         "upd_new_ver": "NUOVA VERSIONE DISPONIBILE:",
@@ -319,13 +323,14 @@ LANGS = {
         "upd_btn_dis": "DISATTIVA",
         "upd_confirm_title": "Conferma",
         "upd_confirm_msg": "Disattivare permanentemente le notifiche di aggiornamento?",
+        "already_running": "Un'istanza di questo programma è già in esecuzione.",
         "help_text": (
             "F1 : Mostra aiuto\n"
-            "↑ ↓ : Scorrimento del log\n"
+            "↑ ↓ : Scorrimento del LOG\n"
             "Spazio : Pausa / Riprendi scorrimento automatico\n"
-            "Ctrl + O : Apri file di log\n"
-            "Ctrl + S : Esporta log\n"
-            "Ctrl + P : Carica log\n"
+            "Ctrl + O : Apri file di LOG\n"
+            "Ctrl + S : Esporta LOG\n"
+            "Ctrl + P : Carica LOG\n"
             "Ctrl + F : Cerca parola chiave\n"
             "Ctrl + G : Pulisci visualizzazione console\n"
             "Ctrl + L : A capo automatico\n"

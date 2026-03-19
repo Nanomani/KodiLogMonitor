@@ -17,6 +17,8 @@ GITHUB_API_URL = "https://api.github.com/repos/Nanomani/KodiLogMonitor/releases/
 DEFAULT_PASTE_URL = "https://paste.kodi.tv/"
 DEFAULT_SECURITY_FILE_MAX_SIZE = 10
 DEFAULT_TIME_INACTIVITY = 300
+SINGLE_INSTANCE_HOST = "127.0.0.1"
+SINGLE_INSTANCE_PORT = 65432
 
 # --- UI THEME ---
 COLOR_BG_MAIN = "#1e1e1e"  # Main background color (log area)
