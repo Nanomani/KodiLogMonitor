@@ -16,8 +16,8 @@ class SessionMixin:
             filter_states = ",".join(["1" if self.filter_vars[m].get() else "0" for m in modes])
 
             with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-                # We use a fixed width of 40 characters for the value part
-                w = 40
+                # We use a fixed width of 50 characters for the value part
+                w = 50
                 config_data = [
                     f"{str(self.log_file_path):<{w}} # Log file path",
                     f"{str(self.current_lang.get()):<{w}} # Language",
@@ -30,7 +30,9 @@ class SessionMixin:
                     f"{str(self.theme_mode.get()):<{w}} # Theme mode",
                     f"{str(self.inactivity_limit):<{w}} # Inactivity limit seconds (0 disable)",
                     f"{str(self.paste_url):<{w}} # Url for upload",
-                    f"{str(self.max_size_mb):<{w}} # Max size Mo limit (10 Mo default)"
+                    f"{str(self.max_size_mb):<{w}} # Max size Mo limit (10 Mo default)",
+                    f"{str(self.skip_version):<{w}} # Skip latest version",
+                    f"{('1' if self.updates_enabled else '0'):<{w}} # Updates enabled 1 disable 0"
                 ]
                 f.write("\n".join(config_data))
         except (IOError, OSError) as e:
@@ -113,7 +115,7 @@ class SessionMixin:
                 if len(lines) >= 11:
                     self.paste_url = lines[10].strip()
                 else:
-                    self.paste_url = "https://paste.kodi.tv/"
+                    self.paste_url = DEFAULT_PASTE_URL
 
                 # 12. Max Size MB Limit (AJOUT)
                 if len(lines) >= 12:
@@ -121,6 +123,14 @@ class SessionMixin:
                         self.max_size_mb = int(lines[11])
                     except ValueError:
                         self.max_size_mb = 10
+
+                # 13. Skip version
+                if len(lines) >= 13:
+                    self.skip_version = lines[12].strip()
+
+                # 14. Updates Enabled
+                if len(lines) >= 14:
+                    self.updates_enabled = (lines[13] == "1")
 
         except (IOError, OSError, Exception) as e:
             # Print error for debugging purposes if needed

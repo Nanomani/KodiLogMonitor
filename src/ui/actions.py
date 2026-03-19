@@ -1,6 +1,7 @@
 import re
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
+import threading
 import webbrowser
 import os
 import sys
@@ -214,6 +215,16 @@ class ActionsMixin:
         )
         btn_close.pack()
 
+        # --- HOVER EFFECT ---
+        def on_enter(e):
+            btn_close.config(bg=COLOR_BTN_ACTIVE)
+
+        def on_leave(e):
+            btn_close.config(bg=COLOR_BTN_DEFAULT)
+
+        btn_close.bind("<Enter>", on_enter)
+        btn_close.bind("<Leave>", on_leave)
+
         # --- FINAL SIZING LOGIC ---
         help_win.update_idletasks()
 
@@ -257,6 +268,163 @@ class ActionsMixin:
 
         help_win.grab_set()
         help_win.focus_force()
+
+    def check_for_updates(self):
+        """Check for updates with free offline mode support."""
+        if not self.updates_enabled:
+            return
+
+        def _check():
+            url = GITHUB_API_URL
+            try:
+                import urllib.request, json
+                from urllib.error import URLError # Import to handle the connection error
+
+                req = urllib.request.Request(url, headers={'User-Agent': 'KodiLogMonitor-App'})
+                with urllib.request.urlopen(req, timeout=5) as response:
+                    data = json.loads(response.read().decode())
+                    latest_v = data.get("tag_name", "")
+
+                    if latest_v and latest_v != APP_VERSION and latest_v != self.skip_version:
+                        self.root.after(0, lambda: self._show_update_dialog(latest_v, data.get("html_url")))
+
+            except URLError as e:
+                pass
+            except Exception as e:
+                print(f"Update check skipped (reason: {e})")
+
+        threading.Thread(target=_check, daemon=True).start()
+
+    def _show_update_dialog(self, new_version, url):
+        """Auto-adaptive refresh rate notification (HD/4K) and centered buttons."""
+        l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
+
+        upd_win = tk.Toplevel(self.root)
+        upd_win.title(l_ui.get("upd_title", "Update Available"))
+        upd_win.configure(bg=COLOR_BG_HEADER)
+        upd_win.transient(self.root)
+        upd_win.withdraw()
+
+        # --- SECURE CLOSING FUNCTION ---
+        def safe_close(event=None): # Ajout de 'event' pour accepter les binds
+            try:
+                upd_win.grab_release()
+                upd_win.destroy()
+            except: pass
+
+        upd_win.protocol("WM_DELETE_WINDOW", safe_close)
+
+        # --- ADDING KEYBOARD SHORTCUTS ---
+        for key in ["<Return>", "<Escape>", "<BackSpace>"]:
+            upd_win.bind(key, safe_close)
+
+        # --- UTILITY FUNCTION FOR HOVER ---
+        def apply_standard_hover(btn):
+            btn.bind("<Enter>", lambda e: btn.config(bg=COLOR_BTN_ACTIVE))
+            btn.bind("<Leave>", lambda e: btn.config(bg=COLOR_BTN_DEFAULT))
+
+        # --- MAIN CONTAINER ---
+        # We use generous padding to prevent the text from sticking to the edges
+        main_frame = tk.Frame(upd_win, bg=COLOR_BG_HEADER, padx=40, pady=20)
+        main_frame.pack(fill="both", expand=True)
+
+        # Title
+        tk.Label(
+            main_frame,
+            text=f"{l_ui.get('upd_new_ver', 'NEW VERSION:')} {new_version}",
+            bg=COLOR_BG_HEADER,
+            fg=COLOR_ACCENT,
+            font=("Segoe UI", 12, "bold")).pack(pady=(0, 15)
+        )
+
+        tk.Frame(main_frame, bg=COLOR_SEPARATOR, height=2).pack(fill="x", padx=0)
+
+        tk.Label(
+            main_frame,
+            text=l_ui.get("upd_msg", ""),
+            bg=COLOR_BG_HEADER,
+            fg=COLOR_TEXT_MAIN,
+            font=("Segoe UI", 10), justify="center").pack(fill="both", expand=True, pady=(0, 20)
+        )
+
+        # --- BUTTON AREA CENTERED ---
+        # 1. The outer frame that spans the entire width at the bottom
+        outer_btn_frame = tk.Frame(upd_win, bg=COLOR_BG_HEADER)
+        outer_btn_frame.pack(side="bottom", fill="x", pady=(0, 25))
+
+        # 2. The inner frame that contains the buttons (centered by default in `outer_btn_frame`)
+        inner_btn_frame = tk.Frame(outer_btn_frame, bg=COLOR_BG_HEADER)
+        inner_btn_frame.pack(side="top") # Sans fill="x", il reste centré
+
+        def on_open():
+            webbrowser.open(url)
+            safe_close()
+
+        def on_skip():
+            self.skip_version = new_version
+            self.save_session()
+            safe_close()
+
+        def on_disable():
+            if messagebox.askyesno(l_ui.get("upd_confirm_title", "Confirm"),
+                                  l_ui.get("upd_confirm_msg", "Disable?")):
+                self.updates_enabled = False
+                self.save_session()
+                safe_close()
+
+        btn_style = {
+            "bg": COLOR_BTN_DEFAULT,
+            "fg": COLOR_TEXT_MAIN,
+            "font": ("Segoe UI", 10, "bold"),
+            "relief": "flat",
+            "width": 15,
+            "pady": 5,
+            "cursor": "hand2"
+        }
+
+        # Button DOWNLOAD
+        btn_dl = tk.Button(inner_btn_frame, text=l_ui.get("upd_btn_dl", "DOWNLOAD"), command=on_open, **btn_style)
+        btn_dl.pack(side="left", padx=10)
+        apply_standard_hover(btn_dl)
+
+        # Button SKIP
+        btn_skip = tk.Button(inner_btn_frame, text=l_ui.get("upd_btn_skip", "SKIP"), command=on_skip, **btn_style)
+        btn_skip.pack(side="left", padx=10)
+        apply_standard_hover(btn_skip)
+
+        # Button DISABLE
+        btn_disable = tk.Button(inner_btn_frame, text=l_ui.get("upd_btn_dis", "DISABLE"), command=on_disable, **btn_style)
+        btn_disable.pack(side="left", padx=10)
+        apply_standard_hover(btn_disable)
+
+        # --- DYNAMIC SIZE CALCULATION (SHOW_HELP LOGIC) ---
+        upd_win.update_idletasks()
+
+        # We ask the window what size it "wants" to be based on its content
+        # We add a small safety margin (buffer)
+        final_w = upd_win.winfo_reqwidth() + 20
+        final_h = upd_win.winfo_reqheight() + 10
+
+        # Centered relative to the main window
+        pos_x = self.root.winfo_x() + (self.root.winfo_width() // 2) - (final_w // 2)
+        pos_y = self.root.winfo_y() + (self.root.winfo_height() // 2) - (final_h // 2)
+
+        upd_win.geometry(f"{final_w}x{final_h}+{max(0, pos_x)}+{max(0, pos_y)}")
+
+        # Dark Mode Title Bar (Windows)
+        if sys.platform == "win32":
+            try:
+                from ctypes import windll, byref, sizeof, c_int
+                hwnd = windll.user32.GetParent(upd_win.winfo_id())
+                is_dark = 1
+                windll.dwmapi.DwmSetWindowAttribute(hwnd, 20, byref(c_int(is_dark)), sizeof(c_int(is_dark)))
+                color = 0x2d2d2d
+                windll.dwmapi.DwmSetWindowAttribute(hwnd, 34, byref(c_int(color)), sizeof(c_int(color)))
+            except: pass
+
+        upd_win.deiconify()
+        upd_win.grab_set()
+        upd_win.focus_force()
 
     def clear_console(self):
         self.txt_area.config(state=tk.NORMAL)
@@ -841,7 +1009,7 @@ class ActionsMixin:
         )
 
     def open_github_link(self, event=None):
-        webbrowser.open_new("https://github.com/Nanomani/KodiLogMonitor")
+        webbrowser.open_new(GITHUB_URL)
 
     def update_windows_title_bar(self):
         """Apply theme to the Windows title bar."""

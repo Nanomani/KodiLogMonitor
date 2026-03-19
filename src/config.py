@@ -12,6 +12,11 @@ DEFAULT_GEOMETRY = "1680x900+90+18"
 DEFAULT_GEOMETRY_4K = "3118x1688+203+189"
 ICON_NAME = "logo.ico"
 KEYWORD_DIR = "keyword_list"
+GITHUB_URL = "https://github.com/Nanomani/KodiLogMonitor"
+GITHUB_API_URL = "https://api.github.com/repos/Nanomani/KodiLogMonitor/releases/latest"
+DEFAULT_PASTE_URL = "https://paste.kodi.tv/"
+DEFAULT_SECURITY_FILE_MAX_SIZE = 10
+DEFAULT_TIME_INACTIVITY = 300
 
 # --- UI THEME ---
 COLOR_BG_MAIN = "#1e1e1e"  # Main background color (log area)

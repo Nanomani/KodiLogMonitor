@@ -43,6 +43,14 @@ LANGS = {
         "no_log": "Aucun fichier log chargé.",
         "copy_ok": "Log copié ! Collez-le sur le site.",
         "attn": "Attention",
+        "upd_title": "Mise à jour disponible",
+        "upd_new_ver": "NOUVELLE VERSION DISPONIBLE :",
+        "upd_msg": "Une nouvelle mise à jour a été détectée sur GitHub.\nQue souhaitez-vous faire ?",
+        "upd_btn_dl": "TÉLÉCHARGER",
+        "upd_btn_skip": "PASSER",
+        "upd_btn_dis": "DÉSACTIVER",
+        "upd_confirm_title": "Confirmation",
+        "upd_confirm_msg": "Désactiver définitivement les notifications de mise à jour ?",
         "help_text": (
             "F1 : Afficher aide\n"
             "↑ ↓ : Défilement du log\n"
@@ -102,6 +110,14 @@ LANGS = {
         "no_log": "No log file loaded.",
         "copy_ok": "Log copied! Paste it on the website.",
         "attn": "Attention",
+        "upd_title": "Update Available",
+        "upd_new_ver": "NEW VERSION AVAILABLE:",
+        "upd_msg": "A new update has been detected on GitHub.\nWhat would you like to do?",
+        "upd_btn_dl": "DOWNLOAD",
+        "upd_btn_skip": "SKIP",
+        "upd_btn_dis": "DISABLE",
+        "upd_confirm_title": "Confirm",
+        "upd_confirm_msg": "Disable update notifications permanently?",
         "help_text": (
             "F1 : Show help\n"
             "↑ ↓ : Scroll log\n"
@@ -161,6 +177,14 @@ LANGS = {
         "no_log": "No se a cargado aucun archivo de log.",
         "copy_ok": "¡Log copiado! Pégalo en el sitio web.",
         "attn": "Atención",
+        "upd_title": "Actualización disponible",
+        "upd_new_ver": "NUEVA VERSIÓN DISPONIBLE:",
+        "upd_msg": "Se ha detectado una nueva actualización en GitHub.\n¿Qué desea hacer?",
+        "upd_btn_dl": "DESCARGAR",
+        "upd_btn_skip": "OMITIR",
+        "upd_btn_dis": "DESACTIVAR",
+        "upd_confirm_title": "Confirmar",
+        "upd_confirm_msg": "¿Desactivar permanentemente las notificaciones de actualización?",
         "help_text": (
             "F1 : Mostrar ayuda\n"
             "↑ ↓ : Desplazamiento del log\n"
@@ -220,6 +244,14 @@ LANGS = {
         "no_log": "Keine Log-Datei geladen.",
         "copy_ok": "Log kopiert! Füge es auf der Website ein.",
         "attn": "Achtung",
+        "upd_title": "Update verfügbar",
+        "upd_new_ver": "NEUE VERSION VERFÜGBAR:",
+        "upd_msg": "Ein neues Update wurde auf GitHub gefunden.\nWas möchten Sie tun?",
+        "upd_btn_dl": "HERUNTERLADEN",
+        "upd_btn_skip": "ÜBERSPRINGEN",
+        "upd_btn_dis": "DEAKTIVIEREN",
+        "upd_confirm_title": "Bestätigen",
+        "upd_confirm_msg": "Update-Benachrichtigungen dauerhaft deaktivieren?",
         "help_text": (
             "F1 : Hilfe anzeigen\n"
             "↑ ↓ : Log durchsuchen\n"
@@ -279,6 +311,14 @@ LANGS = {
         "no_log": "Nessun file log caricato.",
         "copy_ok": "Log copiato! Incollalo sul sito web.",
         "attn": "Attenzione",
+        "upd_title": "Aggiornamento disponibile",
+        "upd_new_ver": "NUOVA VERSIONE DISPONIBILE:",
+        "upd_msg": "È stato rilevato un nuovo aggiornamento su GitHub.\nCosa vorresti fare?",
+        "upd_btn_dl": "SCARICA",
+        "upd_btn_skip": "IGNORA",
+        "upd_btn_dis": "DISATTIVA",
+        "upd_confirm_title": "Conferma",
+        "upd_confirm_msg": "Disattivare permanentemente le notifiche di aggiornamento?",
         "help_text": (
             "F1 : Mostra aiuto\n"
             "↑ ↓ : Scorrimento del log\n"

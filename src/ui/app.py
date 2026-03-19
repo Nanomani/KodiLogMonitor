@@ -37,7 +37,7 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
 
         self.root.configure(bg=COLOR_BG_MAIN)
         self.last_activity_time = time.time()
-        self.inactivity_limit = 300
+        self.inactivity_limit = DEFAULT_TIME_INACTIVITY
         self.last_line_count = 0
         self.last_pause_state = False
         self.last_limit_state = False
@@ -48,8 +48,10 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
 
         self.set_window_icon()
         self.log_file_path = ""
-        self.paste_url = "https://paste.kodi.tv/"
-        self.max_size_mb = 10
+        self.paste_url = DEFAULT_PASTE_URL
+        self.max_size_mb = DEFAULT_SECURITY_FILE_MAX_SIZE
+        self.skip_version = ""
+        self.updates_enabled = True
         self.running = False
         self.monitor_thread = None
         self.seen_lines = __import__('collections').deque(maxlen=200)
@@ -88,6 +90,7 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
 
         self.setup_ui()
         self.load_session()
+        self.check_for_updates()
 
         if self.log_file_path:
             self.root.after(200, lambda: self.start_monitoring(self.log_file_path, is_manual=False))

@@ -3,6 +3,7 @@ import time
 import threading
 import re
 import tkinter as tk
+import sys
 
 from config import *
 from languages import LANGS
