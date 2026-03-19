@@ -186,6 +186,7 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
             if key != "all":
                 var.trace_add("write", self.trigger_refresh)
         self.search_query.trace_add("write", self.on_search_change)
+        self.selected_list.trace_add("write", self.on_list_change)
 
         self.root.after(5000, self.scheduled_stats_update)
 

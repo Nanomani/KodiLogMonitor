@@ -60,6 +60,10 @@ class LogDisplayMixin:
 
     def bulk_insert(self, data_list):
         """Inserts a set of data into the text box."""
+        if not self.log_file_path:
+            self.check_log_loaded()
+            return
+
         if not self.running:
             return
 
@@ -221,6 +225,9 @@ class LogDisplayMixin:
 
     def trigger_refresh(self, *args):
         """Triggered during a filter change or search."""
+        if not self.check_log_loaded():
+            return
+
         if not self.log_file_path:
             return
 

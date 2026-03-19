@@ -239,7 +239,7 @@ class UIBuilderMixin:
                 self.filter_frame,
                 variable=self.filter_vars[mode],
                 indicatoron=0,
-                text=mode.upper(),  # Ou votre logique d'icônes/texte
+                text=mode.upper(),
                 fg=COLOR_TEXT_BRIGHT,
                 font=(self.emoji_font_family, 8, "bold"),
                 relief="flat",

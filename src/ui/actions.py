@@ -28,6 +28,9 @@ class ActionsMixin:
         """
         Saves the current content of the text area to a file chosen by the user.
         """
+        if not self.check_log_loaded():
+            return
+
         save_path = filedialog.asksaveasfilename(
             defaultextension=".txt", initialfile="kodi_extract.txt"
         )
@@ -44,11 +47,7 @@ class ActionsMixin:
         """Copy the entire log and open paste.kodi.tv with the translation."""
         l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
 
-        if not self.log_file_path or not os.path.exists(self.log_file_path):
-            messagebox.showwarning(
-                l_ui.get("attn", "Attention"),
-                l_ui.get("no_log", "No log file loaded.")
-            )
+        if not self.check_log_loaded():
             return
 
         try:
@@ -76,6 +75,8 @@ class ActionsMixin:
 
     def show_summary(self):
         """Displays the system summary and pauses the log to stop it from scrolling."""
+        if not self.check_log_loaded():
+            return
         if not self.log_file_path or not os.path.exists(self.log_file_path):
             return
 
@@ -426,25 +427,56 @@ class ActionsMixin:
         upd_win.grab_set()
         upd_win.focus_force()
 
+    def check_log_loaded(self):
+        """Check if a log file is loaded; if not, display the message 'no_log'."""
+        if not self.log_file_path:
+            self.txt_area.config(state=tk.NORMAL)
+            self.txt_area.delete('1.0', tk.END)
+            l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
+
+            message = f"\n\n\n\n\t\t\t⚠️ {l_ui.get('no_log', 'Aucun fichier log chargé.')}"
+
+            self.txt_area.insert(tk.END, message, "error")
+
+            self.txt_area.config(state=tk.DISABLED)
+            return False
+        return True
+
+    def on_list_change(self, *args):
+        """Triggered when the selection in the keyword list changes."""
+        if not self.check_log_loaded():
+            return
+
+        self.trigger_refresh()
+
     def clear_console(self):
         self.txt_area.config(state=tk.NORMAL)
         self.txt_area.delete("1.0", tk.END)
         self.update_stats()
 
     def apply_wrap_mode(self):
-        self.txt_area.config(wrap=tk.WORD if self.wrap_mode.get() else tk.NONE)
+        new_mode = tk.WORD if self.wrap_mode.get() else tk.NONE
+        self.txt_area.config(wrap=new_mode)
+        if not self.check_log_loaded():
+            return
+        self.trigger_refresh()
 
     def toggle_full_load(self):
         """
         Toggles between loading the full log file and loading only the last 1000 lines.
         Triggers a refresh of the monitoring process to apply the new limit setting.
         """
+        if not self.check_log_loaded():
+            return
+
         if self.log_file_path:
             # We pass is_manual=True to allow full loading.
             self.start_monitoring(self.log_file_path, is_manual=True)
         self.save_session()
 
     def toggle_pause_scroll(self):
+        if not self.check_log_loaded():
+            return
         if not self.is_paused.get() and self.log_file_path:
             self.txt_area.see(tk.END)
         self.update_stats()
@@ -481,6 +513,9 @@ class ActionsMixin:
 
     def select_all_filter_from_keyboard(self, event=None):
         """Simulates clicking the ALL filter button using the keyboard"""
+        if not self.check_log_loaded():
+            return
+
         current_focus = self.root.focus_get()
         if current_focus == self.search_entry:
             return None
@@ -704,6 +739,9 @@ class ActionsMixin:
                 widget.config(bg=COLOR_BTN_DEFAULT)
 
     def on_list_selected(self, event=None):
+        if not self.check_log_loaded():
+            return
+
         selection = self.selected_list.get()
         # The language dictionary is retrieved only once for clarity.
         l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
@@ -900,6 +938,8 @@ class ActionsMixin:
             self.overlay.place_forget()
 
     def on_search_change(self, *args):
+        if not self.check_log_loaded():
+            return
         if self.search_query.get():
             self.btn_clear_search.pack(side=tk.LEFT, padx=(0, 2))
         else:
