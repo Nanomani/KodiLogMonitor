@@ -344,7 +344,7 @@ class LogDisplayMixin:
                 is_mb = "Mo" in size_text or "MB" in size_text
 
                 # If it is in MB and > 10, we put it in red.
-                if is_mb and size_value > 10:
+                if is_mb and size_value > self.max_size_mb:
                     self.label_size.config(fg=LOG_COLORS["error"])
                 else:
                     self.label_size.config(fg=COLOR_TEXT_BRIGHT)

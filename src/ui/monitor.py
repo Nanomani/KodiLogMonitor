@@ -33,12 +33,12 @@ class MonitorMixin:
                     data = self.get_line_data(line)
                     if data and not self.is_duplicate(data[0]):
                         to_display.append(data)
-                
+
                 if to_display:
                     self.root.after(0, self.bulk_insert, to_display)
                 else:
                     is_filtering = any(v.get() for k, v in self.filter_vars.items() if k != "all")
-                    
+
                     if not self.load_full_file.get() and not is_filtering:
                         self.root.after(0, self.bulk_insert, to_display)
                     else:
@@ -171,7 +171,7 @@ class MonitorMixin:
             if os.path.exists(path):
                 file_size_mb = os.path.getsize(path) / (1024 * 1024)
                 # If auto-loading AND large file -> we limit
-                if not is_manual and file_size_mb > 10:
+                if not is_manual and file_size_mb > self.max_size_mb:
                     self.load_full_file.set(False)
 
                 # FORCE the update of statistics and the interface
