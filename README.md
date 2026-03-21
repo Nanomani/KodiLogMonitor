@@ -30,6 +30,23 @@ Some sample: [here](https://github.com/Nanomani/KodiLogMonitor/tree/main/keyword
 
 ---
 
+### 🔔 Update Notifications (v1.4.0+)
+
+The application can automatically detect new versions available on GitHub.
+
+When an update is found, a dialog offers the following options:
+```
+Download     : Opens the latest release page on GitHub.  
+Skip         : Ignores this version for future checks.  
+Disable      : Turns off update notifications permanently.  
+```
+ℹ️ Notes
+
+Update preferences are stored in the .kodi_monitor_config file:
+You can edit or delete this file to reset the settings.
+
+---
+
 ### ⌨️ Shortcuts (v1.3.7+)
 
 Quick keyboard shortcuts to navigate and control the application efficiently.  
