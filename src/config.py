@@ -6,7 +6,7 @@ This module defines application metadata, file paths, and the visual color palet
 import os
 
 # --- CONFIGURATION ---
-APP_VERSION = "v1.3.8"
+APP_VERSION = "v1.4.0"
 CONFIG_FILE = ".kodi_monitor_config"
 DEFAULT_GEOMETRY = "1680x900+90+18"
 DEFAULT_GEOMETRY_4K = "3118x1688+203+189"
