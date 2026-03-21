@@ -108,20 +108,39 @@ def check_single_instance():
     try:
         _lock_socket.bind((host, port))
     except socket.error:
-        # Detect system language for the error message
-        try:
-            sys_lang_tuple = locale.getlocale()
-            sys_lang = sys_lang_tuple[0][:2].upper() if sys_lang_tuple[0] else "EN"
-        except Exception:
-            sys_lang = "EN"
+        # --- Robust Language Detection (No DeprecationWarning) ---
+        def get_startup_lang():
+            try:
+                import locale
+                # 1. Try modern getlocale (Standard)
+                lang_code, _ = locale.getlocale()
 
+                # 2. If None (common on Windows at startup), try Windows API
+                if not lang_code and os.name == 'nt':
+                    import ctypes
+                    # Get user default UI language ID (e.g., 1036 for FR, 1033 for EN)
+                    windll = ctypes.windll.kernel32
+                    lang_id = windll.GetUserDefaultUILanguage()
+                    lang_code = locale.windows_locale.get(lang_id)
+
+                # 3. Final check: if 'fr' is in the string, use FR, else EN
+                if lang_code and lang_code.lower().startswith('fr'):
+                    return "FR"
+            except Exception:
+                pass
+            return "EN"
+
+        sys_lang = get_startup_lang()
+        # Fallback to English if the detected language is not in LANGS
         l_ui = LANGS.get(sys_lang, LANGS["EN"])
 
+        # Create a hidden Tkinter root for the messagebox
         temp_root = tk.Tk()
         temp_root.withdraw()
-        messagebox.showwarning(
-            "Kodi Log Monitor",
-            l_ui.get("already_running", "An instance of this program is already running.")
-        )
+
+        # Get the localized message
+        msg = l_ui.get("already_running", "An instance of this program is already running.")
+
+        messagebox.showwarning("Kodi Log Monitor", msg)
         temp_root.destroy()
         sys.exit(0)

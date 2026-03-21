@@ -12,26 +12,45 @@ class UIBuilderMixin:
 
     def detect_os_language(self):
         """
-        Identifies the operating system's primary language setting.
-
-        This method attempts to determine the user's locale to provide a
-        localized experience. It uses a multi-step fallback strategy:
-        1. Try to get the default locale from the `locale` module.
-        2. On Windows, it can specifically check environment variables if needed.
-        3. Fallback to 'en' (English) if detection fails or is inconclusive.
-
-        Returns:
-            str: A two-letter ISO language code (e.g., 'fr', 'en', 'de').
+        Detects the OS language for Windows, macOS, and Linux.
+        Returns 'FR' if French is detected, otherwise 'EN'.
         """
         try:
-            loc = locale.getlocale()[0]  # Format: 'fr_FR', 'en_US', etc.
-            if loc:
-                lang_code = loc.split("_")[0].upper()  # Excerpt 'EN' from 'en_US'
-                if lang_code in LANGS:
-                    return lang_code
+            import locale
+            import sys
+
+            # 1. Try standard Python locale detection
+            lang_code, _ = locale.getlocale()
+
+            # 2. Specific handling for Windows if locale failed
+            if (not lang_code or lang_code == 'None') and sys.platform == "win32":
+                try:
+                    import ctypes
+                    windll = ctypes.windll.kernel32
+                    lang_id = windll.GetUserDefaultUILanguage()
+                    lang_code = locale.windows_locale.get(lang_id)
+                except Exception:
+                    pass
+
+            # 3. Specific handling for Linux/macOS via Environment Variables
+            if not lang_code or lang_code == 'None':
+                # Check standard env vars in order of priority
+                for env_var in ('LC_ALL', 'LC_MESSAGES', 'LANG'):
+                    val = os.environ.get(env_var)
+                    if val:
+                        lang_code = val
+                        break
+
+            # 4. Final check: does the string contain 'fr' (e.g., 'fr_FR', 'French_France')
+            if lang_code and lang_code.lower().startswith('fr'):
+                return "FR"
+
         except Exception:
+            # Fallback in case of any unexpected error during detection
             pass
+
         return "EN"
+
 
     def set_window_icon(self):
         """

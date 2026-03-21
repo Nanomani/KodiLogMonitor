@@ -61,7 +61,7 @@ class ActionsMixin:
             self.root.update()
 
             # Open the link
-            webbrowser.open(self.paste_url)
+            self.open_url(self.paste_url)
 
             # Temporary confirmation message in the status bar
             msg_confirm = l_ui.get("copy_ok", "Log copied! Paste it on the site.")
@@ -358,7 +358,7 @@ class ActionsMixin:
         inner_btn_frame.pack(side="top") # Sans fill="x", il reste centré
 
         def on_open():
-            webbrowser.open(url)
+            self.open_url(url)
             safe_close()
 
         def on_skip():
@@ -964,7 +964,7 @@ class ActionsMixin:
             selected_text = self.txt_area.get(tk.SEL_FIRST, tk.SEL_LAST)
             if selected_text.strip():
                 url = f"https://www.google.com/search?q={quote(selected_text.strip())}"
-                webbrowser.open(url)
+                self.open_url(url)
         except tk.TclError:
             pass
 
@@ -1048,8 +1048,25 @@ class ActionsMixin:
             lambda e: [self.search_query.set(""), self.search_context_menu.withdraw()],
         )
 
+    def open_url(self, url):
+        """
+        Centralized URL opener with a fallback for Linux/Snap environments.
+        """
+        if sys.platform.startswith('linux'):
+            try:
+                # Tentative via xdg-open pour contourner les restrictions Snap
+                subprocess.Popen(['xdg-open', url],
+                                 stdout=subprocess.DEVNULL,
+                                 stderr=subprocess.DEVNULL)
+            except Exception:
+                # Fallback sur webbrowser si xdg-open échoue
+                webbrowser.open(url)
+        else:
+            # Comportement standard pour Windows/macOS
+            webbrowser.open(url)
+
     def open_github_link(self, event=None):
-        webbrowser.open_new(GITHUB_URL)
+        self.open_url(GITHUB_URL)
 
     def update_windows_title_bar(self):
         """Apply theme to the Windows title bar."""
