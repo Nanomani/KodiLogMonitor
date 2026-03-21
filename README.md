@@ -7,9 +7,7 @@
 
 A lightweight and intuitive real-time log viewer or a simple log editor for Kodi. It helps users and developers track events, troubleshoot errors, and monitor system status through a clean, color-coded interface.
 
-
-![2026-02-28_131730](https://github.com/user-attachments/assets/5056c5c5-112d-4d67-9958-745ae9f1acde)
-
+![2026-03-21_105329](https://github.com/user-attachments/assets/84fd801f-01cf-49bc-864c-29c0d4785bdf)
 
 ---
 
@@ -39,7 +37,8 @@ Quick keyboard shortcuts to navigate and control the application efficiently.
 ```
 Space        : Pause / Resume auto-scroll  
 Ctrl + O     : Open log file  
-Ctrl + S     : Export log  
+Ctrl + S     : Export log
+Ctrl + P     : Upload LOG  
 Ctrl + F     : Search keyword  
 Ctrl + G     : Clear console display  
 Ctrl + L     : Toggle word wrap  
