@@ -11,7 +11,7 @@ from urllib.parse import quote
 from config import *
 from languages import LANGS
 from utils import get_windows_theme
-
+from ui.ui_builder import ToolTip
 
 class ActionsMixin:
     """Manages all user interactions (buttons, menus, shortcuts)."""
@@ -32,7 +32,8 @@ class ActionsMixin:
             return
 
         save_path = filedialog.asksaveasfilename(
-            defaultextension=".txt", initialfile="kodi_extract.txt"
+            defaultextension=".txt",
+            initialfile=EXPORT_FILE
         )
 
         if save_path:
@@ -77,6 +78,7 @@ class ActionsMixin:
         """Displays the system summary and pauses the log to stop it from scrolling."""
         if not self.check_log_loaded():
             return
+
         if not self.log_file_path or not os.path.exists(self.log_file_path):
             return
 
@@ -87,7 +89,7 @@ class ActionsMixin:
         summary_content = []
         found_header = False
 
-        self.txt_area.tag_configure("summary_color", foreground="#00E5FF")
+        self.txt_area.tag_configure("summary_color", foreground=LOG_COLORS["summary"])
 
         try:
             with open(self.log_file_path, 'r', encoding='utf-8', errors='ignore') as f:
@@ -113,7 +115,7 @@ class ActionsMixin:
                 self.txt_area.delete('1.0', tk.END)
 
                 header_title = l_ui.get("sys_sum", "\n--- RÉSUMÉ SYSTÈME ---\n")
-                self.txt_area.insert(tk.END, f"{header_title}\n")
+                self.txt_area.insert(tk.END, f"{header_title}\n", "summary_color")
 
                 for s_line in summary_content:
                     self.txt_area.insert(tk.END, s_line, "summary_color")
@@ -176,12 +178,17 @@ class ActionsMixin:
         # Title inside window
         tk.Label(
             scrollable_frame,
-            text=l_ui.get("help_title", "Keyboard Shortcuts").upper(),
-            bg=COLOR_BG_HEADER, fg=COLOR_TEXT_MAIN,
+            text=l_ui.get("help_title", "Keyboard Shortcuts"),
+            bg=COLOR_BG_HEADER,
+            fg=COLOR_ACCENT,
             font=("Segoe UI", 14, "bold")
-        ).pack(pady=(20, 10), fill="x")
+        ).pack(pady=(self.sc(20), self.sc(10)), fill="x")
 
-        tk.Frame(scrollable_frame, bg=COLOR_SEPARATOR, height=2).pack(fill="x", padx=40)
+        tk.Frame(
+            scrollable_frame,
+            bg=COLOR_SEPARATOR,
+            height=2
+        ).pack(fill="x", padx=self.sc(40))
 
         # Formatting help text
         raw_text = l_ui.get("help_text", "")
@@ -198,21 +205,36 @@ class ActionsMixin:
         help_label = tk.Label(
             scrollable_frame,
             text="\n".join(formatted_lines).strip(),
-            bg=COLOR_BG_HEADER, fg=COLOR_TEXT_MAIN,
-            justify="left", font=("Consolas", 11),
-            padx=40
+            bg=COLOR_BG_HEADER,
+            fg=COLOR_TEXT_MAIN,
+            justify="left",
+            font=("Consolas", 11),
+            padx=self.sc(40)
         )
         # We put the padding here (top=20, bottom=60) to ensure the last line is visible
-        help_label.pack(fill="both", expand=True, pady=(20, 60))
+        help_label.pack(
+            fill="both",
+            expand=True,
+            pady=(self.sc(20), self.sc(60))
+        )
 
         # OK Button at the bottom (fixed)
         btn_frame = tk.Frame(help_win, bg=COLOR_BG_HEADER)
-        btn_frame.pack(side="bottom", fill="x", pady=20)
+        btn_frame.pack(side="bottom", fill="x", pady=self.sc(20))
 
         btn_close = tk.Button(
-            btn_frame, text="OK", command=safe_close,
-            bg=COLOR_BTN_DEFAULT, fg=COLOR_TEXT_MAIN,
-            font=("Segoe UI", 10, "bold"), relief="flat", width=15, pady=5, cursor="hand2"
+            btn_frame,
+            text="Ok",
+            command=safe_close,
+            bg=COLOR_BTN_DEFAULT,
+            fg=COLOR_TEXT_MAIN,
+            font=("Segoe UI", 10, "bold"),
+            relief="flat", width=15, pady=5,
+            cursor="hand2",
+            activebackground=COLOR_BTN_ACTIVE,
+            activeforeground=COLOR_TEXT_MAIN,
+            highlightthickness=0,
+            bd=0
         )
         btn_close.pack()
 
@@ -326,7 +348,7 @@ class ActionsMixin:
 
         # --- MAIN CONTAINER ---
         # We use generous padding to prevent the text from sticking to the edges
-        main_frame = tk.Frame(upd_win, bg=COLOR_BG_HEADER, padx=40, pady=20)
+        main_frame = tk.Frame(upd_win, bg=COLOR_BG_HEADER, padx=self.sc(40), pady=self.sc(20))
         main_frame.pack(fill="both", expand=True)
 
         # Title
@@ -345,13 +367,13 @@ class ActionsMixin:
             text=l_ui.get("upd_msg", ""),
             bg=COLOR_BG_HEADER,
             fg=COLOR_TEXT_MAIN,
-            font=("Segoe UI", 10), justify="center").pack(fill="both", expand=True, pady=(10, 20)
+            font=("Segoe UI", 10), justify="center").pack(fill="both", expand=True, pady=(self.sc(10), self.sc(20))
         )
 
         # --- BUTTON AREA CENTERED ---
         # 1. The outer frame that spans the entire width at the bottom
         outer_btn_frame = tk.Frame(upd_win, bg=COLOR_BG_HEADER)
-        outer_btn_frame.pack(side="bottom", fill="x", pady=(0, 25))
+        outer_btn_frame.pack(side="bottom", fill="x", pady=(0, self.sc(25)))
 
         # 2. The inner frame that contains the buttons (centered by default in `outer_btn_frame`)
         inner_btn_frame = tk.Frame(outer_btn_frame, bg=COLOR_BG_HEADER)
@@ -380,23 +402,30 @@ class ActionsMixin:
             "relief": "flat",
             "width": 15,
             "pady": 5,
-            "cursor": "hand2"
+            "cursor": "hand2",
+            "activebackground": COLOR_BTN_ACTIVE,
+            "activeforeground": COLOR_TEXT_MAIN,
+            "highlightthickness": 0,
+            "bd": 0
         }
 
         # Button DOWNLOAD
         btn_dl = tk.Button(inner_btn_frame, text=l_ui.get("upd_btn_dl", "DOWNLOAD"), command=on_open, **btn_style)
-        btn_dl.pack(side="left", padx=10)
+        btn_dl.pack(side="left", padx=self.sc(10))
         apply_standard_hover(btn_dl)
+        ToolTip(btn_dl, l_ui.get("tip_upd_dl", "Download the update from GitHub"), self.scale)
 
         # Button SKIP
         btn_skip = tk.Button(inner_btn_frame, text=l_ui.get("upd_btn_skip", "SKIP"), command=on_skip, **btn_style)
-        btn_skip.pack(side="left", padx=10)
+        btn_skip.pack(side="left", padx=self.sc(10))
         apply_standard_hover(btn_skip)
+        ToolTip(btn_skip, l_ui.get("tip_upd_sk", "Ignore notifications for this version"), self.scale)
 
         # Button DISABLE
         btn_disable = tk.Button(inner_btn_frame, text=l_ui.get("upd_btn_dis", "DISABLE"), command=on_disable, **btn_style)
-        btn_disable.pack(side="left", padx=10)
+        btn_disable.pack(side="left", padx=self.sc(10))
         apply_standard_hover(btn_disable)
+        ToolTip(btn_disable, l_ui.get("tip_upd_di", "Permanently disable notifications"), self.scale)
 
         # --- DYNAMIC SIZE CALCULATION (SHOW_HELP LOGIC) ---
         upd_win.update_idletasks()
@@ -432,11 +461,15 @@ class ActionsMixin:
         if not self.log_file_path:
             self.txt_area.config(state=tk.NORMAL)
             self.txt_area.delete('1.0', tk.END)
+
             l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
 
-            message = f"\n\n\n\n\t\t\t⚠️ {l_ui.get('no_log', 'Aucun fichier log chargé.')}"
+            # Configure tags for colored text
+            self.txt_area.tag_configure("no_log_text", foreground=LOG_COLORS["error"], font=(self.mono_font_family, self.font_size, "bold"))
 
-            self.txt_area.insert(tk.END, message, "error")
+            # Message with spacing
+            self.txt_area.insert(tk.END, "\n\n\n\n\t\t\t")
+            self.txt_area.insert(tk.END, l_ui.get('no_log', 'No LOG file loaded.'), "no_log_text")
 
             self.txt_area.config(state=tk.DISABLED)
             return False
@@ -480,6 +513,65 @@ class ActionsMixin:
         if not self.is_paused.get() and self.log_file_path:
             self.txt_area.see(tk.END)
         self.update_stats()
+
+    def toggle_single_instance(self):
+        """
+        Toggles the ENABLE_SINGLE_INSTANCE global variable and updates the UI button.
+        """
+        global ENABLE_SINGLE_INSTANCE
+
+        self.enable_single_instance_var = not self.enable_single_instance_var
+        new_icon = "🔒" if self.enable_single_instance_var else "🔓"
+        self.btn_single_instance.config(text=new_icon)
+
+        import config as config_module
+        config_module.ENABLE_SINGLE_INSTANCE = self.enable_single_instance_var
+
+        self.save_session()
+
+        # RESUME THE CHECK AFTER 100 ms
+        self.root.after(100, lambda: self._reinit_single_instance())
+
+    def _reinit_single_instance(self):
+        """Réinitialise le listener single instance."""
+        from utils import check_single_instance
+        # This will re-read the file and restart the listener
+        check_single_instance()
+
+    def sync_config_on_focus(self):
+        """
+        Reloads the single instance state only when the user interacts with the window.
+        Uses a safer approach to avoid overwriting with default values.
+        """
+        global ENABLE_SINGLE_INSTANCE
+
+        if not os.path.exists(CONFIG_FILE):
+            return
+
+        try:
+            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                # Read lines and filter out empty ones
+                lines = [l.strip() for l in f.readlines() if l.strip()]
+
+                # Check if we have the expected number of lines
+                if len(lines) >= 17:
+                    # Extract only the value before the comment
+                    val_part = lines[16].split('#')[0].strip()
+
+                    # Safety: ensure the value is actually "1" or "0"
+                    if val_part in ["0", "1"]:
+                        new_state = (val_part == "1")
+
+                        # Only update if there is a real change to avoid UI flickering
+                        if not hasattr(self, "enable_single_instance_var") or self.enable_single_instance_var != new_state:
+                            self.enable_single_instance_var = new_state
+                            ENABLE_SINGLE_INSTANCE = new_state
+
+                            # Update the button icon if it exists
+                            if hasattr(self, "btn_single_instance"):
+                                self.btn_single_instance.config(text="🔒" if new_state else "🔓")
+        except Exception as e:
+            print(f"Debug: sync_config_on_focus error: {e}")
 
     def select_show_summary_from_keyboard(self, event=None):
         """Simulates clicking the ALL filter button using the keyboard"""
@@ -800,6 +892,88 @@ class ActionsMixin:
         self.btn_upl.config(text=l["upl"])
         self.btn_clr.config(text=l["clr"])
 
+        # Button reset
+        if hasattr(self, "btn_reset"):
+            self.btn_reset.config(text=l.get("btn_reset", "↻ RESET"))
+
+        # Button open Tooltip
+        if hasattr(self, "btn_open_tooltip") and self.btn_open_tooltip:
+            self.btn_open_tooltip.text = l["tip_open"]
+
+        # Button export Tooltip
+        if hasattr(self, "btn_export_tooltip") and self.btn_export_tooltip:
+            self.btn_export_tooltip.text = l["tip_export"]
+
+        # Button upload Tooltip
+        if hasattr(self, "btn_upload_tooltip") and self.btn_upload_tooltip:
+            self.btn_upload_tooltip.text = l["tip_upload"]
+
+        # Button summary Tooltip
+        if hasattr(self, "btn_summary_tooltip") and self.btn_summary_tooltip:
+            self.btn_summary_tooltip.text = l["tip_summary"]
+
+        # Button clear Tooltip
+        if hasattr(self, "btn_clear_tooltip") and self.btn_clear_tooltip:
+            self.btn_clear_tooltip.text = l["tip_clear"]
+
+        # Button limite Tooltip
+        if hasattr(self, "btn_limit_tooltip") and self.btn_limit_tooltip:
+            self.btn_limit_tooltip.text = l["tip_limit"]
+
+        # Button wrap Tooltip
+        if hasattr(self, "btn_wrap_tooltip") and self.btn_wrap_tooltip:
+            self.btn_wrap_tooltip.text = l["tip_wrap"]
+
+        # Button pause Tooltip
+        if hasattr(self, "btn_pause_tooltip") and self.btn_pause_tooltip:
+            self.btn_pause_tooltip.text = l["tip_pause"]
+
+        # Button instance Tooltip
+        if hasattr(self, "btn_single_instance_tooltip") and self.btn_single_instance_tooltip:
+            self.btn_single_instance_tooltip.text = l["tip_single_instance"]
+
+        # Language selection list Tooltip
+        if hasattr(self, "combo_lang_tooltip") and self.combo_lang_tooltip:
+            self.combo_lang_tooltip.text = l["tip_lang"]
+
+        # keyword list selection list Tooltip
+        if hasattr(self, "combo_kw_tooltip") and self.combo_kw_tooltip:
+            self.combo_kw_tooltip.text = l["tip_kw_list"]
+
+        # Search by keyword Tooltip
+        if hasattr(self, "search_tooltip") and self.search_tooltip:
+            self.search_tooltip.text = l["tip_search"]
+
+        # Button help Tooltip
+        if hasattr(self, "btn_help_tooltip") and self.btn_help_tooltip:
+            self.btn_help_tooltip.text = l["tip_help"]
+
+        # Button reset Tooltip
+        if hasattr(self, "btn_reset_tooltip") and self.btn_reset_tooltip:
+            # self.btn_reset_tooltip.text = l.get("tip_reset", "Restore all default settings")
+            self.btn_reset_tooltip.text = l["tip_reset"]
+
+        # Button down font size
+        if hasattr(self, "btn_down_font_tooltip") and self.btn_down_font_tooltip:
+            self.btn_down_font_tooltip.text = l["tip_down_font"]
+
+        # Button up font size
+        if hasattr(self, "btn_up_font_tooltip") and self.btn_up_font_tooltip:
+            self.btn_up_font_tooltip.text = l["tip_up_font"]
+
+        # Button refresh keyword list
+        if hasattr(self, "btn_kw_refresh_tooltip") and self.btn_kw_refresh_tooltip:
+            self.btn_kw_refresh_tooltip.text = l["tip_kw_refresh"]
+
+        # Button folder keyword list
+        if hasattr(self, "btn_kw_folder_tooltip") and self.btn_kw_folder_tooltip:
+            self.btn_kw_folder_tooltip.text = l["tip_kw_folder"]
+
+        # GitHub Tooltip Update
+        if hasattr(self, "github_tooltip") and self.github_tooltip:
+            self.github_tooltip.text = l["tip_github"]
+
+        # --- TRANSLATION OF FILTER ---
         tm = {
             "all": "all",
             "info": "info",
@@ -809,6 +983,12 @@ class ActionsMixin:
         }
         for mode, cb in self.filter_widgets.items():
             cb.config(text=l[tm[mode]])
+
+        # --- TRANSLATION OF FILTER TOOLTIPS ---
+        for mode, tooltip in self.filter_tooltips.items():
+            if tooltip:
+                tip_key = f"tip_filter_{mode}"
+                tooltip.text = l[tip_key]
 
         self.footer_var.set(
             l["sel"] if not self.log_file_path else f"📍 {self.log_file_path}"
@@ -823,7 +1003,7 @@ class ActionsMixin:
             self.menu_items[1].config(text=l["sel_all"])
             self.menu_items[2].config(text=l["search_google"])
 
-        # 1. On crée un dictionnaire de toutes les traductions existantes vers l'anglais
+        # 1. We create a dictionary of all existing translations into English
         reverse_theme_map = {}
         for lang_code in LANGS:
             ld = LANGS[lang_code]
@@ -831,23 +1011,31 @@ class ActionsMixin:
             reverse_theme_map[ld["t_light"]] = "Light"
             reverse_theme_map[ld["t_dark"]] = "Dark"
 
-        # 2. On récupère la valeur actuelle (ex: "Sombre") et on trouve son équivalent technique ("Dark")
+        # 2. We retrieve the current value (e.g., "Sombre") and find its technical equivalent ("Dark")
         current_val = self.theme_mode.get()
         tech_value = reverse_theme_map.get(current_val, current_val)
 
-        # 3. On met à jour la liste des choix avec la nouvelle langue
+        # 3. We are updating the list of options with the new language
         theme_values = [l["t_auto"], l["t_light"], l["t_dark"]]
         self.combo_theme['values'] = theme_values
 
-        # 4. On ré-applique la traduction dans la nouvelle langue pour le champ fixe
+        # 4. The translation is reapplied in the new language for the fixed field
         new_mapping = {"Auto": l["t_auto"], "Light": l["t_light"], "Dark": l["t_dark"]}
         self.theme_mode.set(new_mapping.get(tech_value, tech_value))
 
+        # Is paused
         if self.is_paused.get():
             self.paused_var.set(l["paused"])
         else:
             self.paused_var.set("")
 
+        # Is wraped
+        if self.wrap_mode.get():
+            self.wrap_var.set(l["line_break"])
+        else:
+            self.wrap_var.set("")
+
+        # Is limited 1000 line
         if not self.load_full_file.get():
             self.limit_var.set(l["limit"])
         else:
@@ -856,34 +1044,30 @@ class ActionsMixin:
         self.update_stats()
 
     def on_theme_change(self, event=None):
-        """Applique le thème Windows (Sombre/Clair) en fonction de la sélection traduite."""
+        """Applies the Windows theme (Dark/Light) based on the selected option."""
         if sys.platform != "win32":
             return
 
         selection = self.theme_mode.get()
-        # On récupère les traductions de la langue actuelle
         l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
 
-        # Détermination du mode basé sur les textes traduits
         if selection == l_ui.get("t_dark"):
             mode = 1  # Sombre
         elif selection == l_ui.get("t_light"):
             mode = 0  # Clair
         else:
-            # Mode "Auto" : on récupère la préférence système actuelle
             mode = get_windows_theme()
 
         try:
             from ctypes import windll, byref, sizeof, c_int
             hwnd = windll.user32.GetParent(self.root.winfo_id())
 
-            # Application de l'attribut Immersive Dark Mode (20)
             windll.dwmapi.DwmSetWindowAttribute(
                 hwnd, 20, byref(c_int(mode)), sizeof(c_int(mode))
             )
 
-            # Mise à jour de la couleur de la barre de titre (34)
-            # 0x002d2d2d est le gris sombre utilisé dans votre interface
+            # Update the title bar color (34)
+            # 0x002d2d2d is the dark gray used in your interface
             caption_color = c_int(0x002d2d2d) if mode == 1 else c_int(0x00FFFFFF)
             windll.dwmapi.DwmSetWindowAttribute(
                 hwnd, 34, byref(caption_color), sizeof(caption_color)
@@ -1206,4 +1390,6 @@ class ActionsMixin:
         # Set new timer for 5 seconds (5000 ms)
         self.cursor_timer = self.root.after(5000, self.hide_cursor)
 
-
+    def sc(self, value):
+        """Calculates the scaled value."""
+        return int(value * self.scale)

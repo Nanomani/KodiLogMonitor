@@ -59,7 +59,7 @@ class LogDisplayMixin:
         return (line, current_tag)
 
     def bulk_insert(self, data_list):
-        """Inserts a set of data into the text box."""
+        """Inserts a set of data into the text box with detailed filter info if empty."""
         if not self.log_file_path:
             self.check_log_loaded()
             return
@@ -71,24 +71,77 @@ class LogDisplayMixin:
         self.txt_area.config(state=tk.NORMAL)
 
         if not valid_data:
+            # Check if we should ignore this empty call
             current_text = self.txt_area.get("1.0", tk.END).strip()
-
             if current_text != "" and "Aucune" not in current_text:
                 self.show_loading(False)
                 self.update_stats()
                 return
 
+            # --- BUILD DETAILED MESSAGE ---
             l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
-            message = f"\n\n\n\n\t\t\t{l_ui.get('no_match', 'Aucune occurrence trouvée')}"
 
+            # Clear the text area
             self.txt_area.delete('1.0', tk.END)
-            self.txt_area.insert(tk.END, message, "warning")
+
+            # Configure tags for colored text
+            self.txt_area.tag_configure("filter_header", foreground=COLOR_ACCENT, font=(self.mono_font_family, self.font_size, "bold"))
+            self.txt_area.tag_configure("filter_list", foreground=COLOR_TEXT_MAIN, font=(self.mono_font_family, self.font_size))
+            self.txt_area.tag_configure("no_match_text", foreground=LOG_COLORS["error"], font=(self.mono_font_family, self.font_size, "bold"))
+            self.txt_area.tag_configure("separator", foreground=COLOR_SEPARATOR)
+
+            # Header with spacing
+            self.txt_area.insert(tk.END, "\n\n\n\n\t\t\t")
+            self.txt_area.insert(tk.END, l_ui.get('filter_applied', 'Applied filter(s):'), "filter_header")
+            self.txt_area.insert(tk.END, "\n")
+
+            # Horizontal separator line
+            self.txt_area.insert(tk.END, "\t\t\t" + "─" * 50 + "\n", "separator")
+
+            # 1. Message types filter with STRICT ORDER and TRANSLATION
+            if not self.filter_vars["all"].get():
+                # Define the display order: Info -> Warning -> Error -> Debug
+                display_order = [
+                    ("info", "info"),         # (internal_key, translation_key)
+                    ("warning", "warn"),
+                    ("error", "err"),
+                    ("debug", "debug")
+                ]
+
+                active_labels = []
+                for internal_key, trans_key in display_order:
+                    # Check if the filter is active in the UI
+                    if self.filter_vars.get(internal_key) and self.filter_vars[internal_key].get():
+                        # Fetch the translation from languages.py
+                        active_labels.append(l_ui.get(trans_key, trans_key))
+
+                if active_labels:
+                    type_str = ", ".join(active_labels)
+                    self.txt_area.insert(tk.END, f"\t\t\t - {l_ui.get('type_filter', 'Message type')} : \"{type_str}\"\n", "filter_list")
+
+            # 2. Keyword search filter
+            query = self.search_query.get().strip()
+            if query:
+                self.txt_area.insert(tk.END, f"\t\t\t - {l_ui.get('keyword_filter', 'Keyword search')} : \"{query}\"\n", "filter_list")
+
+            # 3. Keyword list filter
+            kw_list = self.selected_list.get()
+            if kw_list and kw_list != l_ui.get("none", "None"):
+                self.txt_area.insert(tk.END, f"\t\t\t - {l_ui.get('list_filter', 'List search')} : \"{kw_list}\"\n", "filter_list")
+
+            # Add second separator line
+            self.txt_area.insert(tk.END, "\t\t\t" + "─" * 50 + "\n", "separator")
+
+            # Final "No matches" message
+            final_no_match = l_ui.get('no_match', "❌ No matches found")
+            self.txt_area.insert(tk.END, f"\n\t\t\t{final_no_match}", "no_match_text")
+
             self.show_loading(False)
             self.update_stats()
             return
 
+        # Normal insertion if valid_data exists
         self.txt_area.delete('1.0', tk.END)
-
         for text, tag in valid_data:
             self.insert_with_highlight(text, tag)
 
@@ -298,26 +351,27 @@ class LogDisplayMixin:
         # 1. Recovery of current states
         try:
             current_text = self.stats_var.get()
-            current_count = int("".join(filter(str.isdigit, current_text)))
+            current_count = int(''.join(filter(str.isdigit, current_text)))
         except (ValueError, TypeError):
             current_count = -1
 
         current_pause = self.is_paused.get()
-        current_limit = self.load_full_file.get()  # Etat du mode "Infini"
+        current_limit = self.load_full_file.get()
+        current_wrap = self.wrap_mode.get()
 
         # 2. UPDATE CONDITION:
-        # Refresh only if one of these 3 elements has changed
-        if (
-            current_count == self.last_line_count
-            and current_pause == self.last_pause_state
-            and current_limit == self.last_limit_state
-        ):
+        # Refresh only if one of these 4 elements has changed
+        if (current_count == self.last_line_count and
+                current_pause == self.last_pause_state and
+                current_limit == self.last_limit_state and
+                current_wrap == self.last_wrap_state):
             return
 
         # 3. Memorization of new states
         self.last_line_count = current_count
         self.last_pause_state = current_pause
         self.last_limit_state = current_limit
+        self.last_wrap_state = current_wrap
 
         l = LANGS.get(self.current_lang.get(), LANGS["EN"])
 
@@ -329,6 +383,8 @@ class LogDisplayMixin:
         self.label_limit.pack_forget()
         self.sep_pause.pack_forget()
         self.label_pause.pack_forget()
+        self.sep_wrap.pack_forget()
+        self.label_wrap.pack_forget()
 
         # --- TOTAL NUMBER OF LINES ---
         if self.stats_var.get() and "N/A" not in self.stats_var.get():
@@ -344,20 +400,18 @@ class LogDisplayMixin:
             # Size analysis to change color
             try:
                 # The number is extracted from the text (e.g., "12.5 MB" -> 12.5).
-                size_value_str = (
-                    size_text.split(":")[1].strip() if ":" in size_text else size_text
-                )
+                size_value_str = size_text.split(':')[1].strip() if ":" in size_text else size_text
                 size_value = float(re.findall(r"[-+]?\d*\.\d+|\d+", size_value_str)[0])
                 is_mb = "Mo" in size_text or "MB" in size_text
 
-                # If it is in MB and > 10, we put it in red.
+                # If it is in MB and > max_size_mb, we put it in red.
                 if is_mb and size_value > self.max_size_mb:
                     self.label_size.config(fg=LOG_COLORS["error"])
                 else:
-                    self.label_size.config(fg=COLOR_TEXT_BRIGHT)
+                    self.label_size.config(fg=COLOR_TEXT_MAIN)
             except Exception:
                 # In case of an analysis error, the default color is retained.
-                self.label_size.config(fg=COLOR_TEXT_BRIGHT)
+                self.label_size.config(fg=COLOR_TEXT_MAIN)
 
             self.sep_size.pack(side=tk.LEFT, fill=tk.Y, padx=20, pady=2)
             self.label_size.pack(side=tk.LEFT)
@@ -384,6 +438,16 @@ class LogDisplayMixin:
             self.paused_var.set("")
             self.sep_pause.pack_forget()
             self.label_pause.pack_forget()
+
+        # --- Bloc LINE BREAK ---
+        if self.wrap_mode.get():
+            self.wrap_var.set(l["line_break"])
+            self.sep_wrap.pack(side=tk.LEFT, fill=tk.Y, padx=20, pady=2)
+            self.label_wrap.pack(side=tk.LEFT)
+        else:
+            self.wrap_var.set("")
+            self.sep_wrap.pack_forget()
+            self.label_wrap.pack_forget()
 
     def scheduled_stats_update(self):
         if self.running and self.log_file_path:

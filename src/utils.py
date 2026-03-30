@@ -7,10 +7,11 @@ import os
 import sys
 import socket
 import locale
+import config
 import tkinter as tk
 from tkinter import messagebox
 
-from config import SINGLE_INSTANCE_HOST, SINGLE_INSTANCE_PORT, CONFIG_FILE
+from config import SINGLE_INSTANCE_HOST, SINGLE_INSTANCE_PORT, CONFIG_FILE, ENABLE_SINGLE_INSTANCE
 from languages import LANGS
 
 if sys.platform == "win32":
@@ -78,69 +79,110 @@ def get_windows_theme():
 def check_single_instance():
     """
     Checks if another instance is running using host/port from config file.
-    This runs BEFORE the main app initialization.
     """
-    global _lock_socket
+    global ENABLE_SINGLE_INSTANCE, _lock_socket
 
-    # Default values
     host = SINGLE_INSTANCE_HOST
     port = SINGLE_INSTANCE_PORT
+    user_lang = "EN" # Default fallback
 
-    # 1. Manually parse the config file to find host/port
+    # 1. Parse the config file
     if os.path.exists(CONFIG_FILE):
         try:
             with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-                for line in f:
-                    if "=" in line:
-                        key, value = line.strip().split("=", 1)
-                        if key == "single_instance_host":
-                            host = value
-                        elif key == "single_instance_port":
-                            try:
-                                port = int(value)
-                            except ValueError:
-                                pass
-        except Exception:
-            pass # Fallback to defaults on read error
+                lines = f.readlines()
 
-    # 2. Try to bind the socket
+                def get_val(line_idx):
+                    if line_idx < len(lines):
+                        return lines[line_idx].split('#')[0].strip()
+                    return None
+
+                # --- NEW: Get Language from config line 2 (Index 1) ---
+                cfg_lang = get_val(1)
+                if cfg_lang: user_lang = cfg_lang
+
+                # Host, Port and Enable (Existing logic)
+                cfg_host = get_val(14)
+                if cfg_host: host = cfg_host
+                cfg_port = get_val(15)
+
+                if cfg_port:
+                    try: port = int(cfg_port)
+                    except ValueError: pass
+                cfg_enable = get_val(16)
+
+                if cfg_enable is not None:
+                    is_enabled = (cfg_enable == "1")
+                    ENABLE_SINGLE_INSTANCE = is_enabled
+                    config.ENABLE_SINGLE_INSTANCE = is_enabled
+
+        except Exception as e:
+            print(f"Error reading config: {e}")
+
+    if not ENABLE_SINGLE_INSTANCE:
+        return
+
     _lock_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         _lock_socket.bind((host, port))
     except socket.error:
-        # --- Robust Language Detection (No DeprecationWarning) ---
-        def get_startup_lang():
+        # --- Language Detection logic ---
+        def get_startup_lang(fallback_lang):
+            # 1. If we found a lang in config, use it first
+            if fallback_lang in LANGS:
+                return fallback_lang
+
+            # 2. Otherwise, check Windows system language
             try:
+                import ctypes
                 import locale
-                # 1. Try modern getlocale (Standard)
-                lang_code, _ = locale.getlocale()
-
-                # 2. If None (common on Windows at startup), try Windows API
-                if not lang_code and os.name == 'nt':
-                    import ctypes
-                    # Get user default UI language ID (e.g., 1036 for FR, 1033 for EN)
-                    windll = ctypes.windll.kernel32
-                    lang_id = windll.GetUserDefaultUILanguage()
-                    lang_code = locale.windows_locale.get(lang_id)
-
-                # 3. Final check: if 'fr' is in the string, use FR, else EN
-                if lang_code and lang_code.lower().startswith('fr'):
+                # Specific Windows API call for UI Language
+                lang_id = ctypes.windll.kernel32.GetUserDefaultUILanguage()
+                lang_name = locale.windows_locale.get(lang_id)
+                if lang_name and lang_name.lower().startswith('fr'):
                     return "FR"
-            except Exception:
+            except:
                 pass
             return "EN"
 
-        sys_lang = get_startup_lang()
-        # Fallback to English if the detected language is not in LANGS
+        sys_lang = get_startup_lang(user_lang)
         l_ui = LANGS.get(sys_lang, LANGS["EN"])
 
-        # Create a hidden Tkinter root for the messagebox
+        # Create hidden root for message
         temp_root = tk.Tk()
         temp_root.withdraw()
 
-        # Get the localized message
-        msg = l_ui.get("already_running", "An instance of this program is already running.")
+        # Get the localized message from languages.py
+        # Ensure "already_running" is defined in your LANGS["FR"] in languages.py!
+        msg = l_ui.get("already_running", "Une instance de ce programme est déjà en cours d'exécution.")
 
         messagebox.showwarning("Kodi Log Monitor", msg)
         temp_root.destroy()
         sys.exit(0)
+
+
+def show_already_running_msg():
+    """ Displays the warning message in the correct language. """
+    # Helper for language detection
+    def get_startup_lang():
+        try:
+            import locale
+            lang_code, _ = locale.getlocale()
+            if not lang_code and os.name == 'nt':
+                import ctypes
+                lang_id = ctypes.windll.kernel32.GetUserDefaultUILanguage()
+                lang_code = locale.windows_locale.get(lang_id)
+            if lang_code and lang_code.lower().startswith('fr'):
+                return "FR"
+        except: pass
+        return "EN"
+
+    sys_lang = get_startup_lang()
+    # Assuming LANGS dictionary is defined globally
+    l_ui = LANGS.get(sys_lang, LANGS.get("EN", {}))
+    msg = l_ui.get("already_running", "An instance of this program is already running.")
+
+    temp_root = tk.Tk()
+    temp_root.withdraw()
+    messagebox.showwarning("Kodi Log Monitor", msg)
+    temp_root.destroy()

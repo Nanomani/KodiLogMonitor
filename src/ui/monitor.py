@@ -11,22 +11,33 @@ from languages import LANGS
 class MonitorMixin:
     # reads the file and sends the lines to the display
     def monitor_loop(self):
-        """
-        Background thread loop that monitors the log file for changes.
-        Handles file rotation (Kodi restarts), inactivity detection, and UI updates.
-        """
+        """Monitors the log file in a background thread and updates the UI."""
         try:
+            # --- CAPTURE UI VALUES SAFELY ---
+            if not self.running:
+                return
+
+            try:
+                # Always capture Tkinter variables at the very beginning
+                load_full = self.load_full_file.get()
+                current_lang_code = self.current_lang.get()
+            except (tk.TclError, RuntimeError):
+                # If the UI is already destroyed, exit the thread immediately
+                return
+
             # Initial opening of the file
-            with open(self.log_file_path, "r", encoding="utf-8", errors="ignore") as f:
-                if self.load_full_file.get():
+            with open(self.log_file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                if load_full:
                     f.seek(0)
                 else:
+                    # Seek to the end and read a chunk (approx 100kb)
                     f.seek(0, os.SEEK_END)
                     f.seek(max(0, f.tell() - 100000))
 
                 initial_lines = f.readlines()
-                if not self.load_full_file.get():
+                if not load_full:
                     initial_lines = initial_lines[-1000:]
+
                 last_pos = f.tell()
 
                 to_display = []
@@ -35,121 +46,115 @@ class MonitorMixin:
                     if data and not self.is_duplicate(data[0]):
                         to_display.append(data)
 
-                if to_display:
-                    self.root.after(0, self.bulk_insert, to_display)
-                else:
-                    is_filtering = any(v.get() for k, v in self.filter_vars.items() if k != "all")
+                # Send initial data to GUI
+                if self.running:
+                    try:
+                        if to_display:
+                            self.root.after(0, self.bulk_insert, to_display)
+                        else:
+                            # Logic for empty files or filtering
+                            is_filtering = any(v.get() for k, v in self.filter_vars.items() if k != "all")
+                            if not load_full and not is_filtering:
+                                self.root.after(0, self.bulk_insert, to_display)
+                            else:
+                                # Delayed update to ensure UI is ready
+                                self.root.after(1000, lambda: self.bulk_insert(to_display) if self.running else None)
+                    except (tk.TclError, RuntimeError):
+                        return
 
-                    if not self.load_full_file.get() and not is_filtering:
-                        self.root.after(0, self.bulk_insert, to_display)
-                    else:
-                        self.root.after(1000, lambda: self.bulk_insert(to_display) if (self.running and not self.txt_area.get("1.0", tk.END).strip()) else None)
+                # Persistent flag for file access errors
+                self.is_file_inaccessible = False
 
+                # --- REAL-TIME MONITORING LOOP ---
                 while self.running:
                     try:
-                        # 1. Accessibility verification
+                        # 1. Check if the file still exists/is accessible
                         current_size = os.path.getsize(self.log_file_path)
 
-                        # 2. RECONNECTION: Let's get out of this mistake
-                        l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
-                        msg_erreur = l_ui.get(
-                            "file_error",
-                            "⚠️ IMPORTANT : le fichier de log est inaccessible !",
-                        )
+                        # 2. Recovery: If file was inaccessible, clear the error state
+                        if self.is_file_inaccessible:
+                            self.is_file_inaccessible = False
+                            if self.running:
+                                self.root.after(0, self.inactivity_timer_var.set, "")
+                                final_color = COLOR_WARNING if not load_full else LOG_COLORS["info"]
+                                self.root.after(0, self.update_status_color, final_color)
 
-                        if self.inactivity_timer_var.get() == msg_erreur:
-                            # We reset everything to prevent "Inactive" from replacing the error immediately.
-                            self.last_activity_time = time.time()
-                            self.root.after(0, self.inactivity_timer_var.set, "")
-                            # The color is reset according to the actual status (green or orange if limited).
-                            new_color = (
-                                COLOR_WARNING
-                                if not self.load_full_file.get()
-                                else "#4CAF50"
-                            )
-                            self.root.after(0, self.update_status_color, new_color)
+                        l_ui = LANGS.get(current_lang_code, LANGS["EN"])
 
-                        # 3. Managing Kodi Restarts
+                        # 3. Detect Log Rotations (Kodi restarts)
                         if current_size < last_pos:
-                            self.root.after(
-                                0,
-                                self.start_monitoring,
-                                self.log_file_path,
-                                False,
-                                False,
-                            )
+                            if self.running:
+                                # Restart monitoring from scratch
+                                self.root.after(0, self.start_monitoring, self.log_file_path, False, False)
                             return
 
-                        # 4. Reading
+                        # 4. Read new line
                         line = f.readline()
                         if not line:
-                            # The calculation is only performed if detection is not disabled (different from 0).
                             if self.inactivity_limit > 0:
                                 elapsed = time.time() - self.last_activity_time
-
                                 if elapsed >= self.inactivity_limit:
-                                    self.root.after(
-                                        0, self.update_status_color, COLOR_DANGER
-                                    )
-
-                                    # Calculating and displaying time (HH:MM)
-                                    l_ui = LANGS.get(
-                                        self.current_lang.get(), LANGS["EN"]
-                                    )
-                                    mins, secs = divmod(int(elapsed), 60)
-                                    timer_str = (
-                                        f"{l_ui['inactive']} : {mins:02d}:{secs:02d}"
-                                    )
-                                    self.root.after(
-                                        0, self.inactivity_timer_var.set, timer_str
-                                    )
+                                    if self.running:
+                                        try:
+                                            self.root.after(0, self.update_status_color, COLOR_DANGER)
+                                            mins, secs = divmod(int(elapsed), 60)
+                                            timer_str = f"{l_ui['inactive']} : {mins:02d}:{secs:02d}"
+                                            self.root.after(0, self.inactivity_timer_var.set, timer_str)
+                                        except: pass
                                 else:
-                                    self.root.after(
-                                        0, self.update_status_color, "#666666"
-                                    )
-                                    self.root.after(
-                                        0, self.inactivity_timer_var.set, ""
-                                    )
+                                    if self.running:
+                                        try:
+                                            # SAFETY: Do not use self.inactivity_timer_var.get() here!
+                                            # It's better to just clear it or skip the check to avoid the crash
+                                            self.root.after(0, self.update_status_color, "#666666")
+                                            self.root.after(0, self.inactivity_timer_var.set, "")
+                                        except: pass
                             else:
-                                # If inactivity_limit is 0, it remains gray with no message.
-                                self.root.after(0, self.update_status_color, "#666666")
-                                self.root.after(0, self.inactivity_timer_var.set, "")
+                                if self.running:
+                                    try:
+                                        self.root.after(0, self.update_status_color, "#666666")
+                                        self.root.after(0, self.inactivity_timer_var.set, "")
+                                        self.root.after(0, self.update_stats)
+                                    except: pass
 
-                            self.root.after(0, self.update_stats)
                             time.sleep(0.4)
                             continue
 
-                        # If reading successful
+                        # 5. Data Received: Update activity and UI status
                         self.last_activity_time = time.time()
-                        # If limited mode -> Orange, otherwise Green
-                        final_color = (
-                            COLOR_WARNING
-                            if not self.load_full_file.get()
-                            else "#4CAF50"
-                        )
-                        self.root.after(0, self.update_status_color, final_color)
-                        self.root.after(0, self.inactivity_timer_var.set, "")
+                        if self.running:
+                            final_color = COLOR_WARNING if not load_full else LOG_COLORS["info"]
+                            self.root.after(0, self.update_status_color, final_color)
+                            self.root.after(0, self.inactivity_timer_var.set, "")
 
+                        # 6. Process line and append to GUI
                         last_pos = f.tell()
                         data = self.get_line_data(line)
-                        if data and not self.is_duplicate(data[0]):
+                        if data and self.running and not self.is_duplicate(data[0]):
                             self.root.after(0, self.append_to_gui, data[0], data[1])
 
                     except (IOError, OSError):
-                        # LOSS OF ACCESS
-                        l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
-                        msg = l_ui.get(
-                            "file_error",
-                            "⚠️ IMPORTANT : le fichier de log est inaccessible !",
-                        )
-                        self.root.after(0, self.inactivity_timer_var.set, msg)
-                        self.root.after(0, self.update_status_color, COLOR_DANGER)
+                        # File becomes locked or deleted temporarily
+                        if not self.is_file_inaccessible and self.running:
+                            self.is_file_inaccessible = True
+                            l_ui = LANGS.get(current_lang_code, LANGS["EN"])
+                            msg = l_ui.get("file_error", "⚠️ LOG INACCESSIBLE!")
+                            self.root.after(0, self.inactivity_timer_var.set, msg)
+                            self.root.after(0, self.update_status_color, COLOR_DANGER)
                         time.sleep(2)
                         continue
 
+                    except (tk.TclError, RuntimeError):
+                        # Stop thread if UI is gone
+                        break
+
         except Exception as e:
-            print(f"[ERROR] {type(e).__name__}: {e}")
-            self.root.after(0, self.show_loading, False)
+            if self.running:
+                print(f"[ERROR] {type(e).__name__}: {e}")
+                try:
+                    self.root.after(0, self.show_loading, False)
+                except:
+                    pass
 
     def start_monitoring(self, path, save=True, retranslate=True, is_manual=True):
         """
@@ -224,3 +229,62 @@ class MonitorMixin:
             list: Sorted log lines.
         """
         return sorted(log_list, key=lambda x: x[0] if isinstance(x, list) else x)
+
+    def periodic_display_check(self):
+        """
+        Checks if the screen resolution or scaling has changed.
+        """
+        if sys.platform != "win32":
+            return
+
+        try:
+            from ctypes import windll
+            # Get current screen width
+            current_width = windll.user32.GetSystemMetrics(0)
+
+            if current_width != self.last_screen_width:
+                self.last_screen_width = current_width
+                # Call the new dialog instead of the old prompt
+                self.root.after_idle(self.show_display_changed_dialog)
+                return
+        except Exception:
+            pass
+
+        self.root.after(3000, self.periodic_display_check)
+
+    def show_display_changed_dialog(self):
+        """
+        Affiche une boîte info système standard (Bouton OK centré par Windows).
+        Garantit une visibilité parfaite sur tous les types d'écrans.
+        """
+        from tkinter import messagebox
+
+        if getattr(self, '_showing_dpi_msg', False):
+            return
+        self._showing_dpi_msg = True
+
+        l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
+
+        # showinfo crée une fenêtre avec un seul bouton OK centré.
+        messagebox.showinfo(
+            l_ui.get("shutdown_confirm_title", "Display Settings Changed"),
+            l_ui.get("shutdown_confirm_msg", "Display settings changed. The app will now close to recalculate geometry.")
+        )
+
+        # Dès que l'utilisateur clique sur OK ou ferme la boîte :
+        self._showing_dpi_msg = False
+        self.shutdown_with_reset()
+
+    def shutdown_with_reset(self):
+        """
+        Réinitialise la géométrie dans la configuration et ferme proprement.
+        """
+        # On vide la géométrie pour forcer la redétection au prochain lancement
+        self.window_geometry = ""
+
+        if hasattr(self, 'save_session'):
+            self.save_session()
+
+        # Arrêt complet du processus
+        self.root.quit()
+        sys.exit(0)

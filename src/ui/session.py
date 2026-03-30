@@ -1,5 +1,5 @@
 import os
-
+import config
 from config import *
 from languages import LANGS
 
@@ -26,15 +26,16 @@ class SessionMixin:
                     f"{str(self.window_geometry):<{w}} # Window geometry",
                     f"{str(self.selected_list.get()):<{w}} # Selected keyword list",
                     f"{filter_states:<{w}} # Filter states (ALL, INFO, WARNING, ERROR, DEBUG)",
-                    f"{('1' if self.show_google_search.get() else '0'):<{w}} # Show google search menu",
+                    f"{('1' if self.show_google_search.get() else '0'):<{w}} # Show google search menu (0=hide)",
                     f"{str(self.theme_mode.get()):<{w}} # Theme mode",
-                    f"{str(self.inactivity_limit):<{w}} # Inactivity limit seconds (0 disable)",
+                    f"{str(self.inactivity_limit):<{w}} # Inactivity limit seconds (0=disable)",
                     f"{str(self.paste_url):<{w}} # Url for upload",
                     f"{str(self.max_size_mb):<{w}} # Max size Mo limit (10 Mo default)",
                     f"{str(self.skip_version):<{w}} # Skip latest version",
-                    f"{('1' if self.updates_enabled else '0'):<{w}} # Updates enabled 1 disable 0",
+                    f"{('1' if self.updates_enabled else '0'):<{w}} # Updates (1=enable 0=disable)",
                     f"{str(SINGLE_INSTANCE_HOST):<{w}} # Single instance host",
-                    f"{str(SINGLE_INSTANCE_PORT):<{w}} # Single instance port"
+                    f"{str(SINGLE_INSTANCE_PORT):<{w}} # Single instance port",
+                    f"{('1' if self.enable_single_instance_var else '0'):<{w}} # Enable single instance (1=True, 0=False)"
                 ]
                 f.write("\n".join(config_data))
         except (IOError, OSError) as e:
@@ -132,7 +133,7 @@ class SessionMixin:
 
                 # 14. Updates Enabled
                 if len(lines) >= 14:
-                    self.updates_enabled = (lines[13] == "1")
+                    self.updates_enabled = (lines[13].strip() == "1")
 
                 # 15. Single Instance Host (AJOUT)
                 if len(lines) >= 15:
@@ -147,14 +148,23 @@ class SessionMixin:
                     except ValueError:
                         pass
 
+                # Line 17: Enable single instance (Global variable)
+                if len(lines) >= 17:
+                    is_enabled = (lines[16].strip() == "1")
+                    import config
+                    config.ENABLE_SINGLE_INSTANCE = is_enabled
+                    self.enable_single_instance_var = is_enabled
+                else:
+                    self.enable_single_instance_var = config.ENABLE_SINGLE_INSTANCE
+
         except (IOError, OSError, Exception) as e:
-            # Print error for debugging purposes if needed
             print(f"Error loading configuration: {e}")
 
         # Finalize UI setup after loading data
-        self.retranslate_ui(False)
-        self.update_tags_config()
+        if hasattr(self, 'btn_log'):
+            self.retranslate_ui(False)
+            self.update_tags_config()
 
-        # Automatically resume monitoring if a valid log file was found
+        # Resume monitoring if path exists
         if self.log_file_path:
             self.start_monitoring(self.log_file_path, False, False)

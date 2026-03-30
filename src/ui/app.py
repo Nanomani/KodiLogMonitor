@@ -7,6 +7,7 @@ import time
 import sys
 from collections import deque
 
+import config
 from config import *
 from languages import LANGS
 from utils import get_system_font, get_mono_font, get_emoji_font, get_windows_theme
@@ -24,7 +25,8 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
     """
     def __init__(self, root):
         self.root = root
-        self.root.title("Kodi Log Monitor")
+        self.root.title(f"Kodi Log Monitor")
+        self.inactivity_timer_var = tk.StringVar(value="")
 
         # --- 4K DYNAMIC DETECTION ---
         screen_width = self.root.winfo_screenwidth()
@@ -32,8 +34,23 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
         # If the screen is wider than 2560 pixels
         if screen_width > 2560:
             self.window_geometry = DEFAULT_GEOMETRY_4K
+            self.scale = 1
+        elif screen_width > 1280:
+            self.window_geometry = DEFAULT_GEOMETRY_FHD
+            self.scale = 0.5
         else:
-            self.window_geometry = DEFAULT_GEOMETRY
+            self.window_geometry = DEFAULT_GEOMETRY_HD
+            self.scale = 0.25
+
+        # --- SAFE DISPLAY MONITORING ---
+        if sys.platform == "win32":
+            from ctypes import windll
+            # Get screen width directly from Windows API (SM_CXSCREEN = 0)
+            self.last_screen_width = windll.user32.GetSystemMetrics(0)
+            # Start a safe check every 3 seconds
+            self.root.after(3000, self.periodic_display_check)
+
+        self.enable_single_instance_var = self._load_single_instance_state()
 
         self.root.configure(bg=COLOR_BG_MAIN)
         self.last_activity_time = time.time()
@@ -41,6 +58,7 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
         self.last_line_count = 0
         self.last_pause_state = False
         self.last_limit_state = False
+        self.last_wrap_state = False
 
         self.main_font_family = get_system_font()
         self.mono_font_family = get_mono_font()
@@ -50,11 +68,11 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
         self.log_file_path = ""
         self.paste_url = DEFAULT_PASTE_URL
         self.max_size_mb = DEFAULT_SECURITY_FILE_MAX_SIZE
-        self.skip_version = ""
         self.updates_enabled = True
+        self.skip_version = ""
         self.running = False
         self.monitor_thread = None
-        self.seen_lines = __import__('collections').deque(maxlen=200)
+        self.seen_lines = deque(maxlen=200)
         self.pending_jump_timestamp = None
         self.log_lock = threading.Lock()
 
@@ -62,14 +80,14 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
         self.wrap_mode = tk.BooleanVar(value=False)
         self.is_paused = tk.BooleanVar(value=False)
         self.current_lang = tk.StringVar(value=self.detect_os_language())
-        self.theme_mode = tk.StringVar(value="Dark")
+        self.theme_mode = tk.StringVar(value="Dark")  # Options: Auto, Light, Dark
 
         self.filter_vars = {
             "all": tk.BooleanVar(value=True),
             "debug": tk.BooleanVar(value=False),
             "info": tk.BooleanVar(value=False),
             "warning": tk.BooleanVar(value=False),
-            "error": tk.BooleanVar(value=False),
+            "error": tk.BooleanVar(value=False)
         }
 
         self.search_query = tk.StringVar()
@@ -82,17 +100,30 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
             "debug": LOG_COLORS["debug"],
             "info": LOG_COLORS["info"],
             "warning": LOG_COLORS["warning"],
-            "error": LOG_COLORS["error"],
+            "error": LOG_COLORS["error"]
         }
 
+        # --- Cursor visibility management ---
         self.cursor_timer = None
         self.cursor_visible = True
 
         self.setup_ui()
         self.load_session()
+
+        # --- NEW LOGIC: RESET GEOMETRY IF EMPTY ---
+        if not self.window_geometry or self.window_geometry.strip() == "":
+            screen_width = self.root.winfo_screenwidth()
+            if screen_width > 2560:
+                self.window_geometry = DEFAULT_GEOMETRY_4K
+            elif screen_width > 1280:
+                self.window_geometry = DEFAULT_GEOMETRY_FHD
+            else:
+                self.window_geometry = DEFAULT_GEOMETRY_HD
+
         self.check_for_updates()
 
         if self.log_file_path:
+            # We wait 200ms for the window to be ready before loading.
             self.root.after(200, lambda: self.start_monitoring(self.log_file_path, is_manual=False))
 
         self.root.geometry(self.window_geometry)
@@ -183,8 +214,9 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
 
         # --- FILTER CHANGE ---
         for key, var in self.filter_vars.items():
-            if key != "all":
+            if key != "all":  # We don't automate "all"; we manage it manually in on_filter_toggle.
                 var.trace_add("write", self.trigger_refresh)
+
         self.search_query.trace_add("write", self.on_search_change)
         self.selected_list.trace_add("write", self.on_list_change)
 
@@ -196,6 +228,19 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
             self.root.after(100, self.on_theme_change)
 
         self.update_button_colors()
+        self.root.bind("<FocusIn>", lambda e: self.sync_config_on_focus())
+
+    def _load_single_instance_state(self):
+        """Pré-charge l'état 'single instance' du fichier config."""
+        if os.path.exists(CONFIG_FILE):
+            try:
+                with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                    lines = [line.split('#')[0].strip() for line in f.readlines()]
+                    if len(lines) >= 17 and lines[16] in ["0", "1"]:
+                        return lines[16] == "1"
+            except Exception:
+                pass
+        return config.ENABLE_SINGLE_INSTANCE
 
     def on_closing(self):
         self.running = False
