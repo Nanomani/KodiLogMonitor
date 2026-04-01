@@ -164,10 +164,10 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
         self.root.bind("<space>", self.toggle_pause_from_keyboard)
         self.txt_area.bind("<space>", self.toggle_pause_from_keyboard)
 
-        self.root.bind("<Control-l>", self.toggle_wrap_from_keyboard)
-        self.root.bind("<Control-L>", self.toggle_wrap_from_keyboard)
-        self.txt_area.bind("<Control-l>", self.toggle_wrap_from_keyboard)
-        self.txt_area.bind("<Control-L>", self.toggle_wrap_from_keyboard)
+        self.root.bind("<Control-l>", self.toggle_line_break_from_keyboard)
+        self.root.bind("<Control-L>", self.toggle_line_break_from_keyboard)
+        self.txt_area.bind("<Control-l>", self.toggle_line_break_from_keyboard)
+        self.txt_area.bind("<Control-L>", self.toggle_line_break_from_keyboard)
 
         self.root.bind("<Control-t>", self.toggle_limit_from_keyboard)
         self.root.bind("<Control-T>", self.toggle_limit_from_keyboard)

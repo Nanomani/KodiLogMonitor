@@ -563,7 +563,7 @@ class UIBuilderMixin:
             text="↩",
             variable=self.wrap_mode,
             selectcolor=COLOR_ACCENT,
-            command=self.apply_wrap_mode,
+            command=self.toggle_line_break,
             **opt_btn_style
         )
         self.cde_wrap.pack(side=tk.LEFT, padx=self.sc(10))

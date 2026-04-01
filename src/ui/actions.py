@@ -529,17 +529,20 @@ class ActionsMixin:
         self.txt_area.delete("1.0", tk.END)
         self.update_stats()
 
-    def apply_wrap_mode(self):
+    def toggle_line_break(self, *args):
+        """Sets the wrap mode and refreshes only if 'All' filter is active."""
+        # 1. Update the Text widget wrap mode
         new_mode = tk.WORD if self.wrap_mode.get() else tk.NONE
         self.txt_area.config(wrap=new_mode)
 
-        if not self.check_log_loaded():
+        # 2. Basic safety checks
+        if not self.check_log_loaded() or not self.check_log_available():
             return
 
-        if not self.check_log_available():
-            return
-
-        self.trigger_refresh()
+        # 3. Refresh display ONLY if the 'all' filter is active
+        # This prevents unnecessary re-insertions when viewing filtered logs
+        if self.filter_vars.get("all") and self.filter_vars["all"].get():
+            self.refresh_natural_order()
 
     def toggle_full_load(self):
         """
@@ -767,10 +770,10 @@ class ActionsMixin:
         self.on_filter_toggle("debug")
         return "break"
 
-    def toggle_wrap_from_keyboard(self, event=None):
+    def toggle_line_break_from_keyboard(self, event=None):
         """Toggles line break mode unless writing in search."""
         self.wrap_mode.set(not self.wrap_mode.get())
-        self.apply_wrap_mode()
+        self.toggle_line_break()
         return "break"
 
     def toggle_pause_from_keyboard(self, event=None):
