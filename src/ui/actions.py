@@ -1573,14 +1573,17 @@ class ActionsMixin:
         clean_text = raw_text.splitlines()[0] if raw_text.splitlines() else ""
 
         # 2. Limit the total length (e.g., 100 characters max)
-        # This prevents UI lag and memory issues with massive pastes
         max_length = 100
         if len(clean_text) > max_length:
             clean_text = clean_text[:max_length]
 
-        # 3. Remove non-printable characters or excessive whitespace
-        # This cleans up tab characters and other hidden control codes
-        clean_text = re.sub(r'\s+', ' ', clean_text).strip()
+        # 3. Clean whitespace but allow a single trailing space for active typing
+        # Replace tabs or multiple consecutive spaces with a single space
+        clean_text = re.sub(r'[ \t]+', ' ', clean_text)
+
+        # By removing .strip(), we allow the user to type a space at the end of a word.
+        # clean_text = clean_text.lstrip().strip()
+        clean_text = clean_text.lstrip()
 
         # 4. Update the variable only if it has changed to avoid infinite recursion
         if raw_text != clean_text:
