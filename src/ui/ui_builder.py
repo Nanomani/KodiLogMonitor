@@ -228,7 +228,7 @@ class UIBuilderMixin:
             h_left,
             bg=COLOR_SEPARATOR,
             width=2
-        ).pack(side=tk.LEFT, fill=tk.Y, padx=self.sc(20), pady=5)
+        ).pack(side=tk.LEFT, fill=tk.Y, padx=self.sc(20), pady=3)
 
         # --- buttons summary ---
         self.btn_sum = self.create_custom_button(h_left, l_ui["sum"], self.show_summary)
@@ -245,7 +245,7 @@ class UIBuilderMixin:
             h_left,
             bg=COLOR_SEPARATOR,
             width=2
-        ).pack(side=tk.LEFT, fill=tk.Y, padx=self.sc(20), pady=5)
+        ).pack(side=tk.LEFT, fill=tk.Y, padx=self.sc(20), pady=3)
 
         self.filter_frame = tk.Frame(h_left, bg=COLOR_BG_HEADER)
         self.filter_frame.pack(side=tk.LEFT, padx=5)
@@ -348,7 +348,7 @@ class UIBuilderMixin:
             h_right,
             bg=COLOR_SEPARATOR,
             width=2
-        ).pack(side=tk.LEFT, fill=tk.Y, padx=self.sc(15), pady=5)
+        ).pack(side=tk.LEFT, fill=tk.Y, padx=self.sc(15), pady=3)
 
         # --- Single Instance Toggle Button ---
         initial_icon = "🔒" if self.enable_single_instance_var else "🔓"
@@ -370,7 +370,7 @@ class UIBuilderMixin:
             h_right,
             bg=COLOR_SEPARATOR,
             width=2
-        ).pack(side=tk.LEFT, fill=tk.Y, padx=self.sc(15), pady=5)
+        ).pack(side=tk.LEFT, fill=tk.Y, padx=self.sc(15), pady=3)
 
         # --- Button Help ---
         self.btn_help = self.create_custom_button(
@@ -440,7 +440,7 @@ class UIBuilderMixin:
             sh_left,
             bg=COLOR_SEPARATOR,
             width=2
-        ).pack(side=tk.LEFT, fill=tk.Y, padx=self.sc(20), pady=5)
+        ).pack(side=tk.LEFT, fill=tk.Y, padx=self.sc(20), pady=3)
 
         # --- Search Box Section ---
         search_box = tk.Frame(sh_left, bg=COLOR_BG_MAIN, padx=8)
@@ -462,7 +462,7 @@ class UIBuilderMixin:
             bg=COLOR_BG_MAIN,
             fg=COLOR_TEXT_BRIGHT,
             borderwidth=0,
-            width=22,
+            width=36,
             insertbackground=COLOR_TEXT_BRIGHT,
             font=(self.main_font_family, 9),
             relief="flat",
@@ -470,20 +470,33 @@ class UIBuilderMixin:
             highlightbackground=COLOR_BG_MAIN,
             highlightcolor=COLOR_BG_MAIN
         )
-        self.search_entry.pack(side=tk.LEFT, padx=5, pady=4)
-
+        self.search_entry.pack(side=tk.LEFT, padx=5, pady=6)
+        self.search_entry.bind("<Escape>", self.reset_search_and_focus_log)
         self.search_entry.bind("<Button-3>", self.show_search_context_menu)
+
+        # This prevents the "accordion" effect
+        clear_container = tk.Frame(search_box, bg=COLOR_BG_MAIN, width=20, height=20)
+        clear_container.pack(side=tk.LEFT)
+        clear_container.pack_propagate(False)
 
         # Clear search button (X)
         self.btn_clear_search = tk.Label(
-            search_box,
+            clear_container,
             text="×",
             bg=COLOR_BG_MAIN,
             fg=COLOR_TEXT_DIM,
             font=(self.main_font_family, 11, "bold"),
             cursor="hand2"
         )
-        self.btn_clear_search.pack(side=tk.LEFT)
+        self.btn_clear_search.bind("<Enter>", lambda e: self.btn_clear_search.config(fg=COLOR_TEXT_BRIGHT))
+        self.btn_clear_search.bind("<Leave>", lambda e: self.btn_clear_search.config(fg=COLOR_TEXT_DIM))
+
+        # Initially hidden if the search is empty
+        if not self.search_query.get():
+            self.btn_clear_search.pack_forget()
+        else:
+            self.btn_clear_search.pack(expand=True)
+
         self.btn_clear_search.bind(
             "<Button-1>",
             lambda event: self.clear_search()
@@ -496,13 +509,13 @@ class UIBuilderMixin:
             sh_left,
             bg=COLOR_SEPARATOR,
             width=2
-        ).pack(side=tk.LEFT, fill=tk.Y, padx=self.sc(20), pady=5)
+        ).pack(side=tk.LEFT, fill=tk.Y, padx=self.sc(20), pady=3)
 
         # --- Options Box & Style ---
         opt_box = tk.Frame(sh_left, bg=COLOR_BG_HEADER)
         opt_box.pack(side=tk.LEFT)
 
-        # Common style for option buttons (Checkbuttons used as toggles)
+        # Common style for option buttons
         opt_btn_style = {
             "indicatoron": 0,
             "bg": COLOR_BTN_DEFAULT,
@@ -531,12 +544,12 @@ class UIBuilderMixin:
                 lambda event: widget.config(bg=COLOR_BTN_DEFAULT)
             )
 
-        # --- Infinity (Full Load) Toggle ---
+        # --- Full Load Toggle ---
         self.cde_limit = tk.Checkbutton(
             opt_box,
             text="♾",
             variable=self.load_full_file,
-            selectcolor=COLOR_WARNING,
+            selectcolor=LOG_COLORS["warning"],
             command=self.toggle_full_load,
             **opt_btn_style
         )
@@ -575,7 +588,7 @@ class UIBuilderMixin:
             opt_box,
             bg=COLOR_SEPARATOR,
             width=2
-        ).pack(side=tk.LEFT, fill=tk.Y, padx=self.sc(20), pady=5)
+        ).pack(side=tk.LEFT, fill=tk.Y, padx=self.sc(20), pady=3)
 
         # Preparation of the translated text
         reset_label = l_ui.get('btn_reset', 'RESET')
@@ -657,7 +670,7 @@ class UIBuilderMixin:
             highlightthickness=0,
             padx=5, pady=5,
             undo=False,
-            selectforeground="#ffffff",
+            selectforeground=COLOR_TEXT_MAIN,
             insertwidth=4,
             insertontime=600,
             insertofftime=300,
@@ -814,8 +827,8 @@ class UIBuilderMixin:
         # Creation of the circle
         self.status_circle = self.status_indicator.create_oval(
             2, 2, self.sc(28), self.sc(28),
-            fill=COLOR_SEPARATOR,
-            outline="#c4c4c4",
+            fill=COLOR_INDICATOR_OFF,
+            outline=COLOR_INDICATOR_BORDER,
             width=1
         )
 
@@ -849,8 +862,8 @@ class UIBuilderMixin:
         self.stats_var = tk.StringVar()
         self.size_var = tk.StringVar()
         self.limit_var = tk.StringVar()
-        self.paused_var = tk.StringVar()
         self.wrap_var = tk.StringVar()
+        self.paused_var = tk.StringVar()
 
         # Shared label style to reduce repetition
         footer_style = {
@@ -860,10 +873,16 @@ class UIBuilderMixin:
         }
 
         # 3. The file path (📍)
-        tk.Label(
-            footer, textvariable=self.footer_var,
-            fg=COLOR_TEXT_MAIN, **footer_style
-        ).pack(side=tk.LEFT)
+        self.lbl_path = tk.Label(
+            footer,
+            text="", # Will be updated via update_footer_path()
+            fg=COLOR_TEXT_MAIN,
+            **footer_style
+        )
+        self.lbl_path.pack(side=tk.LEFT, padx=(5, 10))
+
+        # Create the tooltip for the full path
+        self.path_tooltip = ToolTip(self.lbl_path, "")
 
         # --- Addition of the separator ---
         self.sep_lines = tk.Frame(footer, bg=COLOR_SEPARATOR, width=2)
@@ -883,34 +902,33 @@ class UIBuilderMixin:
             fg=COLOR_TEXT_MAIN, **footer_style
         )
 
-        # --- Addition of the separators and labels ---
+        # --- Addition of the separator ---
         self.sep_limit = tk.Frame(footer, bg=COLOR_SEPARATOR, width=2)
 
-        # 6. Lines limited to 1000 (⚠️)
+        # 6. Lines limited to 1000 (ℹ️)
         self.label_limit = tk.Label(
             footer,
             textvariable=self.limit_var,
             fg=COLOR_WARNING,
             **footer_style
         )
-
         self.sep_pause = tk.Frame(footer, bg=COLOR_SEPARATOR, width=2)
 
-        # 7. Paused (⏸️)
-        self.label_pause = tk.Label(
+        # 7. Word Wrap Status (↩)
+        self.label_wrap = tk.Label(
             footer,
-            textvariable=self.paused_var,
-            fg=COLOR_DANGER,
+            textvariable=self.wrap_var,
+            fg=COLOR_TEXT_WRAP,
             **footer_style
         )
 
         self.sep_wrap = tk.Frame(footer, bg=COLOR_SEPARATOR, width=2)
 
-        # 8. Word Wrap Status
-        self.label_wrap = tk.Label(
+        # 8. Paused (⏸️)
+        self.label_pause = tk.Label(
             footer,
-            textvariable=self.wrap_var,
-            fg=COLOR_ACCENT,
+            textvariable=self.paused_var,
+            fg=COLOR_DANGER,
             **footer_style
         )
 
@@ -956,6 +974,29 @@ class UIBuilderMixin:
         else:
             self.timer_sep.pack_forget()
 
+    def update_footer_path(self, full_path):
+        """
+        Updates the footer label with a shortened path and
+        sets the full path in the tooltip.
+        """
+        if not full_path:
+            self.lbl_path.config(text="")
+            self.path_tooltip.text = ""
+            return
+
+        # 1. Set the full path in the tooltip
+        self.path_tooltip.text = full_path
+
+        # 2. Shorten path if it's too long (e.g., max 50 characters)
+        max_chars = 55
+        if len(full_path) > max_chars:
+            # We keep the beginning (C:\...) and the end (...kodi.log)
+            # Result example: C:\Users\...\kodi.log
+            short_path = full_path[:20] + "..." + full_path[-32:]
+        else:
+            short_path = full_path
+
+        self.lbl_path.config(text=f"📍 {short_path}")
 
 class ToolTip:
     def __init__(self, widget, text, scale=1.0):

@@ -17,7 +17,8 @@ KEYWORD_DIR = "keyword_list"
 GITHUB_URL = "https://github.com/Nanomani/KodiLogMonitor?tab=readme-ov-file#-kodi-log-monitor"
 GITHUB_API_URL = "https://api.github.com/repos/Nanomani/KodiLogMonitor/releases/latest"
 DEFAULT_PASTE_URL = "https://paste.kodi.tv/"
-DEFAULT_SECURITY_FILE_MAX_SIZE = 10
+DEFAULT_SECURITY_FILE_MAX_SIZE_STARTUP = 10
+DEFAULT_SECURITY_FILE_MAX_SIZE_BUTTON = 20
 DEFAULT_TIME_INACTIVITY = 300
 SINGLE_INSTANCE_HOST = "127.0.0.1"
 SINGLE_INSTANCE_PORT = 65432
@@ -35,23 +36,26 @@ COLOR_ACCENT = "#4a86ad"  # Blue accent color (active filters, primary highlight
 COLOR_DANGER = "#d32f2f"  # Red color for Pause and critical actions
 COLOR_WARNING = "#FF9800"  # Orange color for Reset and warnings
 COLOR_SEPARATOR = "#555555"  # Vertical line color between button groups
-COLOR_TEXT_MAIN = "#d4d4d4"  # Primary text color (log text)
-COLOR_TEXT_DIM = "#888888"  # Dimmed text color for icons/placeholders
 COLOR_TEXT_BRIGHT = "#ffffff"  # Bright white text for buttons and headers
+COLOR_TEXT_MAIN = "#d4d4d4"  # Primary text color (log text, footer text)
+COLOR_TEXT_DIM = "#888888"  # Dimmed text color for icons/placeholders
 COLOR_TEXT_GREY = "#9e9e9e"  # Grey text for label footer app + version
 COLOR_TEXT_TIPS = "#ffffff"  # Bright white text for Tips
+COLOR_TEXT_WRAP = "#6aa3c7"  # Blue text for Wrap info
 COLOR_BTN_SECONDARY = "#454545"  # Slightly different grey for secondary small buttons
+COLOR_INDICATOR_OFF = "#555555"  # Border circle indicator activity
+COLOR_INDICATOR_BORDER = "#c4c4c4"  # Grey indicator activity off
 
 # --- COLORS FOR THE CUSTOM SCROLLBAR ---
 SCROLL_THUMB_DEFAULT = "#5a5a5a"  # Lighter gray for the cursor
 SCROLL_THUMB_HOVER = "#d4d4d4"  # Light gray when hovering
 
 LOG_COLORS = {
-    "debug": "#9e9e9e",  # Grey for debug messages
-    "info": "#4CAF50",  # Green for info messages
-    "warning": "#e68a00",  # Orange for warnings
-    "error": "#d32f2f",  # Red for errors
-    "summary": "#52d1dc",  # Cyan for the system summary block
+    "info": "#4CAF50",  # Green for info messages + button filter
+    "warning": "#e68a00",  # Orange for warnings messages + button filter
+    "error": "#d32f2f",  # Red for errors messages + button filter
+    "debug": "#9e9e9e",  # Grey for debug messages + button filter
+    "summary": "#6aa3c7",  # Cyan for the system summary block
     "highlight_bg": "#FFF59D",  # Yellow background for search highlights
     "highlight_fg": "#000000"  # Black text for search highlights
 }

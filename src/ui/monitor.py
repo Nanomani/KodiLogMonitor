@@ -13,16 +13,18 @@ class MonitorMixin:
     def monitor_loop(self):
         """Monitors the log file in a background thread and updates the UI."""
         try:
-            # --- CAPTURE UI VALUES SAFELY ---
+            # --- CAPTURE UI VALUES SAFELY AT START ---
             if not self.running:
                 return
 
             try:
-                # Always capture Tkinter variables at the very beginning
+                # Capture Tkinter variables once to avoid crashes during loop
                 load_full = self.load_full_file.get()
                 current_lang_code = self.current_lang.get()
+                # Capture the language dictionary for this thread session
+                l_ui = LANGS.get(current_lang_code, LANGS["EN"])
             except (tk.TclError, RuntimeError):
-                # If the UI is already destroyed, exit the thread immediately
+                # If UI is destroyed or inaccessible, exit thread
                 return
 
             # Initial opening of the file
@@ -71,20 +73,25 @@ class MonitorMixin:
                         # 1. Check if the file still exists/is accessible
                         current_size = os.path.getsize(self.log_file_path)
 
-                        # 2. Recovery: If file was inaccessible, clear the error state
+                        # 2. Recovery: If file WAS inaccessible, reconnect!
                         if self.is_file_inaccessible:
+                            try:
+                                f.close()
+                            except:
+                                pass
+
+                            f = open(self.log_file_path, 'r', encoding='utf-8', errors='ignore')
+                            f.seek(last_pos)
+
                             self.is_file_inaccessible = False
                             if self.running:
                                 self.root.after(0, self.inactivity_timer_var.set, "")
                                 final_color = COLOR_WARNING if not load_full else LOG_COLORS["info"]
                                 self.root.after(0, self.update_status_color, final_color)
 
-                        l_ui = LANGS.get(current_lang_code, LANGS["EN"])
-
                         # 3. Detect Log Rotations (Kodi restarts)
                         if current_size < last_pos:
                             if self.running:
-                                # Restart monitoring from scratch
                                 self.root.after(0, self.start_monitoring, self.log_file_path, False, False)
                             return
 
@@ -98,21 +105,20 @@ class MonitorMixin:
                                         try:
                                             self.root.after(0, self.update_status_color, COLOR_DANGER)
                                             mins, secs = divmod(int(elapsed), 60)
-                                            timer_str = f"{l_ui['inactive']} : {mins:02d}:{secs:02d}"
+                                            # SAFE: Use local l_ui instead of self.current_lang.get()
+                                            timer_str = f"{l_ui.get('inactive', 'Inactive')} : {mins:02d}:{secs:02d}"
                                             self.root.after(0, self.inactivity_timer_var.set, timer_str)
                                         except: pass
                                 else:
                                     if self.running:
                                         try:
-                                            # SAFETY: Do not use self.inactivity_timer_var.get() here!
-                                            # It's better to just clear it or skip the check to avoid the crash
-                                            self.root.after(0, self.update_status_color, "#666666")
+                                            self.root.after(0, self.update_status_color, COLOR_INDICATOR_OFF)
                                             self.root.after(0, self.inactivity_timer_var.set, "")
                                         except: pass
                             else:
                                 if self.running:
                                     try:
-                                        self.root.after(0, self.update_status_color, "#666666")
+                                        self.root.after(0, self.update_status_color, COLOR_INDICATOR_OFF)
                                         self.root.after(0, self.inactivity_timer_var.set, "")
                                         self.root.after(0, self.update_stats)
                                     except: pass
@@ -123,9 +129,21 @@ class MonitorMixin:
                         # 5. Data Received: Update activity and UI status
                         self.last_activity_time = time.time()
                         if self.running:
+                            self.is_file_inaccessible = False
                             final_color = COLOR_WARNING if not load_full else LOG_COLORS["info"]
                             self.root.after(0, self.update_status_color, final_color)
                             self.root.after(0, self.inactivity_timer_var.set, "")
+
+                            # Trigger a full UI refresh
+                            # self.root.after(0, self.reset_all_filters)
+                            # print(f"[DEBUG] File recovered, triggering full reset...")
+                            # self.root.after(0, lambda: self.start_monitoring(self.log_file_path, is_manual=False))
+
+                            # cleanup the message LOG UNAVAILABLE
+                            # self.root.after(0, lambda: self.txt_area.config(state=tk.NORMAL))
+                            # self.root.after(0, lambda: self.txt_area.delete('1.0', tk.END))
+                            # self.root.after(0, lambda: self.txt_area.config(state=tk.DISABLED))
+                            # continue
 
                         # 6. Process line and append to GUI
                         last_pos = f.tell()
@@ -137,15 +155,15 @@ class MonitorMixin:
                         # File becomes locked or deleted temporarily
                         if not self.is_file_inaccessible and self.running:
                             self.is_file_inaccessible = True
-                            l_ui = LANGS.get(current_lang_code, LANGS["EN"])
+                            # SAFE: Use local l_ui instead of self.current_lang.get()
                             msg = l_ui.get("file_error", "⚠️ LOG INACCESSIBLE!")
                             self.root.after(0, self.inactivity_timer_var.set, msg)
                             self.root.after(0, self.update_status_color, COLOR_DANGER)
+
                         time.sleep(2)
                         continue
 
                     except (tk.TclError, RuntimeError):
-                        # Stop thread if UI is gone
                         break
 
         except Exception as e:
@@ -171,6 +189,12 @@ class MonitorMixin:
         self.running = True
         self.seen_lines.clear()
         self.log_file_path = path
+
+        # Update the footer with safety truncation and tooltip
+        if hasattr(self, 'update_footer_path'):
+            self.update_footer_path(path)
+
+        self.is_file_inaccessible = False
 
         # --- 10 MB SECURITY BLOCK ---
         try:
@@ -265,13 +289,13 @@ class MonitorMixin:
 
         l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
 
-        # showinfo crée une fenêtre avec un seul bouton OK centré.
+        # showinfo creates a window with a single OK button centered in the window.
         messagebox.showinfo(
             l_ui.get("shutdown_confirm_title", "Display Settings Changed"),
             l_ui.get("shutdown_confirm_msg", "Display settings changed. The app will now close to recalculate geometry.")
         )
 
-        # Dès que l'utilisateur clique sur OK ou ferme la boîte :
+        # As soon as the user clicks OK or closes the dialog box:
         self._showing_dpi_msg = False
         self.shutdown_with_reset()
 
@@ -279,12 +303,12 @@ class MonitorMixin:
         """
         Réinitialise la géométrie dans la configuration et ferme proprement.
         """
-        # On vide la géométrie pour forcer la redétection au prochain lancement
+        # Clear the geometry to force a re-detection on the next launch
         self.window_geometry = ""
 
         if hasattr(self, 'save_session'):
             self.save_session()
 
-        # Arrêt complet du processus
+        # Complete shutdown of the process
         self.root.quit()
         sys.exit(0)

@@ -31,6 +31,9 @@ class ActionsMixin:
         if not self.check_log_loaded():
             return
 
+        if not self.check_log_available():
+            return
+
         save_path = filedialog.asksaveasfilename(
             defaultextension=".txt",
             initialfile=EXPORT_FILE
@@ -49,6 +52,9 @@ class ActionsMixin:
         l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
 
         if not self.check_log_loaded():
+            return
+
+        if not self.check_log_available():
             return
 
         try:
@@ -77,6 +83,9 @@ class ActionsMixin:
     def show_summary(self):
         """Displays the system summary and pauses the log to stop it from scrolling."""
         if not self.check_log_loaded():
+            return
+
+        if not self.check_log_available():
             return
 
         if not self.log_file_path or not os.path.exists(self.log_file_path):
@@ -279,7 +288,7 @@ class ActionsMixin:
             try:
                 from ctypes import windll, byref, sizeof, c_int
                 hwnd = windll.user32.GetParent(help_win.winfo_id())
-                is_dark = 1 if COLOR_BG_MAIN.lower() == "#1e1e1e" else 0
+                is_dark = 1 if COLOR_BG_MAIN.lower() == COLOR_BG_MAIN else 0
                 windll.dwmapi.DwmSetWindowAttribute(hwnd, 20, byref(c_int(is_dark)), sizeof(c_int(is_dark)))
                 color = 0x2d2d2d if is_dark else 0xFFFFFF
                 windll.dwmapi.DwmSetWindowAttribute(hwnd, 34, byref(c_int(color)), sizeof(c_int(color)))
@@ -475,9 +484,42 @@ class ActionsMixin:
             return False
         return True
 
+    def check_log_available(self):
+        """
+        Checks if the file is physically accessible.
+        If it returns to normal, clears the error messages.
+        """
+        l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
+        err_msg = l_ui.get('file_error', '⚠️ LOG INACCESSIBLE')
+
+        if self.log_file_path:
+            if not os.path.exists(self.log_file_path):
+                # --- ERROR CASE ---
+                self.txt_area.config(state=tk.NORMAL)
+                self.txt_area.delete('1.0', tk.END)
+                self.txt_area.tag_configure("file_err_text", foreground=LOG_COLORS["error"], font=(self.mono_font_family, self.font_size, "bold"))
+                self.txt_area.insert(tk.END, "\n\n\n\n\t\t\t")
+                self.txt_area.insert(tk.END, err_msg, "file_err_text")
+                self.txt_area.config(state=tk.DISABLED)
+
+                self.inactivity_timer_var.set(err_msg)
+                self.update_status_color(COLOR_DANGER)
+                return False
+            else:
+                # --- RETURN TO NORMAL CASE ---
+                # If the current footer message is the error, clear it
+                if self.inactivity_timer_var.get() == err_msg:
+                    self.inactivity_timer_var.set("")
+                    self.update_status_color(COLOR_ACCENT)
+
+        return True
+
     def on_list_change(self, *args):
         """Triggered when the selection in the keyword list changes."""
         if not self.check_log_loaded():
+            return
+
+        if not self.check_log_available():
             return
 
         self.trigger_refresh()
@@ -490,26 +532,72 @@ class ActionsMixin:
     def apply_wrap_mode(self):
         new_mode = tk.WORD if self.wrap_mode.get() else tk.NONE
         self.txt_area.config(wrap=new_mode)
+
         if not self.check_log_loaded():
             return
+
+        if not self.check_log_available():
+            return
+
         self.trigger_refresh()
 
     def toggle_full_load(self):
         """
         Toggles between loading the full log file and loading only the last 1000 lines.
-        Triggers a refresh of the monitoring process to apply the new limit setting.
         """
         if not self.check_log_loaded():
             return
 
+        if not self.check_log_available():
+            return
+
+        # Check if the user is attempting to ENABLE the unlimited mode.
+        if self.load_full_file.get():
+            if self.log_file_path and os.path.exists(self.log_file_path):
+                file_size_mb = os.path.getsize(self.log_file_path) / (1024 * 1024)
+
+                if file_size_mb > DEFAULT_SECURITY_FILE_MAX_SIZE_BUTTON:
+                    l = LANGS.get(self.current_lang.get(), LANGS["EN"])
+                    title = l.get("perf_confirm_title", "Performance Warning")
+                    default_msg = "This file is larger than 20 MB ({:.1f} MB).\nLoading it may cause performance issues.\n\nDo you want to proceed?"
+                    msg = l.get("perf_confirm_msg", default_msg).format(file_size_mb)
+
+                    from tkinter import messagebox
+                    if not messagebox.askyesno(title, msg):
+                        self.load_full_file.set(False)
+                        return
+
+        # --- STEP 1: FORCE IMMEDIATE UI UPDATE BEFORE LOADING ---
+        # Get translations
+        l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
+
+        # Determine the text to display
+        if self.load_full_file.get():
+            new_text = l_ui.get("unlimited", "⚠️ Unlimited")
+        else:
+            new_text = l_ui.get("limit", "ℹ️ 1000 lines max")
+
+        # Apply the text to the label immediately
+        if hasattr(self, 'label_limit'):
+            self.label_limit.config(text=new_text)
+
+        # CRITICAL: Tell Tkinter to redraw the screen NOW, before starting the file load
+        self.root.update_idletasks()
+
+        # --- STEP 2: START MONITORING (This part can take time) ---
         if self.log_file_path:
             # We pass is_manual=True to allow full loading.
             self.start_monitoring(self.log_file_path, is_manual=True)
+
         self.save_session()
 
     def toggle_pause_scroll(self):
         if not self.check_log_loaded():
             return
+
+        if not self.check_log_available():
+            return
+
         if not self.is_paused.get() and self.log_file_path:
             self.txt_area.see(tk.END)
         self.update_stats()
@@ -606,6 +694,9 @@ class ActionsMixin:
     def select_all_filter_from_keyboard(self, event=None):
         """Simulates clicking the ALL filter button using the keyboard"""
         if not self.check_log_loaded():
+            return
+
+        if not self.check_log_available():
             return
 
         current_focus = self.root.focus_get()
@@ -834,6 +925,9 @@ class ActionsMixin:
         if not self.check_log_loaded():
             return
 
+        if not self.check_log_available():
+            return
+
         selection = self.selected_list.get()
         # The language dictionary is retrieved only once for clarity.
         l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
@@ -968,6 +1062,11 @@ class ActionsMixin:
         # Button folder keyword list
         if hasattr(self, "btn_kw_folder_tooltip") and self.btn_kw_folder_tooltip:
             self.btn_kw_folder_tooltip.text = l["tip_kw_folder"]
+
+        # Message file is currently marked as inaccessible
+        if getattr(self, "is_file_inaccessible", False):
+            msg = l.get("file_error", "⚠️ LOG INACCESSIBLE!")
+            self.inactivity_timer_var.set(msg)
 
         # GitHub Tooltip Update
         if hasattr(self, "github_tooltip") and self.github_tooltip:
@@ -1122,17 +1221,52 @@ class ActionsMixin:
             self.overlay.place_forget()
 
     def on_search_change(self, *args):
+        """
+        Triggered on every keystroke in the search field.
+        Cleans the input and refreshes the display.
+        """
         if not self.check_log_loaded():
             return
-        if self.search_query.get():
-            self.btn_clear_search.pack(side=tk.LEFT, padx=(0, 2))
+
+        if not self.check_log_available():
+            return
+
+        # 1. Force the security cleanup (one line, max length, etc.)
+        # This ensures self.search_query.get() returns clean data immediately
+        self.clean_search_input()
+
+        # 2. Get the cleaned query
+        query = self.search_query.get()
+
+        # 3. Update 'X' button visibility inside the fixed container
+        # We use pack() inside the container; the container itself never moves.
+        if query:
+            self.btn_clear_search.pack(expand=True)
         else:
             self.btn_clear_search.pack_forget()
+
+        # 4. Trigger the actual search/refresh
         self.trigger_refresh()
 
     def clear_search(self):
         self.search_query.set("")
         self.search_entry.focus()
+
+    def reset_search_and_focus_log(self, event=None):
+            """
+            Clears the search field and returns focus to the log area.
+            Triggered by the ESC key.
+            """
+            # 1. Clear the search (reuse your existing clear_search logic)
+            self.clear_search()
+
+            # 2. Focus the log text area
+            if hasattr(self, 'txt_area'):
+                self.txt_area.focus_set()
+
+            # 3. Return 'break' to prevent the event from propagating
+            # (avoiding potential conflicts with other ESC shortcuts)
+            return "break"
 
     def copy_selection(self):
         try:
@@ -1393,3 +1527,60 @@ class ActionsMixin:
     def sc(self, value):
         """Calculates the scaled value."""
         return int(value * self.scale)
+
+    def immediate_ui_refresh(self):
+        # Quick function to sync label with toggle state
+        l = LANGS.get(self.current_lang.get(), LANGS["EN"])
+        txt = l["unlimited"] if self.load_full_file.get() else l["limit"]
+        self.label_limit.config(text=txt) # or self.limit_var.set(txt)
+
+    def copy_to_clipboard(self, event=None):
+            """
+            Copies the currently selected text from the log area to the system clipboard.
+            """
+            try:
+                # 1. Try to get the selected text from the text widget
+                # tk.SEL_FIRST and tk.SEL_LAST represent the start and end of the selection
+                selected_text = self.txt_area.get(tk.SEL_FIRST, tk.SEL_LAST)
+
+                if selected_text:
+                    # 2. Clear the clipboard and append the new text
+                    self.root.clipboard_clear()
+                    self.root.clipboard_append(selected_text)
+                    # This ensures the text stays in the clipboard even after the app closes on some OS
+                    self.root.update()
+            except tk.TclError:
+                # Error occurs if no text is selected; we simply ignore it
+                pass
+
+            # 3. Return "break" to prevent the default Tkinter event from firing
+            return "break"
+
+    def clean_search_input(self, *args):
+        """
+        Sanitizes the search input: prevents multi-line,
+        limits length, and removes suspicious characters.
+        """
+        raw_text = self.search_query.get()
+
+        if not raw_text:
+            return
+
+        # 1. Keep only the first line (remove everything after the first \n or \r)
+        clean_text = raw_text.splitlines()[0] if raw_text.splitlines() else ""
+
+        # 2. Limit the total length (e.g., 100 characters max)
+        # This prevents UI lag and memory issues with massive pastes
+        max_length = 100
+        if len(clean_text) > max_length:
+            clean_text = clean_text[:max_length]
+
+        # 3. Remove non-printable characters or excessive whitespace
+        # This cleans up tab characters and other hidden control codes
+        clean_text = re.sub(r'\s+', ' ', clean_text).strip()
+
+        # 4. Update the variable only if it has changed to avoid infinite recursion
+        if raw_text != clean_text:
+            self.search_query.set(clean_text)
+            # Move cursor to the end since setting the var might reset it
+            self.search_entry.icursor(tk.END)

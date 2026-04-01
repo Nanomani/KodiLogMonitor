@@ -20,8 +20,9 @@ LANGS = {
         "btn_reset": "↻ Réinitialiser",
         "stats_simple": "📈 {} lignes",
         "file_size_text": "📁 {}",
-        "limit": "⚠️ Limité aux 1000 dernières lignes",
-        "file_error": "⚠️ LOG INACCESSIBLE !",
+        "limit": "ℹ️ 1000 lignes max",
+        "unlimited": "⚠️ Illimité",
+        "file_error": "⚠️ LOG INACCESSIBLE",
         "none": "Aucun",
         "paused": "⏸️ EN PAUSE",
         "line_break": "↩ Retour à la ligne",
@@ -64,6 +65,8 @@ LANGS = {
             "Un arrêt est recommandé pour garantir que l'interface s'affiche correctement.\n\n"
             "Cliquez sur Ok pour confirmer\n"
         ),
+        "perf_confirm_title": "Avertissement de Performance",
+        "perf_confirm_msg": "Ce fichier dépasse 20 Mo ({:.1f} Mo).\nLe charger entièrement risque de dégrader les performances ou figer l'application.\n\nVoulez-vous continuer ?",
         "tip_upd_dl": "Télécharger la mise à jour depuis Github",
         "tip_upd_sk": "Ignorer les notifications pour cette version",
         "tip_upd_di": "Désactiver définitivement les notifications",
@@ -130,7 +133,8 @@ LANGS = {
         "btn_reset": "↻ RESET",
         "stats_simple": "📈 {} lines",
         "file_size_text": "📁 {}",
-        "limit": "⚠️ Limited to last 1000 lines",
+        "limit": "ℹ️ 1000 lines max",
+        "unlimited": "⚠️ Unlimited",
         "file_error": "⚠️ LOG UNAVAILABLE",
         "none": "None",
         "paused": "⏸️ PAUSED",
@@ -174,6 +178,8 @@ LANGS = {
             "A shutdown is recommended to ensure the interface displays correctly.\n\n"
             "Click OK to confirm\n"
         ),
+        "perf_confirm_title": "Performance Warning",
+        "perf_confirm_msg": "This file is larger than 20 MB ({:.1f} MB).\nLoading it completely may cause performance issues or freezes.\n\nDo you want to proceed?",
         "tip_upd_dl": "Download the update from GitHub",
         "tip_upd_sk": "Ignore notifications for this version",
         "tip_upd_di": "Permanently disable notifications",
@@ -240,7 +246,8 @@ LANGS = {
         "btn_reset": "↻ Restablecer",
         "stats_simple": "📈 {} líneas",
         "file_size_text": "📁 {}",
-        "limit": "⚠️ Limitado a 1000 líneas",
+        "limit": "ℹ️ 1000 líneas máx.",
+        "unlimited": "⚠️ Ilimitado",
         "file_error": "⚠️ LOG NO DISPONIBLE",
         "none": "Ninguno",
         "paused": "⏸️ EN PAUSA",
@@ -284,6 +291,8 @@ LANGS = {
             "Se recomienda un cierre para garantizar que la interfaz se muestre correctamente.\n\n"
             "Haga clic en OK para confirmar\n"
         ),
+        "perf_confirm_title": "Advertencia de rendimiento",
+        "perf_confirm_msg": "Este archivo supera los 20 MB ({:.1f} MB).\nCargarlo por completo puede causar problemas de rendimiento o bloqueos.\n\n¿Desea continuar?",
         "tip_upd_dl": "Descargar la actualización desde GitHub",
         "tip_upd_sk": "Ignorar notificaciones para esta versión",
         "tip_upd_di": "Desactivar notificaciones permanentemente",
@@ -350,7 +359,8 @@ LANGS = {
         "btn_reset": "↻ Zurücksetzen",
         "stats_simple": "📈 {} Zeilen",
         "file_size_text": "📁 {}",
-        "limit": "⚠️ Auf die letzten 1000 zeilen begrenzt",
+        "limit": "ℹ️ Max. 1000 Zeilen",
+        "unlimited": "⚠️ Unbegrenzt",
         "file_error": "⚠️ LOG NICHT VERFÜGBAR",
         "none": "Keine",
         "paused": "⏸️ PAUSE",
@@ -394,6 +404,8 @@ LANGS = {
             "Ein Beenden wird empfohlen, um sicherzustellen, dass die Benutzeroberfläche korrekt angezeigt wird.\n\n"
             "Klicken Sie auf OK zum Bestätigen\n"
         ),
+        "perf_confirm_title": "Leistungswarnung",
+        "perf_confirm_msg": "Diese Datei ist größer als 20 MB ({:.1f} MB).\nDas vollständige Laden kann zu Leistungsproblemen oder zum Einfrieren der Anwendung führen.\n\nMöchten Sie fortfahren?",
         "tip_upd_dl": "Update von GitHub herunterladen",
         "tip_upd_sk": "Benachrichtigungen für diese Version ignorieren",
         "tip_upd_di": "Benachrichtigungen dauerhaft deaktivieren",
@@ -460,7 +472,8 @@ LANGS = {
         "btn_reset": "↻ Ripristina",
         "stats_simple": "📈 {} righe",
         "file_size_text": "📁 {}",
-        "limit": "⚠️ Limitato alle ultime 1000 righe",
+        "limit": "ℹ️ 1000 righe max",
+        "unlimited": "⚠️ Illimitato",
         "file_error": "⚠️ LOG NON DISPONIBILE",
         "none": "Nessuno",
         "paused": "⏸️ IN PAUSA",
@@ -504,6 +517,8 @@ LANGS = {
             "Si raccomanda la chiusura per garantire che l'interfaccia venga visualizzata correttamente.\n\n"
             "Clicca su OK per confermare\n"
         ),
+        "perf_confirm_title": "Avviso di prestazioni",
+        "perf_confirm_msg": "Questo file è più grande di 20 MB ({:.1f} MB).\nCaricarlo completamente potrebbe causare problemi di prestazioni o blocchi dell'applicazione.\n\nVuoi procedere?",
         "tip_upd_dl": "Scarica l'aggiornamento da GitHub",
         "tip_upd_sk": "Ignora le notifiche per questa versione",
         "tip_upd_di": "Disattiva le notifiche in modo permanente",

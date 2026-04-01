@@ -67,7 +67,7 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
         self.set_window_icon()
         self.log_file_path = ""
         self.paste_url = DEFAULT_PASTE_URL
-        self.max_size_mb = DEFAULT_SECURITY_FILE_MAX_SIZE
+        self.max_size_mb = DEFAULT_SECURITY_FILE_MAX_SIZE_STARTUP
         self.updates_enabled = True
         self.skip_version = ""
         self.running = False
@@ -212,13 +212,33 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
         self.txt_area.bind("<Up>", lambda e: self.txt_area.yview_scroll(-1, "units"))
         self.txt_area.bind("<Down>", lambda e: self.txt_area.yview_scroll(1, "units"))
 
+        # Bind Ctrl + Mouse Wheel to handle font resizing
+        # Windows and macOS
+        self.txt_area.bind("<Control-MouseWheel>", self.on_mouse_wheel_font_resize)
+        # Linux support (uses specific button numbers for scrolling)
+        self.txt_area.bind("<Control-Button-4>", self.on_mouse_wheel_font_resize)
+        self.txt_area.bind("<Control-Button-5>", self.on_mouse_wheel_font_resize)
+
+        # Copy selection to clipboard
+        self.root.bind("<Control-c>", self.copy_to_clipboard)
+        self.root.bind("<Control-C>", self.copy_to_clipboard)
+        self.txt_area.bind("<Control-c>", self.copy_to_clipboard)
+        self.txt_area.bind("<Control-C>", self.copy_to_clipboard)
+
+        # Bind the Escape key specifically to this entry field
+        self.search_entry.bind("<Escape>", self.reset_search_and_focus_log)
+
         # --- FILTER CHANGE ---
         for key, var in self.filter_vars.items():
             if key != "all":  # We don't automate "all"; we manage it manually in on_filter_toggle.
                 var.trace_add("write", self.trigger_refresh)
 
+        self.search_query.trace_add("write", self.clean_search_input)
         self.search_query.trace_add("write", self.on_search_change)
+
+        # Trace the search query to sanitize it BEFORE executing the search
         self.selected_list.trace_add("write", self.on_list_change)
+        self.load_full_file.trace_add("write", lambda *args: self.immediate_ui_refresh())
 
         self.root.after(5000, self.scheduled_stats_update)
 

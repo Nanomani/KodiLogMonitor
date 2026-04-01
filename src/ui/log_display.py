@@ -26,8 +26,8 @@ class LogDisplayMixin:
 
         # SKIP THE KODI STARTUP DASH LINE IF DESIRED
         if "info <general>: --------" in line:
-            # On peut décider de l'ignorer ou de la laisser
-            # Si vous voulez la supprimer : return None
+            # You can choose to ignore it or leave it as is
+            # If you want to remove it: return None
             return None
 
         low = line.lower()
@@ -96,13 +96,15 @@ class LogDisplayMixin:
             self.txt_area.insert(tk.END, "\n")
 
             # Horizontal separator line
-            self.txt_area.insert(tk.END, "\t\t\t" + "─" * 50 + "\n", "separator")
+            self.txt_area.insert(tk.END, "\t\t\t" + "─" * 65 + "\n", "separator")
 
-            # 1. Message types filter with STRICT ORDER and TRANSLATION
+            # Padding width for labels alignment
+            pad = 25
+
+            # 1. Message types filter
             if not self.filter_vars["all"].get():
-                # Define the display order: Info -> Warning -> Error -> Debug
                 display_order = [
-                    ("info", "info"),         # (internal_key, translation_key)
+                    ("info", "info"),
                     ("warning", "warn"),
                     ("error", "err"),
                     ("debug", "debug")
@@ -110,27 +112,29 @@ class LogDisplayMixin:
 
                 active_labels = []
                 for internal_key, trans_key in display_order:
-                    # Check if the filter is active in the UI
                     if self.filter_vars.get(internal_key) and self.filter_vars[internal_key].get():
-                        # Fetch the translation from languages.py
                         active_labels.append(l_ui.get(trans_key, trans_key))
 
                 if active_labels:
+                    label = f" - {l_ui.get('type_filter', 'Message type')}"
                     type_str = ", ".join(active_labels)
-                    self.txt_area.insert(tk.END, f"\t\t\t - {l_ui.get('type_filter', 'Message type')} : \"{type_str}\"\n", "filter_list")
+                    # Align using the pad variable
+                    self.txt_area.insert(tk.END, f"\t\t\t{label:<{pad}} : \"{type_str}\"\n", "filter_list")
 
             # 2. Keyword search filter
             query = self.search_query.get().strip()
             if query:
-                self.txt_area.insert(tk.END, f"\t\t\t - {l_ui.get('keyword_filter', 'Keyword search')} : \"{query}\"\n", "filter_list")
+                label = f" - {l_ui.get('keyword_filter', 'Keyword search')}"
+                self.txt_area.insert(tk.END, f"\t\t\t{label:<{pad}} : \"{query}\"\n", "filter_list")
 
             # 3. Keyword list filter
             kw_list = self.selected_list.get()
             if kw_list and kw_list != l_ui.get("none", "None"):
-                self.txt_area.insert(tk.END, f"\t\t\t - {l_ui.get('list_filter', 'List search')} : \"{kw_list}\"\n", "filter_list")
+                label = f" - {l_ui.get('list_filter', 'List search')}"
+                self.txt_area.insert(tk.END, f"\t\t\t{label:<{pad}} : \"{kw_list}\"\n", "filter_list")
 
             # Add second separator line
-            self.txt_area.insert(tk.END, "\t\t\t" + "─" * 50 + "\n", "separator")
+            self.txt_area.insert(tk.END, "\t\t\t" + "─" * 65 + "\n", "separator")
 
             # Final "No matches" message
             final_no_match = l_ui.get('no_match', "❌ No matches found")
@@ -281,6 +285,9 @@ class LogDisplayMixin:
         if not self.check_log_loaded():
             return
 
+        if not self.check_log_available():
+            return
+
         if not self.log_file_path:
             return
 
@@ -341,6 +348,10 @@ class LogDisplayMixin:
         self.txt_area.tag_raise("sel")
 
     def update_stats(self):
+        """
+        Updates the visibility and content of stats labels in the bottom bar.
+        Now tracks file size changes to prevent UI sync issues on startup.
+        """
         if not self.log_file_path:
             self.sep_lines.pack_forget()
             self.label_lines.pack_forget()
@@ -358,13 +369,15 @@ class LogDisplayMixin:
         current_pause = self.is_paused.get()
         current_limit = self.load_full_file.get()
         current_wrap = self.wrap_mode.get()
+        current_size = self.size_var.get() # Captured file size
 
         # 2. UPDATE CONDITION:
-        # Refresh only if one of these 4 elements has changed
-        if (current_count == self.last_line_count and
-                current_pause == self.last_pause_state and
-                current_limit == self.last_limit_state and
-                current_wrap == self.last_wrap_state):
+        # Added check for current_size to prevent skipping updates when size changes!
+        if (current_count == getattr(self, 'last_line_count', None) and
+                current_pause == getattr(self, 'last_pause_state', None) and
+                current_limit == getattr(self, 'last_limit_state', None) and
+                current_wrap == getattr(self, 'last_wrap_state', None) and
+                current_size == getattr(self, 'last_size_text', '')):
             return
 
         # 3. Memorization of new states
@@ -372,8 +385,15 @@ class LogDisplayMixin:
         self.last_pause_state = current_pause
         self.last_limit_state = current_limit
         self.last_wrap_state = current_wrap
+        self.last_size_text = current_size
 
         l = LANGS.get(self.current_lang.get(), LANGS["EN"])
+
+        # --- Format line count with spaces as thousands separator ---
+        if current_count >= 0 and "N/A" not in self.stats_var.get():
+            # Python's native comma separator replaced by a space
+            formatted_count = f"{current_count:,}".replace(",", " ")
+            self.stats_var.set(l["stats_simple"].format(formatted_count))
 
         self.sep_lines.pack_forget()
         self.label_lines.pack_forget()
@@ -381,20 +401,20 @@ class LogDisplayMixin:
         self.label_size.pack_forget()
         self.sep_limit.pack_forget()
         self.label_limit.pack_forget()
-        self.sep_pause.pack_forget()
-        self.label_pause.pack_forget()
         self.sep_wrap.pack_forget()
         self.label_wrap.pack_forget()
+        self.sep_pause.pack_forget()
+        self.label_pause.pack_forget()
 
-        # --- TOTAL NUMBER OF LINES ---
+        # --- Bloc NUMBER OF LINES ---
         if self.stats_var.get() and "N/A" not in self.stats_var.get():
-            self.sep_lines.pack(side=tk.LEFT, fill=tk.Y, padx=20, pady=2)
+            self.sep_lines.pack(side=tk.LEFT, fill=tk.Y, padx=self.sc(20), pady=2)
             self.label_lines.pack(side=tk.LEFT)
         else:
             self.sep_lines.pack_forget()
             self.label_lines.pack_forget()
 
-        # --- Bloc FILE SIZE ---
+        # --- FILE SIZE Block ---
         size_text = self.size_var.get()
         if size_text and "N/A" not in size_text:
             # Size analysis to change color
@@ -407,54 +427,104 @@ class LogDisplayMixin:
                 # If it is in MB and > max_size_mb, we put it in red.
                 if is_mb and size_value > self.max_size_mb:
                     self.label_size.config(fg=LOG_COLORS["error"])
+                    self.label_lines.config(fg=LOG_COLORS["error"])
+
+                    # --- Automatic safety limit when crossing the threshold ---
+                    # If we haven't auto-limited yet AND we are in full load mode
+                    if not getattr(self, "has_auto_limited", False) and self.load_full_file.get():
+                        self.load_full_file.set(False) # Activate the 1000-line limit
+                        self.has_auto_limited = True   # Remember that we auto-limited it
                 else:
                     self.label_size.config(fg=COLOR_TEXT_MAIN)
+                    self.label_lines.config(fg=COLOR_TEXT_MAIN)
+                    # Reset the flag if the file becomes smaller again (unlikely but clean)
+                    self.has_auto_limited = False
+
             except Exception:
                 # In case of an analysis error, the default color is retained.
                 self.label_size.config(fg=COLOR_TEXT_MAIN)
+                self.label_lines.config(fg=COLOR_TEXT_MAIN)
 
-            self.sep_size.pack(side=tk.LEFT, fill=tk.Y, padx=20, pady=2)
+            self.sep_size.pack(side=tk.LEFT, fill=tk.Y, padx=self.sc(20), pady=2)
             self.label_size.pack(side=tk.LEFT)
         else:
             self.sep_size.pack_forget()
             self.label_size.pack_forget()
+            self.label_lines.config(fg=COLOR_TEXT_MAIN)
 
-        # --- Bloc LIMIT ---
+        # --- LIMIT Block ---
+        txt_limit = l["limit"]
+        txt_unlimited = l.get("unlimited", "⚠️ Unlimited")
+
         if not self.load_full_file.get():
-            self.limit_var.set(l["limit"])
-            self.sep_limit.pack(side=tk.LEFT, fill=tk.Y, padx=20, pady=2)
-            self.label_limit.pack(side=tk.LEFT)
+            self.limit_var.set(txt_limit)
+            self.label_limit.config(fg=COLOR_TEXT_MAIN) # Standard color for "Info"
         else:
-            self.limit_var.set("")
-            self.sep_limit.pack_forget()
-            self.label_limit.pack_forget()
+            self.limit_var.set(txt_unlimited)
+            self.label_limit.config(fg=COLOR_WARNING)   # Warning color for "Unlimited"
 
-        # --- Bloc PAUSE ---
-        if self.is_paused.get():
-            self.paused_var.set(l["paused"])
-            self.sep_pause.pack(side=tk.LEFT, fill=tk.Y, padx=20, pady=2)
-            self.label_pause.pack(side=tk.LEFT)
-        else:
-            self.paused_var.set("")
-            self.sep_pause.pack_forget()
-            self.label_pause.pack_forget()
+        # Always pack if a file is loaded to ensure it doesn't disappear
+        self.sep_limit.pack(side=tk.LEFT, fill=tk.Y, padx=self.sc(20), pady=2)
+        self.label_limit.pack(side=tk.LEFT)
 
         # --- Bloc LINE BREAK ---
         if self.wrap_mode.get():
             self.wrap_var.set(l["line_break"])
-            self.sep_wrap.pack(side=tk.LEFT, fill=tk.Y, padx=20, pady=2)
+            self.sep_wrap.pack(side=tk.LEFT, fill=tk.Y, padx=self.sc(20), pady=2)
             self.label_wrap.pack(side=tk.LEFT)
         else:
             self.wrap_var.set("")
             self.sep_wrap.pack_forget()
             self.label_wrap.pack_forget()
 
+        # --- PAUSE Block ---
+        if self.is_paused.get():
+            self.paused_var.set(l["paused"])
+            self.sep_pause.pack(side=tk.LEFT, fill=tk.Y, padx=self.sc(20), pady=2)
+            self.label_pause.pack(side=tk.LEFT)
+        else:
+            self.paused_var.set("")
+            self.sep_pause.pack_forget()
+            self.label_pause.pack_forget()
+
     def scheduled_stats_update(self):
+        """
+        Periodically updates file statistics (lines and size) and forces
+        the UI elements to refresh their visibility.
+        """
         if self.running and self.log_file_path:
             size_str, real_total = self.get_file_info()
             l = LANGS.get(self.current_lang.get(), LANGS["EN"])
-            self.stats_var.set(l["stats_simple"].format(real_total))
+
+            # --- Formatting with a thousands separator ---
+            try:
+                # We're trying to convert it to an integer to apply the format
+                formatted_total = f"{int(real_total):,}".replace(",", " ")
+            except (ValueError, TypeError):
+                # If it's "N/A" or text, leave it as is
+                formatted_total = real_total
+
+            # We use 'formatted_total' instead of 'real_total'
+            self.stats_var.set(l["stats_simple"].format(formatted_total))
             self.size_var.set(l["file_size_text"].format(size_str))
+
+            # --- FIX: Update the footer label according to the unlimited toggle state ---
+            if self.load_full_file.get():
+                limit_text = l.get("unlimited", "⚠️ Unlimited")
+            else:
+                limit_text = l.get("limit", "ℹ️ 1000 lines max")
+
+            # Apply the text.
+            # Check if you are using a StringVar (like stats_var) or direct Label config.
+            # Replace 'self.limit_var' or 'self.label_limit' with your actual variable name!
+            if hasattr(self, 'limit_var'):
+                self.limit_var.set(limit_text)
+            elif hasattr(self, 'label_limit'):
+                self.label_limit.config(text=limit_text)
+
+            # --- Force the UI to show/hide labels based on the new values ---
+            self.update_stats()
+
         self.root.after(5000, self.scheduled_stats_update)
 
     def get_file_info(self):
@@ -537,7 +607,7 @@ class LogDisplayMixin:
                 "highlight_temp",
                 background=LOG_COLORS["highlight_bg"],
                 foreground=LOG_COLORS["highlight_fg"],
-                font=(self.mono_font_family, self.font_size, "bold"),
+                font=(self.mono_font_family, self.font_size),
             )
 
             # Delete after 5 seconds
@@ -546,43 +616,83 @@ class LogDisplayMixin:
             )
 
     def on_double_click_line(self, event):
-        """Double-click management: Full reset + Pause + Exact search (TS + Content)."""
+        """
+        Double-click management: Full reset + Pause + Exact search (TS + Content).
+        """
+        # --- NEW SECURITY CHECK ---
+        # If no log is loaded, show the warning message and stop the event
+        if not self.check_log_loaded():
+            return "break"
+
+
+        if not self.check_log_available():
+            return "break"
+
+        # 1. Clear selection to avoid visual conflicts
         self.txt_area.tag_remove("sel", "1.0", tk.END)
 
         try:
-            # 1. Retrieve the index and complete content of the clicked line
+            # 2. Retrieve the index and complete content of the clicked line
             line_index = self.txt_area.index(tk.CURRENT)
             line_content = self.txt_area.get(
                 line_index + " linestart", line_index + " lineend"
             ).strip()
 
+            if not line_content:
+                return
+
             # Extracting the timestamp for the initial search
             timestamp_match = re.search(
                 r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}", line_content
             )
+
             if not timestamp_match:
                 return
 
             target_ts = timestamp_match.group(0)
-            # We also keep the entire line (or a large part of it) to remove any ambiguity.
+            # Keep the entire line content to remove any ambiguity during search
             target_content = line_content
 
         except Exception as e:
             print(f"[ERROR] {type(e).__name__}: {e}")
             return
 
-        # 2. Complete reset of filters
+        # 3. Complete reset of filters to ensure the line is visible
         self.reset_all_filters()
 
-        # 3. Pause
+        # 4. Pause monitoring to let the user analyze the specific line
         self.is_paused.set(True)
         if hasattr(self, "btn_pause"):
             self.btn_pause.config(text="▶ RESUME", bg=COLOR_DANGER)
 
-        # 4. Force the interface to update so that the entire log is loaded.
+        # 5. Force the interface to update so that the entire log is loaded if needed
         self.root.update_idletasks()
 
-        # 5. Search with TIMESTAMP and CONTENT
+        # 6. Search with TIMESTAMP and CONTENT
         self.find_and_highlight_timestamp(target_ts, target_content)
 
+        return "break"
+
+    def on_mouse_wheel_font_resize(self, event):
+        """
+        Handles Ctrl + Mouse Wheel to increase or decrease font size.
+        Simulates a click on the + or - buttons.
+        """
+        # Windows and macOS use event.delta
+        if event.delta:
+            if event.delta > 0:
+                # Scrolled up -> Increase font
+                self.increase_font()
+            else:
+                # Scrolled down -> Decrease font
+                self.decrease_font()
+
+        # Linux handles scrolling via mouse buttons 4 and 5
+        else:
+            if event.num == 4:
+                self.increase_font()
+            elif event.num == 5:
+                self.decrease_font()
+
+        # "break" prevents the text widget from scrolling the log at the same time
         return "break"
