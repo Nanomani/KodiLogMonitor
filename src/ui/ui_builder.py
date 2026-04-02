@@ -133,13 +133,13 @@ class UIBuilderMixin:
             "TCombobox",
             fieldbackground=COLOR_BTN_DEFAULT,
             background=COLOR_BTN_DEFAULT,
-            foreground=COLOR_TEXT_BRIGHT,
+            foreground=COLOR_TEXT_MAIN,
             bordercolor=COLOR_BTN_DEFAULT,
             darkcolor=COLOR_BTN_DEFAULT,
             lightcolor=COLOR_BTN_DEFAULT,
-            arrowcolor=COLOR_TEXT_BRIGHT,
+            arrowcolor=COLOR_TEXT_MAIN,
             arrowsize=20,
-            insertcolor=COLOR_TEXT_BRIGHT,
+            insertcolor=COLOR_TEXT_MAIN,
             selectbackground=COLOR_BTN_DEFAULT,
             selectforeground=COLOR_TEXT_BRIGHT,
             font=(self.main_font_family, 10),
@@ -158,18 +158,18 @@ class UIBuilderMixin:
                 ("focus", COLOR_BTN_DEFAULT),
                 ("active", COLOR_BTN_DEFAULT)
             ],
-            foreground=[("readonly", COLOR_TEXT_BRIGHT)],
+            foreground=[("readonly", COLOR_TEXT_MAIN)],
             selectbackground=[
                 ("readonly", COLOR_BTN_DEFAULT),
                 ("focus", COLOR_BTN_DEFAULT)
             ],
             selectforeground=[
-                ("readonly", COLOR_TEXT_BRIGHT),
+                ("readonly", COLOR_TEXT_MAIN),
                 ("focus", COLOR_TEXT_BRIGHT)
             ]
         )
 
-        # --- DARK STYLE FOR SCROLLBAR ---
+        # --- DARK STYLE FOR VERTICAL SCROLLBAR ---
         style.configure(
             "Vertical.TScrollbar",
             gripcount=0,
@@ -186,9 +186,26 @@ class UIBuilderMixin:
         style.map("Vertical.TScrollbar",
                   background=[("active", SCROLL_THUMB_HOVER), ("pressed", SCROLL_THUMB_HOVER)])
 
+        # --- DARK STYLE FOR HORIZONTAL SCROLLBAR ---
+        style.configure(
+            "Horizontal.TScrollbar",
+            gripcount=0,
+            background=SCROLL_THUMB_DEFAULT,
+            troughcolor=COLOR_BG_HEADER,
+            bordercolor=COLOR_BG_HEADER,
+            lightcolor=COLOR_BG_HEADER,
+            darkcolor=COLOR_BG_HEADER,
+            arrowcolor=COLOR_TEXT_DIM,
+            width=24,
+            arrowsize=24
+        )
+
+        style.map("Horizontal.TScrollbar",
+                  background=[("active", SCROLL_THUMB_HOVER), ("pressed", SCROLL_THUMB_HOVER)])
+
         self.root.option_add("*TCombobox*exportSelection", False)
         self.root.option_add("*TCombobox*Listbox.background", COLOR_BTN_DEFAULT)
-        self.root.option_add("*TCombobox*Listbox.foreground", COLOR_TEXT_BRIGHT)
+        self.root.option_add("*TCombobox*Listbox.foreground", COLOR_TEXT_MAIN)
         self.root.option_add("*TCombobox*Listbox.selectBackground", COLOR_ACCENT)
         self.root.option_add("*TCombobox*Listbox.font", (self.main_font_family, 10))
         self.root.option_add("*TCombobox*Listbox.itemHeight", 60)
@@ -471,8 +488,15 @@ class UIBuilderMixin:
             highlightcolor=COLOR_BG_MAIN
         )
         self.search_entry.pack(side=tk.LEFT, padx=5, pady=6)
-        self.search_entry.bind("<Escape>", self.reset_search_and_focus_log)
+
+        # Context menu
         self.search_entry.bind("<Button-3>", self.show_search_context_menu)
+
+        # Clear search and return to log (Escape)
+        self.search_entry.bind("<Escape>", self.reset_search_and_focus_log)
+
+        # Validate search (Enter)
+        self.search_entry.bind("<Return>", self.validate_and_save_search)
 
         # This prevents the "accordion" effect
         clear_container = tk.Frame(search_box, bg=COLOR_BG_MAIN, width=20, height=20)
@@ -502,7 +526,30 @@ class UIBuilderMixin:
             lambda event: self.clear_search()
         )
 
-        self.search_tooltip = ToolTip(self.search_entry, l_ui["tip_search"], scale=self.scale)
+        self.search_bar_tooltip = ToolTip(self.search_entry, l_ui["tip_search_bar"], scale=self.scale)
+
+        # Clear history button
+        self.btn_clear_history = tk.Button(
+            search_box,
+            text="🗑",
+            bg=COLOR_BG_MAIN,
+            fg=COLOR_TEXT_DIM,
+            font=(self.main_font_family, 9),
+            relief="flat",
+            borderwidth=0,
+            highlightthickness=0,
+            bd=0,
+            activebackground=COLOR_BG_MAIN,
+            activeforeground=COLOR_DANGER,
+            command=self.clear_all_history_data,
+            cursor="hand2"
+        )
+        self.btn_clear_history.pack(side=tk.RIGHT, padx=(10, 0))
+        self.btn_clear_history.bind("<Enter>", lambda e: self.btn_clear_history.config(fg=COLOR_TEXT_BRIGHT))
+        self.btn_clear_history.bind("<Leave>", lambda e: self.btn_clear_history.config(fg=COLOR_TEXT_DIM))
+
+        tip_text = l_ui.get("btn_clear_history", "Delete all search history")
+        self.history_clear_tooltip = ToolTip(self.btn_clear_history, tip_text, scale=self.scale)
 
         # --- Addition of the separator ---
         tk.Frame(
@@ -659,10 +706,12 @@ class UIBuilderMixin:
         self.main_container.grid_columnconfigure(0, weight=1)
         self.main_container.grid_rowconfigure(0, weight=1)
 
-        # cursor
+        # CURSOR
         self.txt_area = tk.Text(
             self.main_container,
             wrap=tk.NONE,
+            width=120,
+            height=25,
             bg=COLOR_BG_MAIN,
             fg=COLOR_TEXT_MAIN,
             font=(self.mono_font_family, self.font_size),
@@ -679,6 +728,23 @@ class UIBuilderMixin:
             inactiveselectbackground=COLOR_ACCENT,
             exportselection=False
         )
+
+        # Position the text area in the container
+        self.txt_area.grid(row=0, column=0, sticky="nsew")
+
+        # Create the horizontal scrollbar
+        self.h_scrollbar = ttk.Scrollbar(
+            self.main_container,
+            orient="horizontal",
+            command=self.txt_area.xview,
+            style="Horizontal.TScrollbar"
+        )
+
+        # Link the horizontal scrollbar movement to the text widget
+        self.txt_area.configure(xscrollcommand=self.h_scrollbar.set)
+
+        # Place the horizontal scrollbar at the bottom of the container
+        self.h_scrollbar.grid(row=1, column=0, sticky="ew")
 
         # --- Custom Context Menu (Right-click) ---
         # Create a hidden top-level window for the menu
@@ -756,7 +822,12 @@ class UIBuilderMixin:
             add_custom_item(lambda: self.txt_area.tag_add("sel", "1.0", "end"))
         )
 
-        # Item 2: Google Search (Stored in a variable for dynamic toggle)
+        # Item 2: Search selection locally (New item added here)
+        self.menu_items.append(
+            add_custom_item(self.search_selection_locally)
+        )
+
+        # Item 3: Google Search (Stored in a variable for dynamic toggle)
         self.google_menu_item = add_custom_item(self.search_on_google)
         self.menu_items.append(self.google_menu_item)
 
@@ -875,7 +946,7 @@ class UIBuilderMixin:
         # 3. The file path (📍)
         self.lbl_path = tk.Label(
             footer,
-            text="", # Will be updated via update_footer_path()
+            text="",
             fg=COLOR_TEXT_MAIN,
             **footer_style
         )
@@ -938,7 +1009,7 @@ class UIBuilderMixin:
 
         self.github_label = tk.Label(
             footer,
-            text=f"Kodi Log Monitor {APP_VERSION}",
+            text=f"{APP_NAME} {APP_VERSION}",
             bg=COLOR_BG_FOOTER,
             fg=COLOR_TEXT_GREY,
             font=(self.main_font_family, 9, "bold"),
@@ -955,6 +1026,26 @@ class UIBuilderMixin:
             l_ui.get("tip_github", "View the source code on GitHub"),
             scale=self.scale
         )
+
+        # --- History search list ---
+        self.history_listbox = tk.Listbox(
+            self.root,
+            bg=COLOR_BG_MAIN,
+            fg=COLOR_TEXT_MAIN,
+            selectbackground=COLOR_ACCENT,
+            selectforeground=COLOR_TEXT_BRIGHT,
+            font=(self.main_font_family, 10),
+            borderwidth=1,
+            highlightthickness=0,
+            activestyle="none",
+            exportselection=False
+        )
+        # Cachée par défaut
+        self.history_listbox.place_forget()
+
+        # Binds de sélection dans la liste
+        self.history_listbox.bind("<ButtonRelease-1>", self.on_history_select)
+        self.history_listbox.bind("<Return>", self.on_history_select)
 
     def _toggle_timer_separator(self, *args):
         """

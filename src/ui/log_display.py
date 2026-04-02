@@ -153,7 +153,14 @@ class LogDisplayMixin:
             self.jump_to_timestamp(self.pending_jump_timestamp)
             self.pending_jump_timestamp = None
         elif not self.is_paused.get():
+            # Get current horizontal position
+            current_x = self.txt_area.xview()[0]
+
+            # Scroll to the end vertically
             self.txt_area.see(tk.END)
+
+            # Restore the horizontal position
+            self.txt_area.xview_moveto(current_x)
 
         self.update_stats()
         self.show_loading(False)
@@ -172,8 +179,17 @@ class LogDisplayMixin:
         with self.log_lock:  # Prevents mixing during writing
             self.txt_area.config(state=tk.NORMAL)
             self.insert_with_highlight(text, tag)
+
             if not self.is_paused.get():
+                # Get current horizontal position
+                current_x = self.txt_area.xview()[0]
+
+                # Scroll to the end vertically
                 self.txt_area.see(tk.END)
+
+                # Restore the horizontal position
+                self.txt_area.xview_moveto(current_x)
+
             self.update_stats()
 
     def insert_with_highlight(self, text, base_tag):
@@ -353,10 +369,19 @@ class LogDisplayMixin:
         Now tracks file size changes to prevent UI sync issues on startup.
         """
         if not self.log_file_path:
+            # Hide all stats widgets
             self.sep_lines.pack_forget()
             self.label_lines.pack_forget()
             self.sep_size.pack_forget()
             self.label_size.pack_forget()
+
+            # Fetch translation for the "Select a LOG file" message
+            l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
+
+            # Manually update the footer label since textvariable was removed in ui_builder.py
+            if hasattr(self, 'update_footer_path'):
+                self.update_footer_path(l_ui.get("sel", "Sélectionnez un fichier LOG."))
+
             return
 
         # 1. Recovery of current states

@@ -25,7 +25,7 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
     """
     def __init__(self, root):
         self.root = root
-        self.root.title(f"Kodi Log Monitor")
+        self.root.title(APP_NAME)
         self.inactivity_timer_var = tk.StringVar(value="")
 
         # --- 4K DYNAMIC DETECTION ---
@@ -131,6 +131,15 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
 
         # --- KEYBOARD SHORTCUTS ---
 
+        # Close the dropdown search list when clicking anywhere else in the application or Windows OS
+        self.root.bind("<Button-1>", self._close_dropdown_on_outside_click)
+        self.root.bind("<Configure>", self._on_window_configure)
+
+        self.root.bind("<Control-c>", self.copy_to_clipboard)
+        self.root.bind("<Control-C>", self.copy_to_clipboard)
+        self.txt_area.bind("<Control-c>", self.copy_to_clipboard)
+        self.txt_area.bind("<Control-C>", self.copy_to_clipboard)
+
         self.root.bind("<Control-o>", self.open_file)
         self.root.bind("<Control-O>", self.open_file)
         self.txt_area.bind("<Control-o>", self.open_file)
@@ -150,11 +159,6 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
         self.root.bind("<Control-F>", self.focus_search_entry)
         self.txt_area.bind("<Control-f>", self.focus_search_entry)
         self.txt_area.bind("<Control-F>", self.focus_search_entry)
-
-        self.root.bind("<s>", self.select_show_summary_from_keyboard)
-        self.root.bind("<S>", self.select_show_summary_from_keyboard)
-        self.txt_area.bind("<s>", self.select_show_summary_from_keyboard)
-        self.txt_area.bind("<S>", self.select_show_summary_from_keyboard)
 
         self.root.bind("<Control-g>", self.select_clear_console_from_keyboard)
         self.root.bind("<Control-G>", self.select_clear_console_from_keyboard)
@@ -178,6 +182,11 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
         self.root.bind("<Control-R>", self.select_reset_all_filters_from_keyboard)
         self.txt_area.bind("<Control-r>", self.select_reset_all_filters_from_keyboard)
         self.txt_area.bind("<Control-R>", self.select_reset_all_filters_from_keyboard)
+
+        self.root.bind("<s>", self.select_show_summary_from_keyboard)
+        self.root.bind("<S>", self.select_show_summary_from_keyboard)
+        self.txt_area.bind("<s>", self.select_show_summary_from_keyboard)
+        self.txt_area.bind("<S>", self.select_show_summary_from_keyboard)
 
         self.root.bind("<a>", self.select_all_filter_from_keyboard)
         self.root.bind("<A>", self.select_all_filter_from_keyboard)
@@ -219,14 +228,23 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
         self.txt_area.bind("<Control-Button-4>", self.on_mouse_wheel_font_resize)
         self.txt_area.bind("<Control-Button-5>", self.on_mouse_wheel_font_resize)
 
-        # Copy selection to clipboard
-        self.root.bind("<Control-c>", self.copy_to_clipboard)
-        self.root.bind("<Control-C>", self.copy_to_clipboard)
-        self.txt_area.bind("<Control-c>", self.copy_to_clipboard)
-        self.txt_area.bind("<Control-C>", self.copy_to_clipboard)
+        # Bind Mouse Wheel safe vertical scroll
+        # Windows & macOS
+        self.txt_area.bind("<MouseWheel>", self.safe_vertical_scroll)
+
+        # Linux
+        self.txt_area.bind("<Button-4>", self.safe_vertical_scroll)
+        self.txt_area.bind("<Button-5>", self.safe_vertical_scroll)
 
         # Bind the Escape key specifically to this entry field
         self.search_entry.bind("<Escape>", self.reset_search_and_focus_log)
+
+        # Bind on history event
+        self.setup_history_events()
+
+        # Bind Left and Right arrow keys to exit the history dropdown without selection
+        # self.history_listbox.bind("<Left>", self._exit_history_to_entry)
+        # self.history_listbox.bind("<Right>", self._exit_history_to_entry)
 
         # --- FILTER CHANGE ---
         for key, var in self.filter_vars.items():
@@ -239,6 +257,18 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
         # Trace the search query to sanitize it BEFORE executing the search
         self.selected_list.trace_add("write", self.on_list_change)
         self.load_full_file.trace_add("write", lambda *args: self.immediate_ui_refresh())
+
+        # --- History Popup ---
+        self.history_window = tk.Toplevel(self.root)
+        self.history_window.withdraw()
+        self.history_window.overrideredirect(True)
+
+        self.history_listbox = tk.Listbox(self.history_window)
+        self.history_listbox.pack(fill=tk.BOTH, expand=True)
+
+        # Bindings (The names must exist as methods in your class)
+        # self.history_listbox.bind("<Return>", self.on_history_select_keyboard)
+        self.history_listbox.bind("<ButtonRelease-1>", self.on_history_select)
 
         self.root.after(5000, self.scheduled_stats_update)
 

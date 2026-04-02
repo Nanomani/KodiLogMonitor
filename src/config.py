@@ -7,7 +7,9 @@ import os
 
 # --- CONFIGURATION ---
 APP_VERSION = "v1.4.2"
+APP_NAME = "Kodi Log Monitor"
 CONFIG_FILE = ".kodi_monitor_config"
+SEARCH_HISTORY_FILE = ".kodi_search_history"
 EXPORT_FILE = "kodi_LOG_export.txt"
 DEFAULT_GEOMETRY_HD = "1000x630+16+14"
 DEFAULT_GEOMETRY_FHD = "1680x900+90+18"

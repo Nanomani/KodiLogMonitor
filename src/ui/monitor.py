@@ -89,6 +89,16 @@ class MonitorMixin:
                                 final_color = COLOR_WARNING if not load_full else LOG_COLORS["info"]
                                 self.root.after(0, self.update_status_color, final_color)
 
+                                # Trigger a full UI refresh
+                                self.root.after(0, self.reset_all_filters)
+                                # print(f"[DEBUG] File recovered, triggering full reset...")
+                                # self.root.after(0, lambda: self.start_monitoring(self.log_file_path, is_manual=False))
+
+                                # Clear the text area when the log file becomes accessible again
+                                # self.root.after(0, lambda: self.txt_area.config(state=tk.NORMAL))
+                                # self.root.after(0, lambda: self.txt_area.delete('1.0', tk.END))
+                                # self.root.after(0, lambda: self.txt_area.config(state=tk.DISABLED))
+
                         # 3. Detect Log Rotations (Kodi restarts)
                         if current_size < last_pos:
                             if self.running:
@@ -105,7 +115,6 @@ class MonitorMixin:
                                         try:
                                             self.root.after(0, self.update_status_color, COLOR_DANGER)
                                             mins, secs = divmod(int(elapsed), 60)
-                                            # SAFE: Use local l_ui instead of self.current_lang.get()
                                             timer_str = f"{l_ui.get('inactive', 'Inactive')} : {mins:02d}:{secs:02d}"
                                             self.root.after(0, self.inactivity_timer_var.set, timer_str)
                                         except: pass
@@ -133,17 +142,6 @@ class MonitorMixin:
                             final_color = COLOR_WARNING if not load_full else LOG_COLORS["info"]
                             self.root.after(0, self.update_status_color, final_color)
                             self.root.after(0, self.inactivity_timer_var.set, "")
-
-                            # Trigger a full UI refresh
-                            # self.root.after(0, self.reset_all_filters)
-                            # print(f"[DEBUG] File recovered, triggering full reset...")
-                            # self.root.after(0, lambda: self.start_monitoring(self.log_file_path, is_manual=False))
-
-                            # cleanup the message LOG UNAVAILABLE
-                            # self.root.after(0, lambda: self.txt_area.config(state=tk.NORMAL))
-                            # self.root.after(0, lambda: self.txt_area.delete('1.0', tk.END))
-                            # self.root.after(0, lambda: self.txt_area.config(state=tk.DISABLED))
-                            # continue
 
                         # 6. Process line and append to GUI
                         last_pos = f.tell()

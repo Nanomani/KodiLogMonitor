@@ -38,6 +38,7 @@ LANGS = {
         "no_match": "❌ Aucun résultat correspondant aux critères sélectionnés",
         "copy": "Copier",
         "sel_all": "Tout sélectionner",
+        "search_localy": "Rechercher",
         "search_google": "Rechercher sur Google",
         "paste": "Coller",
         "clear": "Effacer",
@@ -59,6 +60,7 @@ LANGS = {
         "upd_confirm_title": "Confirmation",
         "upd_confirm_msg": "Désactiver définitivement les notifications de mise à jour ?",
         "already_running": "Une instance de ce programme est déjà en cours d'exécution.",
+        "clear_confirm_msg": "Voulez-vous vraiment supprimer tout l'historique de recherche ?",
         "shutdown_confirm_title": "Kodi Log Monitor",
         "shutdown_confirm_msg": (
             "Les paramètres d'affichage de Windows ont changé.\n"
@@ -95,7 +97,8 @@ LANGS = {
         "tip_filter_error": "Afficher les erreurs",
         "tip_filter_debug": "Afficher les messages de débogage",
         "tip_lang": "Choisir la langue de l'interface",
-        "tip_search": "Rechercher un mot-clé dans les logs",
+        "tip_search_bar": "Rechercher un mot-clé dans les logs",
+        "tip_history_clear": "Supprimer tout l'historique de recherche",
         "tip_kw_list": "Sélectionner une liste de mots-clés à surligner",
         "help_text": (
             "F1 : Afficher aide\n"
@@ -151,6 +154,7 @@ LANGS = {
         "no_match": "❌ No matches found for the selected criteria",
         "copy": "Copy",
         "sel_all": "Select All",
+        "search_localy": "Search",
         "search_google": "Search on Google",
         "paste": "Paste",
         "clear": "Clear",
@@ -172,6 +176,7 @@ LANGS = {
         "upd_confirm_title": "Confirm",
         "upd_confirm_msg": "Disable update notifications permanently?",
         "already_running": "An instance of this program is already running.",
+        "clear_confirm_msg": "Do you want to delete all search history?",
         "shutdown_confirm_title": "Kodi Log Monitor",
         "shutdown_confirm_msg": (
             "Windows display settings have changed.\n"
@@ -208,7 +213,8 @@ LANGS = {
         "tip_filter_error": "Show errors",
         "tip_filter_debug": "Show debug messages",
         "tip_lang": "Choose interface language",
-        "tip_search": "Search for a keyword in the logs",
+        "tip_search_bar": "Search for a keyword in the logs",
+        "tip_history_clear": "Delete all search history",
         "tip_kw_list": "Select a keyword list to highlight",
         "help_text": (
             "F1 : Show help\n"
@@ -264,6 +270,7 @@ LANGS = {
         "no_match": "❌ No se encontró ninguna coincidencia",
         "copy": "Copiar",
         "sel_all": "Seleccionar todo",
+        "search_localy": "Buscar",
         "search_google": "uscar en Google",
         "paste": "Pegar",
         "clear": "Borrar",
@@ -285,6 +292,7 @@ LANGS = {
         "upd_confirm_title": "Confirmar",
         "upd_confirm_msg": "¿Desactivar permanentemente las notificaciones de actualización?",
         "already_running": "Una instancia de este programa ya está en ejecución.",
+        "clear_confirm_msg": "¿Desea eliminar todo el historial de búsqueda?",
         "shutdown_confirm_title": "Kodi Log Monitor",
         "shutdown_confirm_msg": (
             "La configuración de pantalla de Windows ha cambiado.\n"
@@ -321,7 +329,8 @@ LANGS = {
         "tip_filter_error": "Mostrar errores",
         "tip_filter_debug": "Mostrar mensajes de depuración",
         "tip_lang": "Elegir el idioma de la interfaz",
-        "tip_search": "Buscar una palabra clave en los logs",
+        "tip_search_bar": "Buscar una palabra clave en los logs",
+        "tip_history_clear": "Eliminar todo el historial de búsqueda",
         "tip_kw_list": "Seleccionar una lista de palabras clave para resaltar",
         "help_text": (
             "F1 : Mostrar ayuda\n"
@@ -377,6 +386,7 @@ LANGS = {
         "no_match": "❌ Keine Übereinstimmungen gefunden",
         "copy": "Kopieren",
         "sel_all": "Alles auswählen",
+        "search_localy": "Suchen",
         "search_google": "Auf Google suchen",
         "paste": "Einfügen",
         "clear": "Löschen",
@@ -398,6 +408,7 @@ LANGS = {
         "upd_confirm_title": "Bestätigen",
         "upd_confirm_msg": "Update-Benachrichtigungen dauerhaft deaktivieren?",
         "already_running": "Eine Instanz dieses Programms sird bereits ausgeführt.",
+        "clear_confirm_msg": "Möchten Sie den gesamten Suchverlauf löschen?",
         "shutdown_confirm_title": "Kodi Log Monitor",
         "shutdown_confirm_msg": (
             "Die Windows-Anzeige-Einstellungen haben sich geändert.\n"
@@ -434,7 +445,8 @@ LANGS = {
         "tip_filter_error": "Fehler anzeigen",
         "tip_filter_debug": "Debug-Meldungen anzeigen",
         "tip_lang": "Sprache de Benutzeroberfläche wählen",
-        "tip_search": "Nach einem Stichwort in den Logs suchen",
+        "tip_search_bar": "Nach einem Stichwort in den Logs suchen",
+        "tip_history_clear": "Gesamten Suchverlauf löschen",
         "tip_kw_list": "Wählen Sie eine Stichwortliste zum Hervorheben aus",
         "help_text": (
             "F1 : Hilfe anzeigen\n"
@@ -490,6 +502,7 @@ LANGS = {
         "no_match": "❌ Nessuna corrispondenza trovata",
         "copy": "Copia",
         "sel_all": "Seleziona tutto",
+        "search_localy": "Cerca",
         "search_google": "Cerca su Google",
         "paste": "Incolla",
         "clear": "Cancella",
@@ -511,6 +524,7 @@ LANGS = {
         "upd_confirm_title": "Conferma",
         "upd_confirm_msg": "Disattivare permanentemente le notifiche di aggiornamento?",
         "already_running": "Un'istanza di questo programma è già in esecuzione.",
+        "clear_confirm_msg": "Vuoi cancellare tutta la cronologia delle ricerche?",
         "shutdown_confirm_title": "Kodi Log Monitor",
         "shutdown_confirm_msg": (
             "Le impostazioni di visualizzazione di Windows sono cambiate.\n"
@@ -547,7 +561,8 @@ LANGS = {
         "tip_filter_error": "Mostra errori",
         "tip_filter_debug": "Mostra messaggi di debug",
         "tip_lang": "Scegli la lingua dell'interfaccia",
-        "tip_search": "Cerca una parola chiave nei log",
+        "tip_search_bar": "Cerca una parola chiave nei log",
+        "tip_history_clear": "Cancella tutta la cronologia delle ricerche",
         "tip_kw_list": "Seleziona un elenco di parole chiave da evidenziare",
         "help_text": (
             "F1 : Mostra aiuto\n"

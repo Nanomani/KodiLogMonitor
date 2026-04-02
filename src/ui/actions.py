@@ -10,7 +10,7 @@ from urllib.parse import quote
 
 from config import *
 from languages import LANGS
-from utils import get_windows_theme
+from utils import get_windows_theme, get_system_font
 from ui.ui_builder import ToolTip
 
 class ActionsMixin:
@@ -602,7 +602,14 @@ class ActionsMixin:
             return
 
         if not self.is_paused.get() and self.log_file_path:
+            # Get current horizontal position
+            current_x = self.txt_area.xview()[0]
+
+            # Scroll to the end vertically
             self.txt_area.see(tk.END)
+
+            # Restore the horizontal position
+            self.txt_area.xview_moveto(current_x)
         self.update_stats()
 
     def toggle_single_instance(self):
@@ -1037,9 +1044,13 @@ class ActionsMixin:
         if hasattr(self, "combo_kw_tooltip") and self.combo_kw_tooltip:
             self.combo_kw_tooltip.text = l["tip_kw_list"]
 
+        # Search clear liste Tooltip
+        if hasattr(self, "history_clear_tooltip") and self.history_clear_tooltip:
+            self.history_clear_tooltip.text = l["tip_history_clear"]
+
         # Search by keyword Tooltip
-        if hasattr(self, "search_tooltip") and self.search_tooltip:
-            self.search_tooltip.text = l["tip_search"]
+        if hasattr(self, "search_bar_tooltip") and self.search_bar_tooltip:
+            self.search_bar_tooltip.text = l["tip_search_bar"]
 
         # Button help Tooltip
         if hasattr(self, "btn_help_tooltip") and self.btn_help_tooltip:
@@ -1103,7 +1114,8 @@ class ActionsMixin:
         if hasattr(self, "menu_items"):
             self.menu_items[0].config(text=l["copy"])
             self.menu_items[1].config(text=l["sel_all"])
-            self.menu_items[2].config(text=l["search_google"])
+            self.menu_items[2].config(text=l["search_localy"])
+            self.menu_items[3].config(text=l["search_google"])
 
         # 1. We create a dictionary of all existing translations into English
         reverse_theme_map = {}
@@ -1256,20 +1268,22 @@ class ActionsMixin:
         self.search_entry.focus()
 
     def reset_search_and_focus_log(self, event=None):
-            """
-            Clears the search field and returns focus to the log area.
-            Triggered by the ESC key.
-            """
-            # 1. Clear the search (reuse your existing clear_search logic)
-            self.clear_search()
+        """
+        Clears the search field, hides the history, and returns focus to the log.
+        """
+        # 1. Clear the search text variable
+        self.search_query.set("")
 
-            # 2. Focus the log text area
-            if hasattr(self, 'txt_area'):
-                self.txt_area.focus_set()
+        # 2. Hide the history dropdown if it's visible
+        if hasattr(self, 'history_listbox'):
+            self.history_listbox.place_forget()
 
-            # 3. Return 'break' to prevent the event from propagating
-            # (avoiding potential conflicts with other ESC shortcuts)
-            return "break"
+        # 3. Return focus to the log area (txt_area)
+        if hasattr(self, 'txt_area'):
+            self.txt_area.focus_set()
+
+        # 4. CRITICAL: 'break' prevents other binds from firing
+        return "break"
 
     def copy_selection(self):
         try:
@@ -1287,6 +1301,30 @@ class ActionsMixin:
                 url = f"https://www.google.com/search?q={quote(selected_text.strip())}"
                 self.open_url(url)
         except tk.TclError:
+            pass
+
+    def search_selection_locally(self, event=None):
+        """
+        Gets the selected text from the text area, updates the search field,
+        focuses it, and triggers the local log search.
+        """
+        try:
+            # 1. Get the selected text from the text area
+            selected_text = self.txt_area.get(tk.SEL_FIRST, tk.SEL_LAST).strip()
+
+            if selected_text:
+                # 2. Update the search field with the selected text
+                self.search_query.set(selected_text)
+
+                # 3. Trigger the search automatically (this will move focus to log area)
+                self.validate_and_save_search()
+
+                # 4. Re-grab the focus and move cursor to the end of the search entry
+                self.search_entry.focus_set()
+                self.search_entry.icursor(tk.END)
+
+        except tk.TclError:
+            # Handle the case where no text is selected (Tkinter throws a TclError)
             pass
 
     def show_context_menu(self, event):
@@ -1527,6 +1565,20 @@ class ActionsMixin:
         # Set new timer for 5 seconds (5000 ms)
         self.cursor_timer = self.root.after(5000, self.hide_cursor)
 
+    def safe_vertical_scroll(self, event):
+        """Vertical scrolling using the mouse wheel without resetting the X-axis."""
+        if event.delta:
+            direction = -1 if event.delta > 0 else 1
+            self.txt_area.yview_scroll(direction, "units")
+
+        # On Linux (buttons 4 and 5)
+        elif event.num == 4:
+            self.txt_area.yview_scroll(-1, "units")
+        elif event.num == 5:
+            self.txt_area.yview_scroll(1, "units")
+
+        return "break"
+
     def sc(self, value):
         """Calculates the scaled value."""
         return int(value * self.scale)
@@ -1559,6 +1611,106 @@ class ActionsMixin:
             # 3. Return "break" to prevent the default Tkinter event from firing
             return "break"
 
+    # === 1. SEARCH LIST - INITIALIZATION & EVENTS ===
+
+    def setup_history_events(self):
+        """Initializes history and binds events to the search field."""
+        # 1. Load history
+        self.load_search_history()
+
+        # 2. Bind for auto-opening on typing
+        self.search_entry.bind("<KeyRelease>", self.on_search_keyrelease)
+
+        # 3. Handle navigation and Escape
+        self.search_entry.bind("<Down>", self.on_search_down)
+        self.search_entry.bind("<Up>", self.on_search_up)
+
+        # Bind Left and Right arrows
+        # self.history_listbox.bind("<Left>", self._exit_history_to_entry)
+        # self.history_listbox.bind("<Right>", self._exit_history_to_entry)
+
+        # FIX: Call the full reset function instead of just hiding the dropdown
+        self.search_entry.bind("<Escape>", self.reset_search_and_focus_log)
+
+        # 4. Save search on ENTER
+        self.search_entry.bind("<Return>", self.validate_and_save_search)
+
+        # 5. Close if focus moves to log
+        self.txt_area.bind("<FocusIn>", lambda e: self.hide_history_dropdown(), add="+")
+
+        # 6. Close if clicking outside
+        self.root.bind("<Button-1>", self._close_dropdown_on_outside_click, add="+")
+
+    # === 2. SEARCH LIST - DATA MANAGEMENT (FILES) ===
+
+    def load_search_history(self):
+        """Charge l'historique de recherche depuis un fichier."""
+        self.search_history = []
+        # Utilisation d'un fichier dédié pour l'historique
+        if os.path.exists(SEARCH_HISTORY_FILE):
+            try:
+                with open(SEARCH_HISTORY_FILE, "r", encoding="utf-8") as f:
+                    self.search_history = [line.strip() for line in f.readlines() if line.strip()]
+            except Exception as e:
+                print(f"Erreur chargement historique: {e}")
+
+    def save_search_history(self):
+        """Sauvegarde l'historique de recherche dans un fichier."""
+        try:
+            with open(SEARCH_HISTORY_FILE, "w", encoding="utf-8") as f:
+                for item in self.search_history:
+                    f.write(f"{item}\n")
+        except Exception as e:
+            print(f"Erreur sauvegarde historique: {e}")
+
+    def add_to_history(self, text):
+        """Ajoute un terme à l'historique (sans doublons et au début)."""
+        text = text.strip()
+        if not text:
+            return
+
+        # Retire le terme s'il existait déjà pour le remettre en haut
+        if text in self.search_history:
+            self.search_history.remove(text)
+
+        self.search_history.insert(0, text)
+
+        # On limite par exemple l'historique aux 15 dernières recherches
+        self.search_history = self.search_history[:15]
+        self.save_search_history()
+
+    def clear_all_history_data(self):
+        """Deletes the history file and clears the list from memory."""
+        l = LANGS.get(self.current_lang.get(), LANGS["EN"])
+
+        msg = l.get("clear_confirm_msg", "Do you want to delete all search history?")
+        confirm = messagebox.askyesno(APP_NAME, msg)
+
+        if confirm:
+            try:
+                # 2. Get the path to your history file
+                # Assuming it's in the same directory as the main script
+                history_path = ".kodi_search_history"
+
+                # 3. Delete the physical file if it exists
+                import os
+                if os.path.exists(history_path):
+                    os.remove(history_path)
+
+                # 4. Clear the memory and UI
+                self.search_history = []
+                self.history_listbox.delete(0, tk.END)
+
+                # 5. Hide the dropdown if it was open
+                self.hide_history_dropdown()
+
+                print("Search history cleared successfully.")
+
+            except Exception as e:
+                print(f"Error clearing history: {e}")
+
+    # === 3. SEARCH LIST - INTERFACE & SECURITY ===
+
     def clean_search_input(self, *args):
         """
         Sanitizes the search input: prevents multi-line,
@@ -1590,3 +1742,214 @@ class ActionsMixin:
             self.search_query.set(clean_text)
             # Move cursor to the end since setting the var might reset it
             self.search_entry.icursor(tk.END)
+
+    def show_history_dropdown(self, items=None):
+        """Displays the history list with theme colors."""
+        if items is None:
+            items = self.search_history
+
+        if not items:
+            self.hide_history_dropdown()
+            return
+
+        # --- THEME COLORS (matching your config.py) ---
+        self.history_window.configure(bg=COLOR_BG_HEADER)
+        self.history_listbox.config(
+            bg=COLOR_BG_HEADER,
+            fg=COLOR_TEXT_MAIN,
+            selectbackground=COLOR_ACCENT,
+            selectforeground=COLOR_TEXT_BRIGHT,
+            font=(get_system_font()[0], 10),
+            borderwidth=1,
+            highlightthickness=0,
+            relief="flat"
+        )
+
+        self.history_listbox.delete(0, tk.END)
+        for item in items:
+            self.history_listbox.insert(tk.END, item)
+
+        # Set height (max 7 lines)
+        visible_lines = min(len(items), 7)
+        self.history_listbox.config(height=visible_lines)
+
+        self.root.update_idletasks()
+
+        # Position calculation
+        x = self.search_entry.winfo_rootx()
+        y = self.search_entry.winfo_rooty() + self.search_entry.winfo_height()
+        width = self.search_entry.winfo_width()
+        height = self.history_listbox.winfo_reqheight()
+
+        self.history_window.geometry(f"{width}x{height}+{x}+{y}")
+
+        self.history_window.deiconify()
+        self.history_window.lift()
+
+    def hide_history_dropdown(self, event=None):
+        """Hides the history popup window."""
+        if hasattr(self, 'history_window'):
+            self.history_window.withdraw()
+
+    def reset_search_and_focus_log(self, event=None):
+        """
+        Clears the search, hides history, and returns focus to the log area.
+        """
+        # Clear the text
+        self.search_query.set("")
+
+        # Hide the dropdown
+        self.hide_history_dropdown()
+
+        # Return focus to the log
+        if hasattr(self, 'txt_area'):
+            self.txt_area.focus_set()
+
+        # Prevent event propagation
+        return "break"
+
+    def _close_dropdown_on_outside_click(self, event):
+        """Closes the history dropdown if the user clicks outside of it."""
+        if hasattr(self, "history_listbox") and self.history_listbox.winfo_viewable():
+            # Check if the click is outside both the search entry and the history listbox
+            if event.widget != self.search_entry and event.widget != self.history_listbox:
+                self.hide_history_dropdown()
+
+    def _on_window_configure(self, event):
+        """Hides the history dropdown when the main window moves or resizes."""
+        # Ensure the event is coming from the root window itself,
+        # not from its children widgets resizing.
+        if event.widget == self.root:
+            # Check if the dropdown exists and is currently visible
+            if hasattr(self, "history_listbox") and self.history_listbox.winfo_viewable():
+                self.hide_history_dropdown()
+
+    # === 4. SEARCH LIST - NAVIGATION & SELECTION ===
+
+    def on_search_keyrelease(self, event):
+        """Ouverture après la saisie d'au moins 1 lettre."""
+        # On ignore les touches de contrôle pour ne pas perturber le filtrage
+        if event.keysym in ("Up", "Down", "Return", "Escape", "Left", "Right"):
+            return
+
+        query = self.search_query.get().strip().lower()
+
+        if len(query) >= 1:
+            # Filtrer les résultats selon ce qui est écrit
+            filtered = [item for item in self.search_history if query in item.lower()]
+            if filtered:
+                self.show_history_dropdown(filtered)
+            else:
+                self.hide_history_dropdown()
+        else:
+            self.hide_history_dropdown()
+
+    def on_search_down(self, event):
+        """Gère la flèche du bas dans le champ de recherche sans scroller le log."""
+        if not self.history_listbox.winfo_viewable():
+            # Si fermée et qu'il y a des éléments, on l'ouvre
+            if self.search_history:
+                self.show_history_dropdown()
+            return "break" # Empêche le défilement du log !
+
+        # Si la liste est ouverte, on descend dans la sélection
+        current = self.history_listbox.curselection()
+        if not current:
+            self.history_listbox.selection_set(0)
+        else:
+            idx = min(current[0] + 1, self.history_listbox.size() - 1)
+            self.history_listbox.selection_clear(0, tk.END)
+            self.history_listbox.selection_set(idx)
+            self.history_listbox.see(idx)
+        return "break"
+
+    def on_search_up(self, event):
+        """Gère la flèche du haut dans le champ de recherche sans scroller le log."""
+        if self.history_listbox.winfo_viewable():
+            current = self.history_listbox.curselection()
+            if current and current[0] > 0:
+                idx = current[0] - 1
+                self.history_listbox.selection_clear(0, tk.END)
+                self.history_listbox.selection_set(idx)
+                self.history_listbox.see(idx)
+            return "break" # Empêche le défilement du log !
+        return
+
+    def on_history_select(self, event):
+        """Handles item selection from the history dropdown using mouse click or Enter key."""
+        # 1. Determine the index based on the source and type of event
+        # If the event comes from the listbox and is a mouse button click/release
+        if event.widget == self.history_listbox and ("Button" in str(event.type) or "5" == str(event.type)):
+            index = self.history_listbox.nearest(event.y)
+        else:
+            # Keyboard event (Enter key) from either the Entry or the Listbox
+            selection = self.history_listbox.curselection()
+
+            if selection:
+                index = selection[0]
+            else:
+                # Fallback to the active item, or default to the first item (0)
+                active_index = self.history_listbox.index("active")
+                index = active_index if active_index >= 0 else 0
+
+        # 2. Apply the text if the index is valid
+        if index >= 0:
+            try:
+                selected_text = self.history_listbox.get(index)
+                self._apply_history_selection(selected_text)
+
+                # Hide the list and return focus to the search entry field
+                self.history_listbox.place_forget()
+                self.search_entry.focus_set()
+
+                # Put the cursor at the end of the newly inserted text
+                self.search_entry.icursor("end")
+            except Exception:
+                pass
+
+        # 3. Prevent the event from propagating (prevents jumping to the log)
+        return "break"
+
+    def validate_and_save_search(self, event=None):
+        """
+        Validates search: priority to history selection if visible,
+        otherwise validates the current entry text.
+        """
+        # 1. Check if the history list is visible
+        if self.history_listbox.winfo_viewable():
+            selection = self.history_listbox.curselection()
+            if selection:
+                # An item is selected: use it
+                selected_text = self.history_listbox.get(selection[0])
+                self._apply_history_selection(selected_text)
+                return "break"
+
+        # 2. Otherwise, validate the text from the search entry field
+        query = self.search_query.get().strip()
+        if query:
+            self.add_to_history(query)
+
+        # 3. Close the list and return focus to the log area
+        self.hide_history_dropdown()
+
+        # Ensure the log area is targeted
+        if hasattr(self, 'txt_area'):
+            self.txt_area.focus_set()
+
+        return "break"
+
+    def _apply_history_selection(self, text):
+        """Internal helper to apply the selected text and trigger search."""
+        # 1. Update the search field
+        self.search_query.set(text)
+
+        # 2. Position cursor and focus
+        self.search_entry.icursor(tk.END)
+        self.search_entry.focus_set()
+
+        # 3. Close the popup
+        self.hide_history_dropdown()
+
+        # 4. Trigger search (we use your existing validation method)
+        self.validate_and_save_search()
+

@@ -11,7 +11,7 @@ import config
 import tkinter as tk
 from tkinter import messagebox
 
-from config import SINGLE_INSTANCE_HOST, SINGLE_INSTANCE_PORT, CONFIG_FILE, ENABLE_SINGLE_INSTANCE
+from config import APP_NAME, SINGLE_INSTANCE_HOST, SINGLE_INSTANCE_PORT, CONFIG_FILE, ENABLE_SINGLE_INSTANCE
 from languages import LANGS
 
 if sys.platform == "win32":
@@ -156,7 +156,7 @@ def check_single_instance():
         # Ensure "already_running" is defined in your LANGS["FR"] in languages.py!
         msg = l_ui.get("already_running", "Une instance de ce programme est déjà en cours d'exécution.")
 
-        messagebox.showwarning("Kodi Log Monitor", msg)
+        messagebox.showwarning(APP_NAME, msg)
         temp_root.destroy()
         sys.exit(0)
 
@@ -184,5 +184,5 @@ def show_already_running_msg():
 
     temp_root = tk.Tk()
     temp_root.withdraw()
-    messagebox.showwarning("Kodi Log Monitor", msg)
+    messagebox.showwarning(APP_NAME, msg)
     temp_root.destroy()
