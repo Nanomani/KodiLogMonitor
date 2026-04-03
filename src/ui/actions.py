@@ -1400,8 +1400,8 @@ class ActionsMixin:
             bg=COLOR_BTN_DEFAULT,
             fg=COLOR_TEXT_BRIGHT,
             font=(self.main_font_family, 10),
-            padx=15,
-            pady=7,
+            padx=self.sc(15),
+            pady=self.sc(7),
             anchor="w",
             cursor="hand2",
         )
@@ -1424,8 +1424,8 @@ class ActionsMixin:
             bg=COLOR_BTN_DEFAULT,
             fg=COLOR_TEXT_BRIGHT,
             font=(self.main_font_family, 10),
-            padx=15,
-            pady=7,
+            padx=self.sc(15),
+            pady=self.sc(7),
             anchor="w",
             cursor="hand2",
         )

@@ -143,7 +143,7 @@ class UIBuilderMixin:
             selectbackground=COLOR_BTN_DEFAULT,
             selectforeground=COLOR_TEXT_BRIGHT,
             font=(self.main_font_family, 10),
-            postoffset=(10, 0, 0, 0),
+            postoffset=(0, 0, 0, 0),
             padding=(10, 0, 0, 0)
         )
 
@@ -708,7 +708,7 @@ class UIBuilderMixin:
             column=0,
             sticky="nsew",
             padx=self.sc(10),
-            pady=(0, 10)
+            pady=(0, self.sc(10))
         )
 
         # Configure grid weight to allow the container to expand
@@ -719,17 +719,17 @@ class UIBuilderMixin:
         self.txt_area = tk.Text(
             self.main_container,
             wrap=tk.NONE,
-            width=120,
-            height=25,
+            width=self.sc(120),
+            height=self.sc(25),
             bg=COLOR_BG_MAIN,
             fg=COLOR_TEXT_MAIN,
             font=(self.mono_font_family, self.font_size),
             borderwidth=0,
             highlightthickness=0,
-            padx=5, pady=5,
+            padx=self.sc(5), pady=self.sc(5),
             undo=False,
             selectforeground=COLOR_TEXT_MAIN,
-            insertwidth=4,
+            insertwidth=self.sc(4),
             insertontime=600,
             insertofftime=300,
             insertbackground=COLOR_TEXT_BRIGHT,
@@ -768,7 +768,7 @@ class UIBuilderMixin:
             pady=1
         )
 
-        # Inner container for menu items
+        # --- CONTEXT MENU LOG ---
         self.menu_inner = tk.Frame(self.context_menu, bg=COLOR_BTN_DEFAULT)
         self.menu_inner.pack(fill="both", expand=True)
 
@@ -794,8 +794,8 @@ class UIBuilderMixin:
                 bg=COLOR_BTN_DEFAULT,
                 fg=COLOR_TEXT_BRIGHT,
                 font=(self.main_font_family, 10),
-                padx=15,
-                pady=7,
+                padx=self.sc(15),
+                pady=self.sc(7),
                 anchor="w",
                 cursor="hand2"
             )
