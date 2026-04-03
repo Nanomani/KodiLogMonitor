@@ -242,10 +242,6 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
         # Bind on history event
         self.setup_history_events()
 
-        # Bind Left and Right arrow keys to exit the history dropdown without selection
-        # self.history_listbox.bind("<Left>", self._exit_history_to_entry)
-        # self.history_listbox.bind("<Right>", self._exit_history_to_entry)
-
         # --- FILTER CHANGE ---
         for key, var in self.filter_vars.items():
             if key != "all":  # We don't automate "all"; we manage it manually in on_filter_toggle.

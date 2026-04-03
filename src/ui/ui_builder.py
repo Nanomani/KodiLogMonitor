@@ -143,7 +143,8 @@ class UIBuilderMixin:
             selectbackground=COLOR_BTN_DEFAULT,
             selectforeground=COLOR_TEXT_BRIGHT,
             font=(self.main_font_family, 10),
-            postoffset=(0, 0, 0, 0)
+            postoffset=(10, 0, 0, 0),
+            padding=(10, 0, 0, 0)
         )
 
         style.map(
@@ -179,8 +180,8 @@ class UIBuilderMixin:
             lightcolor=COLOR_BG_HEADER,
             darkcolor=COLOR_BG_HEADER,
             arrowcolor=COLOR_TEXT_DIM,
-            width=24,
-            arrowsize=24
+            width=self.sc(24),
+            arrowsize=self.sc(24)
         )
 
         style.map("Vertical.TScrollbar",
@@ -196,27 +197,29 @@ class UIBuilderMixin:
             lightcolor=COLOR_BG_HEADER,
             darkcolor=COLOR_BG_HEADER,
             arrowcolor=COLOR_TEXT_DIM,
-            width=24,
-            arrowsize=24
+            width=self.sc(24),
+            arrowsize=self.sc(24)
         )
 
         style.map("Horizontal.TScrollbar",
                   background=[("active", SCROLL_THUMB_HOVER), ("pressed", SCROLL_THUMB_HOVER)])
 
+        self.root.option_add("*TCombobox*Listbox.selectBorderWidth", "0")
+        self.root.option_add("*TCombobox*Listbox.relief", "flat")
+        self.root.option_add("*TCombobox*Listbox.borderwidth", "0")
         self.root.option_add("*TCombobox*exportSelection", False)
         self.root.option_add("*TCombobox*Listbox.background", COLOR_BTN_DEFAULT)
         self.root.option_add("*TCombobox*Listbox.foreground", COLOR_TEXT_MAIN)
         self.root.option_add("*TCombobox*Listbox.selectBackground", COLOR_ACCENT)
         self.root.option_add("*TCombobox*Listbox.font", (self.main_font_family, 10))
-        self.root.option_add("*TCombobox*Listbox.itemHeight", 60)
-        self.root.option_add("*TCombobox*Listbox.padding", 4)
-        self.root.option_add("*TCombobox*Listbox.lineSpacing", 10)
+        self.root.option_add("*TCombobox*Listbox.itemHeight", "60")
+        self.root.option_add("*TCombobox*Listbox.lineSpacing", "10")
         self.root.option_add("*TCombobox*Listbox.listvariable", "")
-        self.root.option_add("*TCombobox*Listbox.selectborderwidth", 0)
         self.root.option_add("*TCombobox*Listbox.activestyle", "none")
 
         if sys.platform.startswith("linux"):
             self.root.option_add("*TCombobox*Listbox.selectForeground", COLOR_TEXT_BRIGHT)
+            self.root.option_add("*TCombobox*Listbox.padding", "10")
 
         # --- HEADER ---
         header = tk.Frame(self.root, bg=COLOR_BG_HEADER, padx=self.sc(10), pady=self.sc(10))
@@ -326,10 +329,13 @@ class UIBuilderMixin:
         h_right.pack(side=tk.RIGHT, fill=tk.Y)
 
         # --- THEME SELECTION  ---
+        themes = ["Dark", "Light", "System"]
+        theme_values = [f"     {t}" for t in themes]
+
         self.combo_theme = ttk.Combobox(
             h_right,
             textvariable=self.theme_mode,
-            values=[],
+            values=theme_values,
             state="readonly",
             width=12,
             style="TCombobox"
@@ -342,14 +348,17 @@ class UIBuilderMixin:
         self.combo_theme.bind("<<ComboboxSelected>>", lambda e: [self.on_theme_change(e), self.txt_area.focus_set()])
 
         # --- LANGUAGE SELECTION ---
+        lang_values = [f" {lang}" for lang in sorted(LANGS.keys())]
+
         self.combo_lang = ttk.Combobox(
             h_right,
             textvariable=self.current_lang,
-            values=sorted(LANGS.keys()),
+            values=lang_values,
             state="readonly",
-            width=5,
+            width=6,
             style="TCombobox"
         )
+
         self.combo_lang.bind("<<ComboboxSelected>>", self.refocus_log)
         self.combo_lang.pack(side=tk.LEFT, padx=5)
 

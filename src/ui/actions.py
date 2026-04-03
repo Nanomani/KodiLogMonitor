@@ -477,7 +477,7 @@ class ActionsMixin:
             self.txt_area.tag_configure("no_log_text", foreground=LOG_COLORS["error"], font=(self.mono_font_family, self.font_size, "bold"))
 
             # Message with spacing
-            self.txt_area.insert(tk.END, "\n\n\n\n\t\t\t")
+            self.txt_area.insert(tk.END, "\n\n\n\n\t\t")
             self.txt_area.insert(tk.END, l_ui.get('no_log', 'No LOG file loaded.'), "no_log_text")
 
             self.txt_area.config(state=tk.DISABLED)
@@ -498,7 +498,7 @@ class ActionsMixin:
                 self.txt_area.config(state=tk.NORMAL)
                 self.txt_area.delete('1.0', tk.END)
                 self.txt_area.tag_configure("file_err_text", foreground=LOG_COLORS["error"], font=(self.mono_font_family, self.font_size, "bold"))
-                self.txt_area.insert(tk.END, "\n\n\n\n\t\t\t")
+                self.txt_area.insert(tk.END, "\n\n\n\n\t\t")
                 self.txt_area.insert(tk.END, err_msg, "file_err_text")
                 self.txt_area.config(state=tk.DISABLED)
 
@@ -809,7 +809,9 @@ class ActionsMixin:
         """Redonne le focus à la zone de log après une sélection."""
         self.txt_area.focus_set()
 
+    # === FILTER ===
     # Button ALL
+
     def on_filter_toggle(self, mode):
         """Stabilized filtering logic."""
         if mode == "all":
@@ -983,8 +985,22 @@ class ActionsMixin:
             )
 
     def change_language(self):
+        """
+        Handles the language change when an item is selected in the combobox.
+        Removes padding spaces before processing the translation.
+        """
+        # 1. Get the current value and remove the 2 padding spaces
+        selected_val = self.current_lang.get().strip()
+
+        # 2. Update the variable with the clean value
+        # (This ensures self.current_lang contains "FR" and not "  FR")
+        self.current_lang.set(selected_val)
+
+        # 3. Standard UI logic
         self.combo_lang.selection_clear()
         self.root.focus_set()
+
+        # 4. Retranslate and save
         self.retranslate_ui(True)
         self.save_session()
 
@@ -1158,24 +1174,37 @@ class ActionsMixin:
         self.update_stats()
 
     def on_theme_change(self, event=None):
-        """Applies the Windows theme (Dark/Light) based on the selected option."""
+        """
+        Applies the Windows theme (Dark/Light) based on the selected option.
+        Cleans padding spaces from the selection.
+        """
         if sys.platform != "win32":
             return
 
-        selection = self.theme_mode.get()
+        # 1. Get the value and remove the padding spaces
+        raw_selection = self.theme_mode.get()
+        selection = raw_selection.strip()
+
+        # 2. Update the variable with the clean value
+        self.theme_mode.set(selection)
+
         l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
 
+        # 3. Compare with localized strings (now using the clean 'selection')
         if selection == l_ui.get("t_dark"):
-            mode = 1  # Sombre
+            mode = 1  # Dark
         elif selection == l_ui.get("t_light"):
-            mode = 0  # Clair
+            mode = 0  # Light
         else:
+            # For "System" or any other value
+            from utils import get_windows_theme
             mode = get_windows_theme()
 
         try:
             from ctypes import windll, byref, sizeof, c_int
             hwnd = windll.user32.GetParent(self.root.winfo_id())
 
+            # Attribute 20: Immersive Dark Mode
             windll.dwmapi.DwmSetWindowAttribute(
                 hwnd, 20, byref(c_int(mode)), sizeof(c_int(mode))
             )
@@ -1189,11 +1218,13 @@ class ActionsMixin:
 
             self.root.update()
         except Exception as e:
-            print(f"Erreur lors du changement de thème : {e}")
+            print(f"Error during theme change: {e}")
 
-        # self.combo_theme.selection_clear()
-        # self.root.focus_set()
-        # self.update_windows_title_bar()
+        # 4. UI Polish and saving
+        self.combo_theme.selection_clear()
+        self.root.focus_set()
+
+        # Ensure session is saved with the clean theme name
         self.save_session()
 
     def get_windows_theme():
@@ -1622,12 +1653,16 @@ class ActionsMixin:
         self.search_entry.bind("<KeyRelease>", self.on_search_keyrelease)
 
         # 3. Handle navigation and Escape
-        self.search_entry.bind("<Down>", self.on_search_down)
         self.search_entry.bind("<Up>", self.on_search_up)
+        self.search_entry.bind("<Down>", self.on_search_down)
 
-        # Bind Left and Right arrows
-        # self.history_listbox.bind("<Left>", self._exit_history_to_entry)
-        # self.history_listbox.bind("<Right>", self._exit_history_to_entry)
+        # Bind on search_entry because focus stays there when using UP/DOWN
+        self.search_entry.bind("<Left>", self._exit_history_to_entry)
+        self.search_entry.bind("<Right>", self._exit_history_to_entry)
+
+        # Bind on history_listbox just in case user explicitly clicked on it
+        self.history_listbox.bind("<Left>", self._exit_history_to_entry)
+        self.history_listbox.bind("<Right>", self._exit_history_to_entry)
 
         # FIX: Call the full reset function instead of just hiding the dropdown
         self.search_entry.bind("<Escape>", self.reset_search_and_focus_log)
@@ -1644,38 +1679,38 @@ class ActionsMixin:
     # === 2. SEARCH LIST - DATA MANAGEMENT (FILES) ===
 
     def load_search_history(self):
-        """Charge l'historique de recherche depuis un fichier."""
+        """Loads search history from a file."""
         self.search_history = []
-        # Utilisation d'un fichier dédié pour l'historique
+        # Use a dedicated file for history
         if os.path.exists(SEARCH_HISTORY_FILE):
             try:
                 with open(SEARCH_HISTORY_FILE, "r", encoding="utf-8") as f:
                     self.search_history = [line.strip() for line in f.readlines() if line.strip()]
             except Exception as e:
-                print(f"Erreur chargement historique: {e}")
+                print(f"Error loading history: {e}")
 
     def save_search_history(self):
-        """Sauvegarde l'historique de recherche dans un fichier."""
+        """Saves search history to a file."""
         try:
             with open(SEARCH_HISTORY_FILE, "w", encoding="utf-8") as f:
                 for item in self.search_history:
                     f.write(f"{item}\n")
         except Exception as e:
-            print(f"Erreur sauvegarde historique: {e}")
+            print(f"Error saving history: {e}")
 
     def add_to_history(self, text):
-        """Ajoute un terme à l'historique (sans doublons et au début)."""
+        """Adds a term to history (no duplicates and at the beginning)."""
         text = text.strip()
         if not text:
             return
 
-        # Retire le terme s'il existait déjà pour le remettre en haut
+        # Remove the term if it already existed to put it back at the top
         if text in self.search_history:
             self.search_history.remove(text)
 
         self.search_history.insert(0, text)
 
-        # On limite par exemple l'historique aux 15 dernières recherches
+        # Limit history to the last 15 searches, for example
         self.search_history = self.search_history[:15]
         self.save_search_history()
 
@@ -1752,22 +1787,33 @@ class ActionsMixin:
             self.hide_history_dropdown()
             return
 
-        # --- THEME COLORS (matching your config.py) ---
-        self.history_window.configure(bg=COLOR_BG_HEADER)
+        # --- 1. CONFIGURE THE TOPLEVEL WINDOW BORDER ---
+        # We use highlightthickness on the window itself to create a 1px border
+        self.history_window.configure(
+            bg=COLOR_BG_HEADER,
+            highlightbackground=COLOR_TEXT_DIM, # The color of the 1px border
+            highlightthickness=1,               # The width of the border
+            relief="flat"
+        )
+
+        # --- 2. CONFIGURE THE LISTBOX ---
         self.history_listbox.config(
             bg=COLOR_BG_HEADER,
             fg=COLOR_TEXT_MAIN,
             selectbackground=COLOR_ACCENT,
             selectforeground=COLOR_TEXT_BRIGHT,
             font=(get_system_font()[0], 10),
-            borderwidth=1,
-            highlightthickness=0,
-            relief="flat"
+            borderwidth=0,          # Set to 0 because the window handles the border
+            highlightthickness=0,   # Ensure no internal highlight
+            relief="flat",
+            selectborderwidth=0
         )
 
         self.history_listbox.delete(0, tk.END)
         for item in items:
-            self.history_listbox.insert(tk.END, item)
+            # Indent the text by 2 spaces from the left margin
+            self.history_listbox.insert(tk.END, f"  {item}")
+            # self.history_listbox.insert(tk.END, item)
 
         # Set height (max 7 lines)
         visible_lines = min(len(items), 7)
@@ -1777,7 +1823,11 @@ class ActionsMixin:
 
         # Position calculation
         x = self.search_entry.winfo_rootx()
-        y = self.search_entry.winfo_rooty() + self.search_entry.winfo_height()
+        y = self.search_entry.winfo_rooty() + self.search_entry.winfo_height()+ 10
+
+        # --- 3. ADJUST GEOMETRY ---
+        # Note: We don't change the width/height calculation,
+        # but the window will look 2px larger total due to 1px border on each side.
         width = self.search_entry.winfo_width()
         height = self.history_listbox.winfo_reqheight()
 
@@ -1827,15 +1877,15 @@ class ActionsMixin:
     # === 4. SEARCH LIST - NAVIGATION & SELECTION ===
 
     def on_search_keyrelease(self, event):
-        """Ouverture après la saisie d'au moins 1 lettre."""
-        # On ignore les touches de contrôle pour ne pas perturber le filtrage
+        """Opens after entering at least one letter."""
+        # The control keys are omitted so as not to interfere with filtering
         if event.keysym in ("Up", "Down", "Return", "Escape", "Left", "Right"):
             return
 
         query = self.search_query.get().strip().lower()
 
         if len(query) >= 1:
-            # Filtrer les résultats selon ce qui est écrit
+            # Filter the results based on the text
             filtered = [item for item in self.search_history if query in item.lower()]
             if filtered:
                 self.show_history_dropdown(filtered)
@@ -1844,15 +1894,40 @@ class ActionsMixin:
         else:
             self.hide_history_dropdown()
 
-    def on_search_down(self, event):
-        """Gère la flèche du bas dans le champ de recherche sans scroller le log."""
+    def on_search_up(self, event):
+        """Handles the up arrow in the search field without scrolling through the log."""
         if not self.history_listbox.winfo_viewable():
-            # Si fermée et qu'il y a des éléments, on l'ouvre
+            # If it's closed and there are items inside, we open it
             if self.search_history:
                 self.show_history_dropdown()
-            return "break" # Empêche le défilement du log !
+            return "break" # Stop the log from scrolling!
 
-        # Si la liste est ouverte, on descend dans la sélection
+        # If the list is open, scroll up through the selection
+        current = self.history_listbox.curselection()
+        if not current:
+            # If nothing is selected, start from the last item in the list
+            last_idx = self.history_listbox.size() - 1
+            if last_idx >= 0:
+                self.history_listbox.selection_set(last_idx)
+                self.history_listbox.see(last_idx)
+        else:
+            # Move up one item, bounded by 0
+            idx = max(0, current[0] - 1)
+            self.history_listbox.selection_clear(0, tk.END)
+            self.history_listbox.selection_set(idx)
+            self.history_listbox.see(idx)
+
+        return "break" # Prevent the log from scrolling!
+
+    def on_search_down(self, event):
+        """Handles the down arrow in the search field without scrolling through the log."""
+        if not self.history_listbox.winfo_viewable():
+            # If it's closed and there are items inside, we open it
+            if self.search_history:
+                self.show_history_dropdown()
+            return "break" # Stop the log from scrolling!
+
+        # If the list is open, scroll down through the selection
         current = self.history_listbox.curselection()
         if not current:
             self.history_listbox.selection_set(0)
@@ -1861,19 +1936,7 @@ class ActionsMixin:
             self.history_listbox.selection_clear(0, tk.END)
             self.history_listbox.selection_set(idx)
             self.history_listbox.see(idx)
-        return "break"
-
-    def on_search_up(self, event):
-        """Gère la flèche du haut dans le champ de recherche sans scroller le log."""
-        if self.history_listbox.winfo_viewable():
-            current = self.history_listbox.curselection()
-            if current and current[0] > 0:
-                idx = current[0] - 1
-                self.history_listbox.selection_clear(0, tk.END)
-                self.history_listbox.selection_set(idx)
-                self.history_listbox.see(idx)
-            return "break" # Empêche le défilement du log !
-        return
+        return "break" # Prevent the log from scrolling!
 
     def on_history_select(self, event):
         """Handles item selection from the history dropdown using mouse click or Enter key."""
@@ -1895,7 +1958,7 @@ class ActionsMixin:
         # 2. Apply the text if the index is valid
         if index >= 0:
             try:
-                selected_text = self.history_listbox.get(index)
+                selected_text = self.history_listbox.get(index).strip()
                 self._apply_history_selection(selected_text)
 
                 # Hide the list and return focus to the search entry field
@@ -1929,12 +1992,25 @@ class ActionsMixin:
         if query:
             self.add_to_history(query)
 
-        # 3. Close the list and return focus to the log area
+        # 3. Close the list
         self.hide_history_dropdown()
 
-        # Ensure the log area is targeted
-        if hasattr(self, 'txt_area'):
+        # 4. Check if results are found or if the "No match" screen is shown
+        l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
+        filter_msg = l_ui.get('filter_applied', 'Applied filter(s):')
+
+        # We can detect no matches either by the text or by the presence of the 'filter_header' tag
+        has_no_matches = (filter_msg in self.txt_area.get("1.0", tk.END) or
+                          len(self.txt_area.tag_ranges("filter_header")) > 0)
+
+        # Decide where to place the focus based on search results
+        if not has_no_matches and hasattr(self, 'txt_area'):
+            # Results were found, we go to the log area
             self.txt_area.focus_set()
+        else:
+            # No results or empty search, we stay in the search entry
+            self.search_entry.focus_set()
+            self.search_entry.icursor(tk.END)
 
         return "break"
 
@@ -1952,4 +2028,26 @@ class ActionsMixin:
 
         # 4. Trigger search (we use your existing validation method)
         self.validate_and_save_search()
+
+    def _exit_history_to_entry(self, event=None):
+        """
+        Hides the history list and returns focus to the search entry without selecting anything.
+        """
+        # Check if the list is visible (inspired by on_search_up/down)
+        if self.history_listbox.winfo_viewable():
+            # 1. Hide the dropdown list
+            self.hide_history_dropdown()
+
+            # 2. Return focus to the search entry field (just in case)
+            self.search_entry.focus_set()
+
+            # 3. Put the cursor at the end of the text
+            self.search_entry.icursor(tk.END)
+
+            # 4. Prevent the default behavior (so it doesn't move the cursor inside the entry)
+            return "break"
+
+        # If the list is not visible, let the cursor move left/right normally in the search entry
+        return
+
 

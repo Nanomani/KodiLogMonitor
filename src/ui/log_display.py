@@ -91,12 +91,12 @@ class LogDisplayMixin:
             self.txt_area.tag_configure("separator", foreground=COLOR_SEPARATOR)
 
             # Header with spacing
-            self.txt_area.insert(tk.END, "\n\n\n\n\t\t\t")
+            self.txt_area.insert(tk.END, "\n\n\n\n\t\t")
             self.txt_area.insert(tk.END, l_ui.get('filter_applied', 'Applied filter(s):'), "filter_header")
             self.txt_area.insert(tk.END, "\n")
 
             # Horizontal separator line
-            self.txt_area.insert(tk.END, "\t\t\t" + "─" * 65 + "\n", "separator")
+            self.txt_area.insert(tk.END, "\t\t" + "─" * 65 + "\n", "separator")
 
             # Padding width for labels alignment
             pad = 25
@@ -119,26 +119,26 @@ class LogDisplayMixin:
                     label = f" - {l_ui.get('type_filter', 'Message type')}"
                     type_str = ", ".join(active_labels)
                     # Align using the pad variable
-                    self.txt_area.insert(tk.END, f"\t\t\t{label:<{pad}} : \"{type_str}\"\n", "filter_list")
+                    self.txt_area.insert(tk.END, f"\t\t{label:<{pad}} : \"{type_str}\"\n", "filter_list")
 
             # 2. Keyword search filter
             query = self.search_query.get().strip()
             if query:
                 label = f" - {l_ui.get('keyword_filter', 'Keyword search')}"
-                self.txt_area.insert(tk.END, f"\t\t\t{label:<{pad}} : \"{query}\"\n", "filter_list")
+                self.txt_area.insert(tk.END, f"\t\t{label:<{pad}} : \"{query}\"\n", "filter_list")
 
             # 3. Keyword list filter
             kw_list = self.selected_list.get()
             if kw_list and kw_list != l_ui.get("none", "None"):
                 label = f" - {l_ui.get('list_filter', 'List search')}"
-                self.txt_area.insert(tk.END, f"\t\t\t{label:<{pad}} : \"{kw_list}\"\n", "filter_list")
+                self.txt_area.insert(tk.END, f"\t\t{label:<{pad}} : \"{kw_list}\"\n", "filter_list")
 
             # Add second separator line
-            self.txt_area.insert(tk.END, "\t\t\t" + "─" * 65 + "\n", "separator")
+            self.txt_area.insert(tk.END, "\t\t" + "─" * 65 + "\n", "separator")
 
             # Final "No matches" message
             final_no_match = l_ui.get('no_match', "❌ No matches found")
-            self.txt_area.insert(tk.END, f"\n\t\t\t{final_no_match}", "no_match_text")
+            self.txt_area.insert(tk.END, f"\n\t\t{final_no_match}", "no_match_text")
 
             self.show_loading(False)
             self.update_stats()
@@ -193,30 +193,67 @@ class LogDisplayMixin:
             self.update_stats()
 
     def insert_with_highlight(self, text, base_tag):
+        """
+        Inserts log lines and applies different highlight colors:
+        - Blue for keywords from the search bar.
+        - Yellow for keywords from the loaded list.
+        """
         l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
-        if self.selected_list.get() == l_ui["none"]:
+
+        # 1. Get terms from search bar
+        search_term = self.search_query.get().strip()
+
+        # 2. Get terms from keyword list
+        list_keywords = []
+        if self.selected_list.get() != l_ui["none"]:
+            list_keywords = self.get_keywords_from_file() or []
+
+        # 3. Create a map of keyword -> tag_name
+        # We use a dict to know which color to apply to which word
+        keyword_to_tag = {}
+
+        # Add list keywords (Yellow)
+        for k in list_keywords:
+            if k: keyword_to_tag[k.lower()] = "highlight"
+
+        # Add search term (Blue) - This overwrites if the word is in both,
+        # giving priority to the search bar color.
+        if search_term:
+            keyword_to_tag[search_term.lower()] = "search_bar_highlight"
+
+        if not keyword_to_tag:
             self.txt_area.insert(tk.END, text, base_tag)
             return
-        kw = self.get_keywords_from_file()
-        if not kw:
-            self.txt_area.insert(tk.END, text, base_tag)
-            return
+
         try:
-            matches = list(
-                re.finditer("|".join(re.escape(k) for k in kw), text, re.IGNORECASE)
-            )
+            # Sort keywords by length (longest first) to avoid partial matching issues
+            sorted_keys = sorted(keyword_to_tag.keys(), key=len, reverse=True)
+            pattern = "|".join(re.escape(k) for k in sorted_keys)
+            matches = list(re.finditer(pattern, text, re.IGNORECASE))
         except Exception:
             matches = []
+
         if not matches:
             self.txt_area.insert(tk.END, text, base_tag)
             return
+
+        # 4. Insert text with specific tags
         last_idx = 0
         for m in matches:
+            # Insert text before the match
             self.txt_area.insert(tk.END, text[last_idx: m.start()], base_tag)
+
+            # Determine which tag to use for this specific match
+            matched_text = m.group(0).lower()
+            tag_to_apply = keyword_to_tag.get(matched_text, "highlight")
+
+            # Apply both the base tag (log level color) and the specific highlight (background)
             self.txt_area.insert(
-                tk.END, text[m.start(): m.end()], (base_tag, "highlight")
+                tk.END, text[m.start(): m.end()], (base_tag, tag_to_apply)
             )
             last_idx = m.end()
+
+        # Insert remaining text
         self.txt_area.insert(tk.END, text[last_idx:], base_tag)
 
     def get_keywords_from_file(self):
@@ -332,36 +369,42 @@ class LogDisplayMixin:
     def update_tags_config(self):
         """
         Configures the visual styles (tags) for the log display area.
-
-        This method defines how different types of log lines are rendered
-        in the Text widget. It maps log levels (ERROR, WARNING, INFO, etc.)
-        to specific foreground and background colors.
-
-        Key functionalities:
-        - Sets colors for standard Kodi log levels.
-        - Configures the 'search' tag for highlighting search results.
-        - Defines the 'summary' style for the analysis view.
-        - Ensures that even when the theme changes, the log readability
-          remains consistent.
+        Includes distinct highlights for search bar and keyword lists.
         """
         c_font = (self.mono_font_family, self.font_size)
 
         self.txt_area.tag_configure("sel", foreground=COLOR_TEXT_BRIGHT)
 
+        # Standard log levels (info, warning, error, debug)
         for tag_name, color in LOG_COLORS.items():
-            if tag_name not in ["highlight_bg", "highlight_fg"]:
+            # Skip the highlight colors to avoid applying them as text foregrounds
+            if tag_name not in ["highlight_kwl_bg", "highlight_kwl_fg",
+                               "highlight_kws_bg", "highlight_kws_fg"]:
                 self.txt_area.tag_configure(tag_name, foreground=color, font=c_font)
 
-        self.txt_area.tag_config(
-            "highlight",
-            background=LOG_COLORS["highlight_bg"],
-            foreground=LOG_COLORS["highlight_fg"],
-            font=(c_font[0], self.font_size),
+        # --- TAG 1: KEYWORD LIST HIGHLIGHT (Yellow) ---
+        self.txt_area.tag_configure(
+            "highlight", # This name is used for the keyword list
+            background=LOG_COLORS["highlight_kwl_bg"],
+            foreground=LOG_COLORS["highlight_kwl_fg"],
+            font=c_font,
+        )
+
+        # --- TAG 2: SEARCH BAR HIGHLIGHT (Blue) ---
+        self.txt_area.tag_configure(
+            "search_bar_highlight", # New tag name for search bar
+            background=LOG_COLORS["highlight_kws_bg"],
+            foreground=LOG_COLORS["highlight_kws_fg"],
+            font=c_font,
         )
 
         self.txt_area.configure(bg=COLOR_BG_MAIN, font=c_font)
         self.font_label.config(text=str(self.font_size))
+
+        # Ensure selection is always visible on top of highlights
         self.txt_area.tag_raise("sel")
+        # Ensure search bar highlight has priority over list highlight if both match
+        self.txt_area.tag_raise("search_bar_highlight")
 
     def update_stats(self):
         """
@@ -630,8 +673,8 @@ class LogDisplayMixin:
             self.txt_area.tag_add("highlight_temp", found_final_idx, line_end)
             self.txt_area.tag_config(
                 "highlight_temp",
-                background=LOG_COLORS["highlight_bg"],
-                foreground=LOG_COLORS["highlight_fg"],
+                background=LOG_COLORS["highlight_kwl_bg"],
+                foreground=LOG_COLORS["highlight_kwl_fg"],
                 font=(self.mono_font_family, self.font_size),
             )
 

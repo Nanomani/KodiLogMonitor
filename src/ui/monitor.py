@@ -9,7 +9,6 @@ from config import *
 from languages import LANGS
 
 class MonitorMixin:
-    # reads the file and sends the lines to the display
     def monitor_loop(self):
         """Monitors the log file in a background thread and updates the UI."""
         try:
@@ -27,7 +26,7 @@ class MonitorMixin:
                 # If UI is destroyed or inaccessible, exit thread
                 return
 
-            # Initial opening of the file
+            # --- INITIAL OPENING OF THE FILE ---
             with open(self.log_file_path, 'r', encoding='utf-8', errors='ignore') as f:
                 if load_full:
                     f.seek(0)
@@ -188,7 +187,15 @@ class MonitorMixin:
         self.seen_lines.clear()
         self.log_file_path = path
 
-        # Update the footer with safety truncation and tooltip
+        # --- AUTO-DISABLE PAUSE MODE ---
+        if hasattr(self, 'is_paused'):
+            self.is_paused.set(False)
+
+        if hasattr(self, 'update_pause_button_look'):
+            self.root.after(0, self.update_pause_button_look)
+        # ---------------------------------------
+
+        # Update the footer with safety truncation and tooltip ---
         if hasattr(self, 'update_footer_path'):
             self.update_footer_path(path)
 

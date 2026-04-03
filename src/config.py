@@ -58,8 +58,10 @@ LOG_COLORS = {
     "error": "#d32f2f",  # Red for errors messages + button filter
     "debug": "#9e9e9e",  # Grey for debug messages + button filter
     "summary": "#6aa3c7",  # Cyan for the system summary block
-    "highlight_bg": "#FFF59D",  # Yellow background for search highlights
-    "highlight_fg": "#000000"  # Black text for search highlights
+    "highlight_kwl_bg": "#FFF59D",  # Yellow background for keyword list
+    "highlight_kwl_fg": "#000000",  # Black text for keyword list
+    "highlight_kws_bg": "#6FA8DC",  # Blue background for search bar
+    "highlight_kws_fg": "#000000",  # Black text for search bar
 }
 
 if not os.path.exists(KEYWORD_DIR):
