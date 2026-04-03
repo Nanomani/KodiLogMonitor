@@ -6,7 +6,7 @@ This module defines application metadata, file paths, and the visual color palet
 import os
 
 # --- CONFIGURATION ---
-APP_VERSION = "v1.4.2"
+APP_VERSION = "v1.4.3"
 APP_NAME = "Kodi Log Monitor"
 CONFIG_FILE = ".kodi_monitor_config"
 SEARCH_HISTORY_FILE = ".kodi_search_history"
