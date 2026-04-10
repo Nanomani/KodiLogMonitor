@@ -1,7 +1,8 @@
 import os
 import config
 from config import *
-from languages import LANGS
+from config import APP_THEME
+from languages import LANGS, LANG_NAMES
 
 
 class SessionMixin:
@@ -27,7 +28,7 @@ class SessionMixin:
                     f"{str(self.selected_list.get()):<{w}} # Selected keyword list",
                     f"{filter_states:<{w}} # Filter states (ALL, INFO, WARNING, ERROR, DEBUG)",
                     f"{('1' if self.show_google_search.get() else '0'):<{w}} # Show google search menu (0=hide)",
-                    f"{str(self.theme_mode.get()):<{w}} # Theme mode",
+                    f"{'deprecated':<{w}} # Theme mode (deprecated — kept for backward compat)",
                     f"{str(self.inactivity_limit):<{w}} # Inactivity limit seconds (0=disable)",
                     f"{str(self.paste_url):<{w}} # Url for upload",
                     f"{str(self.max_size_mb):<{w}} # Max size Mo limit (10 Mo default)",
@@ -35,7 +36,8 @@ class SessionMixin:
                     f"{('1' if self.updates_enabled else '0'):<{w}} # Updates (1=enable 0=disable)",
                     f"{str(SINGLE_INSTANCE_HOST):<{w}} # Single instance host",
                     f"{str(SINGLE_INSTANCE_PORT):<{w}} # Single instance port",
-                    f"{('1' if self.enable_single_instance_var else '0'):<{w}} # Enable single instance (1=True, 0=False)"
+                    f"{('1' if self.enable_single_instance_var else '0'):<{w}} # Enable single instance (1=True, 0=False)",
+                    f"{str(self.app_theme.get()):<{w}} # App color theme (dark/light)",
                 ]
                 f.write("\n".join(config_data))
         except (IOError, OSError) as e:
@@ -63,6 +65,9 @@ class SessionMixin:
                 # 2. Current language
                 if len(lines) >= 2 and lines[1] in LANGS:
                     self.current_lang.set(lines[1])
+                    # Sync combo display (shows full name, not code)
+                    if hasattr(self, "combo_lang"):
+                        self.combo_lang.set(LANG_NAMES.get(lines[1], lines[1]))
 
                 # 3. Load full file preference
                 if len(lines) >= 3:
@@ -103,9 +108,7 @@ class SessionMixin:
                     # Default to enabled if the line doesn't exist yet
                     self.show_google_search.set(True)
 
-                # 9. theme windows light, dark, auto
-                if len(lines) >= 9:
-                    self.theme_mode.set(lines[8])
+                # 9. (deprecated — was OS title-bar theme combobox, now ignored)
 
                 # 10. Inactivity Limit
                 if len(lines) >= 10:
@@ -137,27 +140,30 @@ class SessionMixin:
 
                 # 15. Single Instance Host (AJOUT)
                 if len(lines) >= 15:
-                    global SINGLE_INSTANCE_HOST
-                    SINGLE_INSTANCE_HOST = lines[14].strip()
+                    config.SINGLE_INSTANCE_HOST = lines[14].strip()
 
                 # 16. Single Instance Port (AJOUT)
                 if len(lines) >= 16:
                     try:
-                        global SINGLE_INSTANCE_PORT
-                        SINGLE_INSTANCE_PORT = int(lines[15].strip())
+                        config.SINGLE_INSTANCE_PORT = int(lines[15].strip())
                     except ValueError:
                         pass
 
                 # Line 17: Enable single instance (Global variable)
                 if len(lines) >= 17:
                     is_enabled = (lines[16].strip() == "1")
-                    import config
                     config.ENABLE_SINGLE_INSTANCE = is_enabled
                     self.enable_single_instance_var = is_enabled
                 else:
                     self.enable_single_instance_var = config.ENABLE_SINGLE_INSTANCE
 
-        except (IOError, OSError, Exception) as e:
+                # Line 18: App color theme (dark / light)
+                if len(lines) >= 18:
+                    val = lines[17].strip().lower()
+                    if val in ("dark", "light"):
+                        self.app_theme.set(val)
+
+        except Exception as e:
             print(f"Error loading configuration: {e}")
 
         # Finalize UI setup after loading data

@@ -1,6 +1,7 @@
 # ui/app.py
 import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
+import customtkinter as ctk
+from tkinter import filedialog, messagebox
 import threading
 import os
 import time
@@ -9,8 +10,9 @@ from collections import deque
 
 import config
 from config import *
+from config import APP_THEME
 from languages import LANGS
-from utils import get_system_font, get_mono_font, get_emoji_font, get_windows_theme
+from utils import get_system_font, get_mono_font, get_emoji_font
 
 from ui.monitor import MonitorMixin
 from ui.log_display import LogDisplayMixin
@@ -22,8 +24,10 @@ from ui.ui_builder import UIBuilderMixin
 class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin, MonitorMixin):
     """
     Main class — assembles all modules via multiple inheritance.
+    Converted to CustomTkinter (CTk root window).
     """
     def __init__(self, root):
+        # root is now a ctk.CTk instance
         self.root = root
         self.root.title(APP_NAME)
         self.inactivity_timer_var = tk.StringVar(value="")
@@ -31,28 +35,27 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
         # --- 4K DYNAMIC DETECTION ---
         screen_width = self.root.winfo_screenwidth()
 
-        # If the screen is wider than 2560 pixels
         if screen_width > 2560:
             self.window_geometry = DEFAULT_GEOMETRY_4K
             self.scale = 1
         elif screen_width > 1280:
             self.window_geometry = DEFAULT_GEOMETRY_FHD
-            self.scale = 0.5
+            self.scale = 0.50
         else:
             self.window_geometry = DEFAULT_GEOMETRY_HD
             self.scale = 0.25
 
-        # --- SAFE DISPLAY MONITORING ---
+        # --- SAFE DISPLAY MONITORING (Windows only) ---
         if sys.platform == "win32":
             from ctypes import windll
-            # Get screen width directly from Windows API (SM_CXSCREEN = 0)
-            self.last_screen_width = windll.user32.GetSystemMetrics(0)
-            # Start a safe check every 3 seconds
+            self.last_screen_width  = windll.user32.GetSystemMetrics(0)  # SM_CXSCREEN
+            self.last_screen_height = windll.user32.GetSystemMetrics(1)  # SM_CYSCREEN
             self.root.after(3000, self.periodic_display_check)
 
         self.enable_single_instance_var = self._load_single_instance_state()
 
-        self.root.configure(bg=COLOR_BG_MAIN)
+        # Configure root background color to match dark theme
+        self.root.configure(fg_color=COLOR_BG_MAIN)
         self.last_activity_time = time.time()
         self.inactivity_limit = DEFAULT_TIME_INACTIVITY
         self.last_line_count = 0
@@ -60,9 +63,15 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
         self.last_limit_state = False
         self.last_wrap_state = False
 
+        # --- Font families for cross-platform compatibility ---
         self.main_font_family = get_system_font()
         self.mono_font_family = get_mono_font()
         self.emoji_font_family = get_emoji_font()
+
+        # Extract first font family name (CTkFont needs a single string)
+        self._main_font = self.main_font_family[0] if isinstance(self.main_font_family, tuple) else self.main_font_family
+        self._mono_font = self.mono_font_family[0] if isinstance(self.mono_font_family, tuple) else self.mono_font_family
+        self._emoji_font = self.emoji_font_family[0] if isinstance(self.emoji_font_family, tuple) else self.emoji_font_family
 
         self.set_window_icon()
         self.log_file_path = ""
@@ -72,22 +81,23 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
         self.skip_version = ""
         self.running = False
         self.monitor_thread = None
-        self.seen_lines = deque(maxlen=200)
+        self.seen_lines = deque(maxlen=2000)
         self.pending_jump_timestamp = None
         self.log_lock = threading.Lock()
 
+        # --- Tkinter control variables (compatible with CTK) ---
         self.load_full_file = tk.BooleanVar(value=False)
         self.wrap_mode = tk.BooleanVar(value=False)
         self.is_paused = tk.BooleanVar(value=False)
         self.current_lang = tk.StringVar(value=self.detect_os_language())
-        self.theme_mode = tk.StringVar(value="Dark")  # Options: Auto, Light, Dark
+        self.app_theme = tk.StringVar(value=APP_THEME)  # "dark" or "light"
 
         self.filter_vars = {
-            "all": tk.BooleanVar(value=True),
-            "debug": tk.BooleanVar(value=False),
-            "info": tk.BooleanVar(value=False),
+            "all":     tk.BooleanVar(value=True),
+            "debug":   tk.BooleanVar(value=False),
+            "info":    tk.BooleanVar(value=False),
             "warning": tk.BooleanVar(value=False),
-            "error": tk.BooleanVar(value=False)
+            "error":   tk.BooleanVar(value=False)
         }
 
         self.search_query = tk.StringVar()
@@ -96,23 +106,23 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
         self.show_google_search = tk.BooleanVar(value=True)
 
         self.filter_colors = {
-            "all": COLOR_ACCENT,
-            "debug": LOG_COLORS["debug"],
-            "info": LOG_COLORS["info"],
+            "all":     COLOR_ACCENT,
+            "debug":   LOG_COLORS["debug"],
+            "info":    LOG_COLORS["info"],
             "warning": LOG_COLORS["warning"],
-            "error": LOG_COLORS["error"]
+            "error":   LOG_COLORS["error"]
         }
 
         # --- Cursor visibility management ---
         self.cursor_timer = None
         self.cursor_visible = True
 
+        # Build all UI widgets (CTK-converted)
         self.setup_ui()
         self.load_session()
 
-        # --- NEW LOGIC: RESET GEOMETRY IF EMPTY ---
+        # --- Reset geometry if empty after session load ---
         if not self.window_geometry or self.window_geometry.strip() == "":
-            screen_width = self.root.winfo_screenwidth()
             if screen_width > 2560:
                 self.window_geometry = DEFAULT_GEOMETRY_4K
             elif screen_width > 1280:
@@ -122,16 +132,15 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
 
         self.check_for_updates()
 
-        if self.log_file_path:
-            # We wait 200ms for the window to be ready before loading.
-            self.root.after(200, lambda: self.start_monitoring(self.log_file_path, is_manual=False))
+        # Note: start_monitoring() is already called at the end of load_session()
+        # if a saved log path exists. No second call is needed here.
 
         self.root.geometry(self.window_geometry)
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
 
         # --- KEYBOARD SHORTCUTS ---
 
-        # Close the dropdown search list when clicking anywhere else in the application or Windows OS
+        # Close dropdown search list when clicking outside
         self.root.bind("<Button-1>", self._close_dropdown_on_outside_click)
         self.root.bind("<Configure>", self._on_window_configure)
 
@@ -221,63 +230,66 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
         self.txt_area.bind("<Up>", lambda e: self.txt_area.yview_scroll(-1, "units"))
         self.txt_area.bind("<Down>", lambda e: self.txt_area.yview_scroll(1, "units"))
 
-        # Bind Ctrl + Mouse Wheel to handle font resizing
-        # Windows and macOS
+        # Ctrl+MouseWheel for font resize (Windows/macOS)
         self.txt_area.bind("<Control-MouseWheel>", self.on_mouse_wheel_font_resize)
-        # Linux support (uses specific button numbers for scrolling)
+        # Linux scrolling support
         self.txt_area.bind("<Control-Button-4>", self.on_mouse_wheel_font_resize)
         self.txt_area.bind("<Control-Button-5>", self.on_mouse_wheel_font_resize)
 
-        # Bind Mouse Wheel safe vertical scroll
-        # Windows & macOS
+        # Safe vertical scroll with MouseWheel (Windows & macOS)
         self.txt_area.bind("<MouseWheel>", self.safe_vertical_scroll)
-
         # Linux
         self.txt_area.bind("<Button-4>", self.safe_vertical_scroll)
         self.txt_area.bind("<Button-5>", self.safe_vertical_scroll)
 
-        # Bind the Escape key specifically to this entry field
+        # Escape in search field clears it and returns focus to log
         self.search_entry.bind("<Escape>", self.reset_search_and_focus_log)
 
-        # Bind on history event
+        # History event bindings
         self.setup_history_events()
 
-        # --- FILTER CHANGE ---
+        # --- FILTER CHANGE TRACES ---
         for key, var in self.filter_vars.items():
-            if key != "all":  # We don't automate "all"; we manage it manually in on_filter_toggle.
+            if key != "all":
                 var.trace_add("write", self.trigger_refresh)
 
         self.search_query.trace_add("write", self.clean_search_input)
         self.search_query.trace_add("write", self.on_search_change)
 
-        # Trace the search query to sanitize it BEFORE executing the search
         self.selected_list.trace_add("write", self.on_list_change)
         self.load_full_file.trace_add("write", lambda *args: self.immediate_ui_refresh())
 
-        # --- History Popup ---
+        # --- History Popup (tk.Toplevel with overrideredirect for frameless popup) ---
         self.history_window = tk.Toplevel(self.root)
         self.history_window.withdraw()
         self.history_window.overrideredirect(True)
 
-        self.history_listbox = tk.Listbox(self.history_window)
+        # Style the history listbox to match dark theme
+        self.history_listbox = tk.Listbox(
+            self.history_window,
+            bg=COLOR_BG_MAIN,
+            fg=COLOR_TEXT_MAIN,
+            selectbackground=COLOR_ACCENT,
+            selectforeground=COLOR_TEXT_BRIGHT,
+            font=(self._main_font, 12),
+            borderwidth=1,
+            highlightthickness=0,
+            activestyle="none",
+            exportselection=False
+        )
         self.history_listbox.pack(fill=tk.BOTH, expand=True)
-
-        # Bindings (The names must exist as methods in your class)
-        # self.history_listbox.bind("<Return>", self.on_history_select_keyboard)
         self.history_listbox.bind("<ButtonRelease-1>", self.on_history_select)
 
         self.root.after(5000, self.scheduled_stats_update)
 
         if sys.platform == "win32":
             self.update_windows_title_bar()
-            self.listen_for_theme_changes()
-            self.root.after(100, self.on_theme_change)
 
         self.update_button_colors()
         self.root.bind("<FocusIn>", lambda e: self.sync_config_on_focus())
 
     def _load_single_instance_state(self):
-        """Pré-charge l'état 'single instance' du fichier config."""
+        """Pre-loads the 'single instance' state from the config file."""
         if os.path.exists(CONFIG_FILE):
             try:
                 with open(CONFIG_FILE, "r", encoding="utf-8") as f:
@@ -289,7 +301,14 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
         return config.ENABLE_SINGLE_INSTANCE
 
     def on_closing(self):
+        """Handles the window close event: stops monitoring thread, saves session, destroys window."""
         self.running = False
+        # Wait for monitor_loop to exit its sleep cycle before destroying the window.
+        # Without this, root.destroy() can race with the thread and cause a GIL crash.
+        if hasattr(self, 'monitor_thread') and \
+           self.monitor_thread is not None and \
+           self.monitor_thread.is_alive():
+            self.monitor_thread.join(timeout=1.2)
         if sys.platform == "win32" and hasattr(self, "old_wndproc"):
             from ctypes import windll
             hwnd = windll.user32.GetParent(self.root.winfo_id())

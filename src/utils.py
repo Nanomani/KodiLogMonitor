@@ -1,5 +1,5 @@
 """
-Utility functions for cross-platform font selection and Windows-specific theme detection.
+Utility functions for cross-platform font selection and single-instance management.
 Provides helper methods for system, monospaced, and emoji font families.
 """
 
@@ -14,10 +14,9 @@ from tkinter import messagebox
 from config import APP_NAME, SINGLE_INSTANCE_HOST, SINGLE_INSTANCE_PORT, CONFIG_FILE, ENABLE_SINGLE_INSTANCE
 from languages import LANGS
 
-if sys.platform == "win32":
-    import winreg
-else:
-    winreg = None
+# Module-level sentinel for the single-instance lock socket.
+# Initialized here so any code path can safely reference it.
+_lock_socket = None
 
 def get_system_font():
     """
@@ -57,23 +56,6 @@ def get_emoji_font():
     if sys.platform == "win32":
         return "Segoe UI Emoji"
     return get_system_font()
-
-
-def get_windows_theme():
-    """
-    Check the Windows Registry to see if the user prefers Dark Mode.
-    Returns: 1 for Dark Mode, 0 for Light Mode.
-    """
-    try:
-        registry = winreg.ConnectRegistry(None, winreg.HKEY_CURRENT_USER)
-        key = winreg.OpenKey(
-            registry, r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"
-        )
-        value, _ = winreg.QueryValueEx(key, "AppsUseLightTheme")
-        winreg.CloseKey(key)
-        return 0 if value == 1 else 1  # 1 = Dark, 0 = Light
-    except (OSError, AttributeError, FileNotFoundError):
-        return 1  # Default to Dark Mode if check fails
 
 
 def check_single_instance():
@@ -120,9 +102,26 @@ def check_single_instance():
             print(f"Error reading config: {e}")
 
     if not ENABLE_SINGLE_INSTANCE:
+        # Release any previously held lock so other instances can start freely
+        if _lock_socket is not None:
+            try:
+                _lock_socket.close()
+            except Exception:
+                pass
+            _lock_socket = None
         return
 
+    # Close any pre-existing socket from a previous call to avoid leaking file descriptors
+    if _lock_socket is not None:
+        try:
+            _lock_socket.close()
+        except Exception:
+            pass
     _lock_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    # DO NOT use SO_REUSEADDR here: on Windows it allows multiple processes to
+    # bind the same port simultaneously, which defeats the single-instance check.
+    # A bound-but-never-connected TCP socket never enters TIME_WAIT, so REUSEADDR
+    # is not needed to reclaim the port after the previous instance closes.
     try:
         _lock_socket.bind((host, port))
     except socket.error:
@@ -141,7 +140,7 @@ def check_single_instance():
                 lang_name = locale.windows_locale.get(lang_id)
                 if lang_name and lang_name.lower().startswith('fr'):
                     return "FR"
-            except:
+            except Exception:
                 pass
             return "EN"
 
@@ -161,28 +160,10 @@ def check_single_instance():
         sys.exit(0)
 
 
-def show_already_running_msg():
-    """ Displays the warning message in the correct language. """
-    # Helper for language detection
-    def get_startup_lang():
-        try:
-            import locale
-            lang_code, _ = locale.getlocale()
-            if not lang_code and os.name == 'nt':
-                import ctypes
-                lang_id = ctypes.windll.kernel32.GetUserDefaultUILanguage()
-                lang_code = locale.windows_locale.get(lang_id)
-            if lang_code and lang_code.lower().startswith('fr'):
-                return "FR"
-        except: pass
-        return "EN"
-
-    sys_lang = get_startup_lang()
-    # Assuming LANGS dictionary is defined globally
-    l_ui = LANGS.get(sys_lang, LANGS.get("EN", {}))
-    msg = l_ui.get("already_running", "An instance of this program is already running.")
-
-    temp_root = tk.Tk()
-    temp_root.withdraw()
-    messagebox.showwarning(APP_NAME, msg)
-    temp_root.destroy()
+def parse_version(version_str):
+    """Converts the string 'v1.4.3' into a tuple of integers (1, 4, 3)."""
+    try:
+        # Remove the initial 'v' and cut along the dotted lines
+        return tuple(int(x) for x in version_str.lstrip('v').split('.'))
+    except Exception:
+        return (0, 0, 0)

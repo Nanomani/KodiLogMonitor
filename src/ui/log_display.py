@@ -1,9 +1,23 @@
 import tkinter as tk
+import customtkinter as ctk
 import os
 import re
 
 from config import *
 from languages import LANGS
+
+
+def _pad_line(text: str) -> str:
+    """
+    Pads a log line to LOG_MIN_LINE_WIDTH characters (before the newline).
+    Every displayed line occupies at least LOG_MIN_LINE_WIDTH chars of horizontal
+    space, so the scroll region never shrinks and the scrollbar thumb stays
+    stable regardless of line lengths. Trailing spaces are invisible to the user.
+    """
+    if text.endswith("\n"):
+        content = text[:-1]
+        return content.ljust(LOG_MIN_LINE_WIDTH) + "\n"
+    return text.ljust(LOG_MIN_LINE_WIDTH)
 
 
 class LogDisplayMixin:
@@ -33,7 +47,7 @@ class LogDisplayMixin:
         low = line.lower()
         q = self.search_query.get().lower()
         current_tag = None
-        if " error " in low:
+        if " error " in low or " critical " in low:
             current_tag = "error"
         elif " warning " in low:
             current_tag = "warning"
@@ -147,7 +161,7 @@ class LogDisplayMixin:
         # Normal insertion if valid_data exists
         self.txt_area.delete('1.0', tk.END)
         for text, tag in valid_data:
-            self.insert_with_highlight(text, tag)
+            self.insert_with_highlight(_pad_line(text), tag)
 
         if self.pending_jump_timestamp:
             self.jump_to_timestamp(self.pending_jump_timestamp)
@@ -173,22 +187,21 @@ class LogDisplayMixin:
             text (str): The log line text.
             tag (str): The Tkinter tag associated with the log level.
         """
-        if not self.running or self.is_paused.get():
+        if not self.running:
+            return
+        # Capture once to avoid a race condition with the pause toggle
+        paused = self.is_paused.get()
+        if paused:
             return
 
         with self.log_lock:  # Prevents mixing during writing
             self.txt_area.config(state=tk.NORMAL)
-            self.insert_with_highlight(text, tag)
+            self.insert_with_highlight(_pad_line(text), tag)
 
-            if not self.is_paused.get():
-                # Get current horizontal position
-                current_x = self.txt_area.xview()[0]
-
-                # Scroll to the end vertically
-                self.txt_area.see(tk.END)
-
-                # Restore the horizontal position
-                self.txt_area.xview_moveto(current_x)
+            # Scroll to end (pause already checked above)
+            current_x = self.txt_area.xview()[0]
+            self.txt_area.see(tk.END)
+            self.txt_area.xview_moveto(current_x)
 
             self.update_stats()
 
@@ -257,15 +270,41 @@ class LogDisplayMixin:
         self.txt_area.insert(tk.END, text[last_idx:], base_tag)
 
     def get_keywords_from_file(self):
+        """
+        Returns the keyword list for the currently selected list file.
+        Results are cached in memory; the cache is invalidated automatically
+        when the selected list or the file's modification time changes.
+        """
         l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
-        if self.selected_list.get() == l_ui["none"]:
+        current_list = self.selected_list.get()
+        if current_list == l_ui["none"] or not current_list:
+            self._kw_cache = None
+            self._kw_cache_key = None
             return []
-        path = os.path.join(KEYWORD_DIR, f"{self.selected_list.get()}.txt")
+
+        path = os.path.join(KEYWORD_DIR, f"{current_list}.txt")
+
+        # Build a cache key from (list name, file mtime) so edits to the file
+        # are picked up automatically without requiring a UI action.
+        try:
+            mtime = os.path.getmtime(path)
+        except OSError:
+            mtime = 0
+
+        cache_key = (current_list, mtime)
+        if getattr(self, "_kw_cache_key", None) == cache_key and self._kw_cache is not None:
+            return self._kw_cache
+
+        # Cache miss — read from disk and store
         try:
             with open(path, "r", encoding="utf-8", errors="ignore") as f:
-                return [line.strip() for line in f if line.strip()]
+                keywords = [line.strip() for line in f if line.strip()]
         except Exception:
-            return []
+            keywords = []
+
+        self._kw_cache = keywords
+        self._kw_cache_key = cache_key
+        return keywords
 
     def refresh_natural_order(self):
         """Reloads the log in file order (Fixes the issue of lines without dates)."""
@@ -314,7 +353,7 @@ class LogDisplayMixin:
                     lines = f.readlines()
                 else:
                     f.seek(0, os.SEEK_END)
-                    f.seek(max(0, f.tell() - 200000))  # Lecture d'un bloc suffisant
+                    f.seek(max(0, f.tell() - 200000))
                     lines = f.readlines()[-1000:]
 
                 to_display = []
@@ -373,7 +412,7 @@ class LogDisplayMixin:
         """
         c_font = (self.mono_font_family, self.font_size)
 
-        self.txt_area.tag_configure("sel", foreground=COLOR_TEXT_BRIGHT)
+        self.txt_area.tag_configure("sel", foreground=COLOR_TEXT_ON_ACCENT)  # Always white on blue selection (both themes)
 
         # Standard log levels (info, warning, error, debug)
         for tag_name, color in LOG_COLORS.items():
@@ -384,7 +423,7 @@ class LogDisplayMixin:
 
         # --- TAG 1: KEYWORD LIST HIGHLIGHT (Yellow) ---
         self.txt_area.tag_configure(
-            "highlight", # This name is used for the keyword list
+            "highlight",  # This name is used for the keyword list
             background=LOG_COLORS["highlight_kwl_bg"],
             foreground=LOG_COLORS["highlight_kwl_fg"],
             font=c_font,
@@ -392,14 +431,17 @@ class LogDisplayMixin:
 
         # --- TAG 2: SEARCH BAR HIGHLIGHT (Blue) ---
         self.txt_area.tag_configure(
-            "search_bar_highlight", # New tag name for search bar
+            "search_bar_highlight",  # New tag name for search bar
             background=LOG_COLORS["highlight_kws_bg"],
             foreground=LOG_COLORS["highlight_kws_fg"],
             font=c_font,
         )
 
+        # txt_area is a tk.Text widget — use standard Tkinter configure
         self.txt_area.configure(bg=COLOR_BG_MAIN, font=c_font)
-        self.font_label.config(text=str(self.font_size))
+
+        # font_label is a CTkLabel — use CTK configure
+        self.font_label.configure(text=str(self.font_size))
 
         # Ensure selection is always visible on top of highlights
         self.txt_area.tag_raise("sel")
@@ -408,8 +450,9 @@ class LogDisplayMixin:
 
     def update_stats(self):
         """
-        Updates the visibility and content of stats labels in the bottom bar.
-        Now tracks file size changes to prevent UI sync issues on startup.
+        Fetches current file info and updates the footer stats labels.
+        Called on file load, on every scheduled tick (every 4 s), and on
+        state changes (pause, wrap, limit toggled).
         """
         if not self.log_file_path:
             # Hide all stats widgets
@@ -421,47 +464,27 @@ class LogDisplayMixin:
             # Fetch translation for the "Select a LOG file" message
             l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
 
-            # Manually update the footer label since textvariable was removed in ui_builder.py
             if hasattr(self, 'update_footer_path'):
                 self.update_footer_path(l_ui.get("sel", "Sélectionnez un fichier LOG."))
 
             return
 
-        # 1. Recovery of current states
-        try:
-            current_text = self.stats_var.get()
-            current_count = int(''.join(filter(str.isdigit, current_text)))
-        except (ValueError, TypeError):
-            current_count = -1
-
-        current_pause = self.is_paused.get()
-        current_limit = self.load_full_file.get()
-        current_wrap = self.wrap_mode.get()
-        current_size = self.size_var.get() # Captured file size
-
-        # 2. UPDATE CONDITION:
-        # Added check for current_size to prevent skipping updates when size changes!
-        if (current_count == getattr(self, 'last_line_count', None) and
-                current_pause == getattr(self, 'last_pause_state', None) and
-                current_limit == getattr(self, 'last_limit_state', None) and
-                current_wrap == getattr(self, 'last_wrap_state', None) and
-                current_size == getattr(self, 'last_size_text', '')):
-            return
-
-        # 3. Memorization of new states
-        self.last_line_count = current_count
-        self.last_pause_state = current_pause
-        self.last_limit_state = current_limit
-        self.last_wrap_state = current_wrap
-        self.last_size_text = current_size
-
         l = LANGS.get(self.current_lang.get(), LANGS["EN"])
 
-        # --- Format line count with spaces as thousands separator ---
-        if current_count >= 0 and "N/A" not in self.stats_var.get():
-            # Python's native comma separator replaced by a space
-            formatted_count = f"{current_count:,}".replace(",", " ")
-            self.stats_var.set(l["stats_simple"].format(formatted_count))
+        # --- Always fetch fresh file info for accurate stats ---
+        size_str, real_total = self.get_file_info()
+        try:
+            formatted_total = f"{int(real_total):,}".replace(",", " ")
+        except (ValueError, TypeError):
+            formatted_total = str(real_total)
+        lines_text = l["stats_simple"].format(formatted_total)
+        size_text  = l["file_size_text"].format(size_str)
+        self.stats_var.set(lines_text)
+        self.size_var.set(size_text)
+
+        # Set label texts explicitly (no textvariable — avoids CTK pack_forget issue)
+        self.label_lines.configure(text=lines_text)
+        self.label_size.configure(text=size_text)
 
         self.sep_lines.pack_forget()
         self.label_lines.pack_forget()
@@ -475,15 +498,14 @@ class LogDisplayMixin:
         self.label_pause.pack_forget()
 
         # --- Bloc NUMBER OF LINES ---
-        if self.stats_var.get() and "N/A" not in self.stats_var.get():
-            self.sep_lines.pack(side=tk.LEFT, fill=tk.Y, padx=self.sc(20), pady=2)
+        if lines_text and "N/A" not in lines_text:
+            self.sep_lines.pack(side=tk.LEFT, fill=tk.Y, padx=20, pady=2)
             self.label_lines.pack(side=tk.LEFT)
         else:
             self.sep_lines.pack_forget()
             self.label_lines.pack_forget()
 
         # --- FILE SIZE Block ---
-        size_text = self.size_var.get()
         if size_text and "N/A" not in size_text:
             # Size analysis to change color
             try:
@@ -494,31 +516,31 @@ class LogDisplayMixin:
 
                 # If it is in MB and > max_size_mb, we put it in red.
                 if is_mb and size_value > self.max_size_mb:
-                    self.label_size.config(fg=LOG_COLORS["error"])
-                    self.label_lines.config(fg=LOG_COLORS["error"])
+                    self.label_size.configure(text_color=LOG_COLORS["error"])
+                    self.label_lines.configure(text_color=LOG_COLORS["error"])
 
                     # --- Automatic safety limit when crossing the threshold ---
                     # If we haven't auto-limited yet AND we are in full load mode
                     if not getattr(self, "has_auto_limited", False) and self.load_full_file.get():
-                        self.load_full_file.set(False) # Activate the 1000-line limit
-                        self.has_auto_limited = True   # Remember that we auto-limited it
+                        self.load_full_file.set(False)  # Activate the 1000-line limit
+                        self.has_auto_limited = True     # Remember that we auto-limited it
                 else:
-                    self.label_size.config(fg=COLOR_TEXT_MAIN)
-                    self.label_lines.config(fg=COLOR_TEXT_MAIN)
+                    self.label_size.configure(text_color=COLOR_TEXT_MAIN)
+                    self.label_lines.configure(text_color=COLOR_TEXT_MAIN)
                     # Reset the flag if the file becomes smaller again (unlikely but clean)
                     self.has_auto_limited = False
 
             except Exception:
                 # In case of an analysis error, the default color is retained.
-                self.label_size.config(fg=COLOR_TEXT_MAIN)
-                self.label_lines.config(fg=COLOR_TEXT_MAIN)
+                self.label_size.configure(text_color=COLOR_TEXT_MAIN)
+                self.label_lines.configure(text_color=COLOR_TEXT_MAIN)
 
-            self.sep_size.pack(side=tk.LEFT, fill=tk.Y, padx=self.sc(20), pady=2)
+            self.sep_size.pack(side=tk.LEFT, fill=tk.Y, padx=20, pady=2)
             self.label_size.pack(side=tk.LEFT)
         else:
             self.sep_size.pack_forget()
             self.label_size.pack_forget()
-            self.label_lines.config(fg=COLOR_TEXT_MAIN)
+            self.label_lines.configure(text_color=COLOR_TEXT_MAIN)
 
         # --- LIMIT Block ---
         txt_limit = l["limit"]
@@ -526,19 +548,20 @@ class LogDisplayMixin:
 
         if not self.load_full_file.get():
             self.limit_var.set(txt_limit)
-            self.label_limit.config(fg=COLOR_TEXT_MAIN) # Standard color for "Info"
+            self.label_limit.configure(text=txt_limit, text_color=COLOR_TEXT_MAIN)
         else:
             self.limit_var.set(txt_unlimited)
-            self.label_limit.config(fg=COLOR_WARNING)   # Warning color for "Unlimited"
+            self.label_limit.configure(text=txt_unlimited, text_color=COLOR_WARNING)
 
         # Always pack if a file is loaded to ensure it doesn't disappear
-        self.sep_limit.pack(side=tk.LEFT, fill=tk.Y, padx=self.sc(20), pady=2)
+        self.sep_limit.pack(side=tk.LEFT, fill=tk.Y, padx=20, pady=2)
         self.label_limit.pack(side=tk.LEFT)
 
         # --- Bloc LINE BREAK ---
         if self.wrap_mode.get():
             self.wrap_var.set(l["line_break"])
-            self.sep_wrap.pack(side=tk.LEFT, fill=tk.Y, padx=self.sc(20), pady=2)
+            self.label_wrap.configure(text=l["line_break"])
+            self.sep_wrap.pack(side=tk.LEFT, fill=tk.Y, padx=20, pady=2)
             self.label_wrap.pack(side=tk.LEFT)
         else:
             self.wrap_var.set("")
@@ -548,7 +571,8 @@ class LogDisplayMixin:
         # --- PAUSE Block ---
         if self.is_paused.get():
             self.paused_var.set(l["paused"])
-            self.sep_pause.pack(side=tk.LEFT, fill=tk.Y, padx=self.sc(20), pady=2)
+            self.label_pause.configure(text=l["paused"])
+            self.sep_pause.pack(side=tk.LEFT, fill=tk.Y, padx=20, pady=2)
             self.label_pause.pack(side=tk.LEFT)
         else:
             self.paused_var.set("")
@@ -557,56 +581,108 @@ class LogDisplayMixin:
 
     def scheduled_stats_update(self):
         """
-        Periodically updates file statistics (lines and size) and forces
-        the UI elements to refresh their visibility.
+        Periodically refreshes file statistics (lines, size) every 4 seconds.
+        update_stats() handles the fetch and all show/hide logic.
         """
         if self.running and self.log_file_path:
-            size_str, real_total = self.get_file_info()
-            l = LANGS.get(self.current_lang.get(), LANGS["EN"])
-
-            # --- Formatting with a thousands separator ---
-            try:
-                # We're trying to convert it to an integer to apply the format
-                formatted_total = f"{int(real_total):,}".replace(",", " ")
-            except (ValueError, TypeError):
-                # If it's "N/A" or text, leave it as is
-                formatted_total = real_total
-
-            # We use 'formatted_total' instead of 'real_total'
-            self.stats_var.set(l["stats_simple"].format(formatted_total))
-            self.size_var.set(l["file_size_text"].format(size_str))
-
-            # --- FIX: Update the footer label according to the unlimited toggle state ---
-            if self.load_full_file.get():
-                limit_text = l.get("unlimited", "⚠️ Unlimited")
-            else:
-                limit_text = l.get("limit", "ℹ️ 1000 lines max")
-
-            # Apply the text.
-            # Check if you are using a StringVar (like stats_var) or direct Label config.
-            # Replace 'self.limit_var' or 'self.label_limit' with your actual variable name!
-            if hasattr(self, 'limit_var'):
-                self.limit_var.set(limit_text)
-            elif hasattr(self, 'label_limit'):
-                self.label_limit.config(text=limit_text)
-
-            # --- Force the UI to show/hide labels based on the new values ---
             self.update_stats()
 
-        self.root.after(5000, self.scheduled_stats_update)
+        self.root.after(4000, self.scheduled_stats_update)
+
+    # ── File-info caching ────────────────────────────────────────────────────────
+    # get_file_info() previously counted every line on the main thread, which
+    # could freeze the UI for hundreds of ms on large files.  The new approach:
+    #   • size is obtained instantly via os.path.getsize()
+    #   • line-count is computed in a daemon thread and cached
+    #   • a stale cached value is shown immediately; the UI refreshes once the
+    #     background thread finishes (via root.after on the main thread)
+
+    def _format_size(self, size_bytes):
+        """Convert a byte count to a human-readable string."""
+        temp = size_bytes
+        for unit in ["B", "KB", "MB", "GB"]:
+            if temp < 1024:
+                return f"{temp:.2f} {unit}"
+            temp /= 1024
+        return "N/A"
+
+    def _refresh_line_count_async(self, path, size_bytes):
+        """
+        Counts lines in *path* on a background thread and updates the footer
+        labels on the main thread when done.  Skipped if a count job is already
+        running for the same file+size combination.
+        """
+        import threading
+
+        # Deduplicate: don't launch a second thread for the same snapshot
+        job_key = (path, size_bytes)
+        if getattr(self, "_line_count_job", None) == job_key:
+            return
+        self._line_count_job = job_key
+
+        def _count():
+            try:
+                with open(path, "rb") as f:
+                    count = sum(1 for _ in f)
+            except Exception:
+                count = 0
+            # Store result and schedule a lightweight UI refresh on the main thread
+            self._cached_line_count = count
+            self._cached_line_count_key = job_key
+            try:
+                self.root.after(0, self._apply_cached_file_info)
+            except Exception:
+                pass
+
+        threading.Thread(target=_count, daemon=True).start()
+
+    def _apply_cached_file_info(self):
+        """
+        Called on the main thread after a background line-count finishes.
+        Refreshes only the lines / size labels without repeating the full
+        update_stats() layout pass.
+        """
+        if not self.log_file_path:
+            return
+        l = LANGS.get(self.current_lang.get(), LANGS["EN"])
+        count = getattr(self, "_cached_line_count", 0)
+        size_str = self._format_size(
+            os.path.getsize(self.log_file_path)
+            if os.path.exists(self.log_file_path) else 0
+        )
+        try:
+            formatted_total = f"{int(count):,}".replace(",", " ")
+        except (ValueError, TypeError):
+            formatted_total = str(count)
+        lines_text = l["stats_simple"].format(formatted_total)
+        size_text  = l["file_size_text"].format(size_str)
+        self.stats_var.set(lines_text)
+        self.size_var.set(size_text)
+        self.label_lines.configure(text=lines_text)
+        self.label_size.configure(text=size_text)
 
     def get_file_info(self):
+        """
+        Returns (size_str, line_count) for the current log file.
+        Size is always fresh; line-count comes from the in-memory cache and a
+        background thread is launched to refresh it asynchronously.
+        """
         if not self.log_file_path or not os.path.exists(self.log_file_path):
             return "0 KB", 0
         try:
             size_bytes = os.path.getsize(self.log_file_path)
-            with open(self.log_file_path, "rb") as f:
-                line_count = sum(1 for _ in f)
-            temp_size = size_bytes
-            for unit in ["B", "KB", "MB", "GB"]:
-                if temp_size < 1024:
-                    return f"{temp_size:.2f} {unit}", line_count
-                temp_size /= 1024
+            size_str = self._format_size(size_bytes)
+
+            # Use the cached line-count if available for the same file+size
+            cached_key = getattr(self, "_cached_line_count_key", None)
+            if cached_key == (self.log_file_path, size_bytes):
+                line_count = self._cached_line_count
+            else:
+                # Show the last known count while the background thread runs
+                line_count = getattr(self, "_cached_line_count", 0)
+                self._refresh_line_count_async(self.log_file_path, size_bytes)
+
+            return size_str, line_count
         except Exception:
             pass
         return "N/A", 0
@@ -692,7 +768,6 @@ class LogDisplayMixin:
         if not self.check_log_loaded():
             return "break"
 
-
         if not self.check_log_available():
             return "break"
 
@@ -730,8 +805,8 @@ class LogDisplayMixin:
 
         # 4. Pause monitoring to let the user analyze the specific line
         self.is_paused.set(True)
-        if hasattr(self, "btn_pause"):
-            self.btn_pause.config(text="▶ RESUME", bg=COLOR_DANGER)
+        if hasattr(self, "update_button_colors"):
+            self.update_button_colors()
 
         # 5. Force the interface to update so that the entire log is loaded if needed
         self.root.update_idletasks()

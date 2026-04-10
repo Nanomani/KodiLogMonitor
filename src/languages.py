@@ -1,12 +1,24 @@
 """Module containing UI translation strings for multiple languages."""
 
+# Display names shown in the language combo dropdown
+LANG_NAMES = {
+    "FR": "Français",
+    "EN": "English",
+    "ES": "Español",
+    "DE": "Deutsch",
+    "IT": "Italiano",
+}
+
+# Reverse mapping: display name → language code
+LANG_CODES = {v: k for k, v in LANG_NAMES.items()}
+
 LANGS = {
     "FR": {
-        "log": "📂  Ouvrir",
-        "sum": "📝  Résumé",
-        "exp": "💾  Exporter",
-        "upl": "☁️  Uploader",
-        "clr": "🗑️  Vider",
+        "log": "Ouvrir",
+        "sum": "Résumé",
+        "exp": "Exporter",
+        "upl": "Uploader",
+        "clr": "Vider",
         "all": "Tout",
         "debug": "Débogage",
         "info": "Information",
@@ -24,7 +36,7 @@ LANGS = {
         "unlimited": "⚠️ Illimité",
         "file_error": "⚠️ LOG INACCESSIBLE",
         "none": "Aucun",
-        "paused": "⏸️ EN PAUSE",
+        "paused": "⏸️ En pause",
         "line_break": "↩ Retour à la ligne",
         "warn_title": "Fichier Volumineux",
         "warn_msg": "Le fichier fait {:.1f} Mo.\nLe chargement complet risque de faire planter l'application.\n\nVeuillez consulter le fichier manuellement.",
@@ -68,7 +80,7 @@ LANGS = {
             "Cliquez sur Ok pour confirmer\n"
         ),
         "perf_confirm_title": "Avertissement de Performance",
-        "perf_confirm_msg": "Ce fichier dépasse 20 Mo ({:.1f} Mo).\nLe charger entièrement risque de dégrader les performances ou figer l'application.\n\nVoulez-vous continuer ?",
+        "perf_confirm_msg": "Ce fichier dépasse 10 Mo ({:.1f} Mo).\nLe charger entièrement risque de dégrader les performances ou figer l'application.\n\nVoulez-vous continuer ?",
         "tip_upd_dl": "Télécharger la mise à jour depuis Github",
         "tip_upd_sk": "Ignorer les notifications pour cette version",
         "tip_upd_di": "Désactiver définitivement les notifications",
@@ -78,7 +90,23 @@ LANGS = {
         "tip_wrap": "Retour automatique à la ligne",
         "tip_pause": "Pause / reprise du défilement automatique",
         "tip_help": "Afficher la liste des raccourcis clavier",
-        "tip_single_instance": "Autoriser plusieurs instances de l’application",
+        "tip_theme_light":  "Passer au thème clair",
+        "tip_theme_dark":   "Passer au thème sombre",
+        "theme_close_title": "Thème modifié",
+        "theme_close_msg": (
+            "Le thème a été modifié.\n\n"
+            "L’application va se fermer.\n"
+            "Veuillez la relancer pour appliquer le nouveau thème."
+        ),
+        "display_change_title": "Paramètres d’affichage modifiés",
+        "display_change_msg": (
+            "Les paramètres d’affichage de Windows ont changé.\n\n"
+            "Il est recommandé de fermer l’application\n"
+            "afin que l’interface s’adapte correctement au relancement.\n\n"
+            "Fermer maintenant ?"
+        ),
+        "tip_single_instance": "Autoriser plusieurs instances",
+        "tip_multi_instance": "Limiter à une seule instance",
         "tip_open": "Ouvrir le fichier LOG",
         "tip_export": (
             "Exporter le résultat du LOG\n"
@@ -99,7 +127,7 @@ LANGS = {
         "tip_lang": "Choisir la langue de l'interface",
         "tip_search_bar": "Rechercher un mot-clé dans les logs",
         "tip_history_clear": "Supprimer tout l'historique de recherche",
-        "tip_kw_list": "Sélectionner une liste de mots-clés à surligner",
+        "tip_kw_list": "Séléctionner une liste de mot à rechercher",
         "help_text": (
             "F1 : Afficher aide\n"
             "↑ ↓ : Défilement du LOG\n"
@@ -118,11 +146,11 @@ LANGS = {
         )
     },
     "EN": {
-        "log": "📂  Open",
-        "sum": "📝  Summary",
-        "exp": "💾  Export",
-        "upl": "☁️  Upload",
-        "clr": "🗑️  Clear",
+        "log": "Open",
+        "sum": "Summary",
+        "exp": "Export",
+        "upl": "Upload",
+        "clr": "Clear",
         "all": "All",
         "debug": "Debug",
         "info": "Info",
@@ -140,7 +168,7 @@ LANGS = {
         "unlimited": "⚠️ Unlimited",
         "file_error": "⚠️ LOG UNAVAILABLE",
         "none": "None",
-        "paused": "⏸️ PAUSED",
+        "paused": "⏸️ Paused",
         "line_break": "↩ Line break",
         "warn_title": "Large File",
         "warn_msg": "The file is {:.1f} MB.\nLoading the full file may crash the application.\n\nPlease check the file manually.",
@@ -184,7 +212,7 @@ LANGS = {
             "Click OK to confirm\n"
         ),
         "perf_confirm_title": "Performance Warning",
-        "perf_confirm_msg": "This file is larger than 20 MB ({:.1f} MB).\nLoading it completely may cause performance issues or freezes.\n\nDo you want to proceed?",
+        "perf_confirm_msg": "This file is larger than 10 MB ({:.1f} MB).\nLoading it completely may cause performance issues or freezes.\n\nDo you want to proceed?",
         "tip_upd_dl": "Download the update from GitHub",
         "tip_upd_sk": "Ignore notifications for this version",
         "tip_upd_di": "Permanently disable notifications",
@@ -194,7 +222,23 @@ LANGS = {
         "tip_wrap": "Toggle word wrap",
         "tip_pause": "Pause / Resume auto-scroll",
         "tip_help": "Show the list of keyboard shortcuts",
-        "tip_single_instance": "Allow multiple instances of the application",
+        "tip_theme_light":  "Switch to light theme",
+        "tip_theme_dark":   "Switch to dark theme",
+        "theme_close_title": "Theme changed",
+        "theme_close_msg": (
+            "The theme has been changed.\n\n"
+            "The application will now close.\n"
+            "Please relaunch it to apply the new theme."
+        ),
+        "display_change_title": "Display settings changed",
+        "display_change_msg": (
+            "The Windows display settings have changed.\n\n"
+            "It is recommended to close the application\n"
+            "so the interface adapts correctly on next launch.\n\n"
+            "Close now?"
+        ),
+        "tip_single_instance": "Allow multiple instances",
+        "tip_multi_instance": "Limit to a single instance",
         "tip_open": "Open the LOG file",
         "tip_export": (
             "Export the LOG result\n"
@@ -215,7 +259,7 @@ LANGS = {
         "tip_lang": "Choose interface language",
         "tip_search_bar": "Search for a keyword in the logs",
         "tip_history_clear": "Delete all search history",
-        "tip_kw_list": "Select a keyword list to highlight",
+        "tip_kw_list": "Select a list of keywords to search for",
         "help_text": (
             "F1 : Show help\n"
             "↑ ↓ : Scroll LOG\n"
@@ -234,11 +278,11 @@ LANGS = {
         )
     },
     "ES": {
-        "log": "📂  Abrir",
-        "sum": "📝  Resumen",
-        "exp": "💾  Exportar",
-        "upl": "☁️  Subir",
-        "clr": "🗑️  Limpiar",
+        "log": "Abrir",
+        "sum": "Resumen",
+        "exp": "Exportar",
+        "upl": "Subir",
+        "clr": "Limpiar",
         "all": "Todo",
         "debug": "Debug",
         "info": "Info",
@@ -256,7 +300,7 @@ LANGS = {
         "unlimited": "⚠️ Ilimitado",
         "file_error": "⚠️ LOG NO DISPONIBLE",
         "none": "Ninguno",
-        "paused": "⏸️ EN PAUSA",
+        "paused": "⏸️ En pausa",
         "line_break": "↩ Salto de línea",
         "warn_title": "Archivo Grande",
         "warn_msg": "El archivo tiene {:.1f} MB.\nCargar el archivo completo peut colapsar la aplicación.\n\nPor favor, consulte el archivo manualmente.",
@@ -300,7 +344,7 @@ LANGS = {
             "Haga clic en OK para confirmar\n"
         ),
         "perf_confirm_title": "Advertencia de rendimiento",
-        "perf_confirm_msg": "Este archivo supera los 20 MB ({:.1f} MB).\nCargarlo por completo puede causar problemas de rendimiento o bloqueos.\n\n¿Desea continuar?",
+        "perf_confirm_msg": "Este archivo supera los 10 MB ({:.1f} MB).\nCargarlo por completo puede causar problemas de rendimiento o bloqueos.\n\n¿Desea continuar?",
         "tip_upd_dl": "Descargar la actualización desde GitHub",
         "tip_upd_sk": "Ignorar notificaciones para esta versión",
         "tip_upd_di": "Desactivar notificaciones permanentemente",
@@ -310,7 +354,23 @@ LANGS = {
         "tip_wrap": "Ajuste de línea automático",
         "tip_pause": "Pausa / Reanudar desplazamiento automático",
         "tip_help": "Mostrar la lista de atajos de teclado",
-        "tip_single_instance": "Permitir múltiples instancias de la aplicación",
+        "tip_theme_light":  "Cambiar al tema claro",
+        "tip_theme_dark":   "Cambiar al tema oscuro",
+        "theme_close_title": "Tema modificado",
+        "theme_close_msg": (
+            "El tema ha sido modificado.\n\n"
+            "La aplicación se cerrará.\n"
+            "Vuelva a abrirla para aplicar el nuevo tema."
+        ),
+        "display_change_title": "Configuración de pantalla modificada",
+        "display_change_msg": (
+            "La configuración de pantalla de Windows ha cambiado.\n\n"
+            "Se recomienda cerrar la aplicación\n"
+            "para que la interfaz se adapte correctamente al relanzarla.\n\n"
+            "¿Cerrar ahora?"
+        ),
+        "tip_single_instance": "Permitir múltiples instancias",
+        "tip_multi_instance": "Limitar a una sola instancia",
         "tip_open": "Abrir el archivo LOG",
         "tip_export": (
             "Exportar el resultado del LOG\n"
@@ -331,7 +391,7 @@ LANGS = {
         "tip_lang": "Elegir el idioma de la interfaz",
         "tip_search_bar": "Buscar una palabra clave en los logs",
         "tip_history_clear": "Eliminar todo el historial de búsqueda",
-        "tip_kw_list": "Seleccionar una lista de palabras clave para resaltar",
+        "tip_kw_list": "Seleccionar una lista de palabras para buscar",
         "help_text": (
             "F1 : Mostrar ayuda\n"
             "↑ ↓ : Desplazamiento del LOG\n"
@@ -350,11 +410,11 @@ LANGS = {
         )
     },
     "DE": {
-        "log": "📂  Öffnen",
-        "sum": "📝  Übersicht",
-        "exp": "💾  Exportieren",
-        "upl": "☁️  Hochladen",
-        "clr": "🗑️  Leeren",
+        "log": "Öffnen",
+        "sum": "Übersicht",
+        "exp": "Exportieren",
+        "upl": "Hochladen",
+        "clr": "Leeren",
         "all": "Alle",
         "debug": "Debug",
         "info": "Info",
@@ -372,7 +432,7 @@ LANGS = {
         "unlimited": "⚠️ Unbegrenzt",
         "file_error": "⚠️ LOG NICHT VERFÜGBAR",
         "none": "Keine",
-        "paused": "⏸️ PAUSE",
+        "paused": "⏸️ Pause",
         "line_break": "↩ Zeilenumbruch",
         "warn_title": "Große Datei",
         "warn_msg": "Die Datei ist {:.1f} MB groß.\nDas Laden der vollständigen Datei kann die App zum Absturz bringen.\n\nBitte prüfen Sie die Datei manuell.",
@@ -416,7 +476,7 @@ LANGS = {
             "Klicken Sie auf OK zum Bestätigen\n"
         ),
         "perf_confirm_title": "Leistungswarnung",
-        "perf_confirm_msg": "Diese Datei ist größer als 20 MB ({:.1f} MB).\nDas vollständige Laden kann zu Leistungsproblemen oder zum Einfrieren der Anwendung führen.\n\nMöchten Sie fortfahren?",
+        "perf_confirm_msg": "Diese Datei ist größer als 10 MB ({:.1f} MB).\nDas vollständige Laden kann zu Leistungsproblemen oder zum Einfrieren der Anwendung führen.\n\nMöchten Sie fortfahren?",
         "tip_upd_dl": "Update von GitHub herunterladen",
         "tip_upd_sk": "Benachrichtigungen für diese Version ignorieren",
         "tip_upd_di": "Benachrichtigungen dauerhaft deaktivieren",
@@ -426,7 +486,23 @@ LANGS = {
         "tip_wrap": "Automatischer Zeilenumbruch",
         "tip_pause": "Pause / Automatisches Scrollen fortsetzen",
         "tip_help": "Liste der Tastenkombinationen anzeigen",
-        "tip_single_instance": "Mehrere Instanzen der Anwendung zulassen",
+        "tip_theme_light":  "Zum hellen Design wechseln",
+        "tip_theme_dark":   "Zum dunklen Design wechseln",
+        "theme_close_title": "Design geändert",
+        "theme_close_msg": (
+            "Das Design wurde geändert.\n\n"
+            "Die Anwendung wird jetzt geschlossen.\n"
+            "Bitte starten Sie sie neu, um das neue Design anzuwenden."
+        ),
+        "display_change_title": "Anzeigeeinstellungen geändert",
+        "display_change_msg": (
+            "Die Windows-Anzeigeeinstellungen haben sich geändert.\n\n"
+            "Es wird empfohlen, die Anwendung zu schließen,\n"
+            "damit sich die Oberfläche beim nächsten Start korrekt anpasst.\n\n"
+            "Jetzt schließen?"
+        ),
+        "tip_single_instance": "Mehrere Instanzen erlauben",
+        "tip_multi_instance": "Auf eine einzige Instanz beschränken",
         "tip_open": "LOG-Datei öffnen",
         "tip_export": (
             "LOG-Ergebnis basierend auf Filtern\n"
@@ -447,7 +523,7 @@ LANGS = {
         "tip_lang": "Sprache de Benutzeroberfläche wählen",
         "tip_search_bar": "Nach einem Stichwort in den Logs suchen",
         "tip_history_clear": "Gesamten Suchverlauf löschen",
-        "tip_kw_list": "Wählen Sie eine Stichwortliste zum Hervorheben aus",
+        "tip_kw_list": "Eine Liste von Suchbegriffen auswählen",
         "help_text": (
             "F1 : Hilfe anzeigen\n"
             "↑ ↓ : LOG durchsuchen\n"
@@ -466,11 +542,11 @@ LANGS = {
         )
     },
     "IT": {
-        "log": "📂  Apri",
-        "sum": "📝  Riepilogo",
-        "exp": "💾  Esporta",
-        "upl": "☁️  Carica",
-        "clr": "🗑️  Pulisci",
+        "log": "Apri",
+        "sum": "Riepilogo",
+        "exp": "Esporta",
+        "upl": "Carica",
+        "clr": "Pulisci",
         "all": "Tutto",
         "debug": "Debug",
         "info": "Info",
@@ -488,7 +564,7 @@ LANGS = {
         "unlimited": "⚠️ Illimitato",
         "file_error": "⚠️ LOG NON DISPONIBILE",
         "none": "Nessuno",
-        "paused": "⏸️ IN PAUSA",
+        "paused": "⏸️ In pausa",
         "line_break": "↩ Interruzione di riga",
         "warn_title": "File di Grandi Dimensioni",
         "warn_msg": "Il file è di {:.1f} MB.\nIl caricamento completo potrebbe causare il crash dell'app.\n\nSi prega di consultare il file manualmente.",
@@ -532,7 +608,7 @@ LANGS = {
             "Clicca su OK per confermare\n"
         ),
         "perf_confirm_title": "Avviso di prestazioni",
-        "perf_confirm_msg": "Questo file è più grande di 20 MB ({:.1f} MB).\nCaricarlo completamente potrebbe causare problemi di prestazioni o blocchi dell'applicazione.\n\nVuoi procedere?",
+        "perf_confirm_msg": "Questo file è più grande di 10 MB ({:.1f} MB).\nCaricarlo completamente potrebbe causare problemi di prestazioni o blocchi dell'applicazione.\n\nVuoi procedere?",
         "tip_upd_dl": "Scarica l'aggiornamento da GitHub",
         "tip_upd_sk": "Ignora le notifiche per questa versione",
         "tip_upd_di": "Disattiva le notifiche in modo permanente",
@@ -542,7 +618,23 @@ LANGS = {
         "tip_wrap": "A capo automatico",
         "tip_pause": "Pausa / Riprendi scorrimento automatico",
         "tip_help": "Mostra l'elenco delle scorciatoie da tastiera",
-        "tip_single_instance": "Consenti più istanze dell'applicazione",
+        "tip_theme_light":  "Passa al tema chiaro",
+        "tip_theme_dark":   "Passa al tema scuro",
+        "theme_close_title": "Tema modificato",
+        "theme_close_msg": (
+            "Il tema è stato modificato.\n\n"
+            "L'applicazione si chiuderà.\n"
+            "Riavviarla per applicare il nuovo tema."
+        ),
+        "display_change_title": "Impostazioni schermo modificate",
+        "display_change_msg": (
+            "Le impostazioni dello schermo di Windows sono cambiate.\n\n"
+            "Si consiglia di chiudere l'applicazione\n"
+            "affinché l'interfaccia si adatti correttamente al riavvio.\n\n"
+            "Chiudere adesso?"
+        ),
+        "tip_single_instance": "Consenti più istanze",
+        "tip_multi_instance": "Limita a una singola istanza",
         "tip_open": "Apri il file LOG",
         "tip_export": (
             "Esporta il risultato del LOG\n"
@@ -563,7 +655,7 @@ LANGS = {
         "tip_lang": "Scegli la lingua dell'interfaccia",
         "tip_search_bar": "Cerca una parola chiave nei log",
         "tip_history_clear": "Cancella tutta la cronologia delle ricerche",
-        "tip_kw_list": "Seleziona un elenco di parole chiave da evidenziare",
+        "tip_kw_list": "Selezionare un elenco di parole da cercare",
         "help_text": (
             "F1 : Mostra aiuto\n"
             "↑ ↓ : Scorrimento del LOG\n"

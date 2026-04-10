@@ -2,6 +2,7 @@ import os
 import time
 import threading
 import re
+import subprocess
 import tkinter as tk
 import sys
 
@@ -76,7 +77,7 @@ class MonitorMixin:
                         if self.is_file_inaccessible:
                             try:
                                 f.close()
-                            except:
+                            except Exception:
                                 pass
 
                             f = open(self.log_file_path, 'r', encoding='utf-8', errors='ignore')
@@ -116,20 +117,23 @@ class MonitorMixin:
                                             mins, secs = divmod(int(elapsed), 60)
                                             timer_str = f"{l_ui.get('inactive', 'Inactive')} : {mins:02d}:{secs:02d}"
                                             self.root.after(0, self.inactivity_timer_var.set, timer_str)
-                                        except: pass
+                                        except Exception:
+                                            pass
                                 else:
                                     if self.running:
                                         try:
                                             self.root.after(0, self.update_status_color, COLOR_INDICATOR_OFF)
                                             self.root.after(0, self.inactivity_timer_var.set, "")
-                                        except: pass
+                                        except Exception:
+                                            pass
                             else:
                                 if self.running:
                                     try:
                                         self.root.after(0, self.update_status_color, COLOR_INDICATOR_OFF)
                                         self.root.after(0, self.inactivity_timer_var.set, "")
                                         self.root.after(0, self.update_stats)
-                                    except: pass
+                                    except Exception:
+                                        pass
 
                             time.sleep(0.4)
                             continue
@@ -168,7 +172,7 @@ class MonitorMixin:
                 print(f"[ERROR] {type(e).__name__}: {e}")
                 try:
                     self.root.after(0, self.show_loading, False)
-                except:
+                except Exception:
                     pass
 
     def start_monitoring(self, path, save=True, retranslate=True, is_manual=True):
@@ -187,12 +191,18 @@ class MonitorMixin:
         self.seen_lines.clear()
         self.log_file_path = path
 
+        # Reset footer stats so update_stats re-fetches fresh values for the new file
+        if hasattr(self, 'stats_var'):
+            self.stats_var.set("")
+        if hasattr(self, 'size_var'):
+            self.size_var.set("")
+
         # --- AUTO-DISABLE PAUSE MODE ---
         if hasattr(self, 'is_paused'):
             self.is_paused.set(False)
 
-        if hasattr(self, 'update_pause_button_look'):
-            self.root.after(0, self.update_pause_button_look)
+        if hasattr(self, 'update_button_colors'):
+            self.root.after(0, self.update_button_colors)
         # ---------------------------------------
 
         # Update the footer with safety truncation and tooltip ---
@@ -247,35 +257,33 @@ class MonitorMixin:
         self.seen_lines.append(clean_text)
         return False
 
-    def sort_logs_by_time(self, log_list):
-        """
-        Sorts a list of log lines chronologically based on their timestamp.
-
-        Args:
-            log_list (list): List of log strings or data tuples.
-
-        Returns:
-            list: Sorted log lines.
-        """
-        return sorted(log_list, key=lambda x: x[0] if isinstance(x, list) else x)
-
     def periodic_display_check(self):
         """
-        Checks if the screen resolution or scaling has changed.
+        Checks periodically (every 3 s) whether the screen resolution has changed
+        (width or height). On change, offers the user to restart the app so that
+        CTK scaling, DPI and window geometry are recalculated correctly.
         """
         if sys.platform != "win32":
             return
 
         try:
             from ctypes import windll
-            # Get current screen width
-            current_width = windll.user32.GetSystemMetrics(0)
+            current_w = windll.user32.GetSystemMetrics(0)   # SM_CXSCREEN
+            current_h = windll.user32.GetSystemMetrics(1)   # SM_CYSCREEN
 
-            if current_width != self.last_screen_width:
-                self.last_screen_width = current_width
-                # Call the new dialog instead of the old prompt
+            changed = False
+            if hasattr(self, "last_screen_width") and current_w != self.last_screen_width:
+                changed = True
+            if hasattr(self, "last_screen_height") and current_h != self.last_screen_height:
+                changed = True
+
+            if changed:
+                self.last_screen_width  = current_w
+                self.last_screen_height = current_h
+                # Show dialog on the main thread via after_idle
                 self.root.after_idle(self.show_display_changed_dialog)
-                return
+                return   # Don't reschedule — the dialog will handle the next step
+
         except Exception:
             pass
 
@@ -283,37 +291,38 @@ class MonitorMixin:
 
     def show_display_changed_dialog(self):
         """
-        Affiche une boîte info système standard (Bouton OK centré par Windows).
-        Garantit une visibilité parfaite sur tous les types d'écrans.
+        Notifies the user of a display change (resolution, scaling) and offers
+        to close the app so it can be relaunched with correct CTK geometry/DPI.
+        Shows a Yes / No dialog:
+          - Yes → clear saved geometry + close cleanly via _graceful_close()
+          - No  → update title bar + resume periodic check
         """
         from tkinter import messagebox
 
+        # Guard: only one dialog at a time
         if getattr(self, '_showing_dpi_msg', False):
             return
         self._showing_dpi_msg = True
 
-        l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
-
-        # showinfo creates a window with a single OK button centered in the window.
-        messagebox.showinfo(
-            l_ui.get("shutdown_confirm_title", "Display Settings Changed"),
-            l_ui.get("shutdown_confirm_msg", "Display settings changed. The app will now close to recalculate geometry.")
+        l = LANGS.get(self.current_lang.get(), LANGS["EN"])
+        title = l.get("display_change_title", "Display settings changed")
+        msg   = l.get(
+            "display_change_msg",
+            "The Windows display settings have changed.\n\n"
+            "It is recommended to close the application\n"
+            "so the interface adapts correctly on next launch.\n\n"
+            "Close now?"
         )
 
-        # As soon as the user clicks OK or closes the dialog box:
+        answer = messagebox.askyesno(title, msg)
         self._showing_dpi_msg = False
-        self.shutdown_with_reset()
 
-    def shutdown_with_reset(self):
-        """
-        Réinitialise la géométrie dans la configuration et ferme proprement.
-        """
-        # Clear the geometry to force a re-detection on the next launch
-        self.window_geometry = ""
-
-        if hasattr(self, 'save_session'):
-            self.save_session()
-
-        # Complete shutdown of the process
-        self.root.quit()
-        sys.exit(0)
+        if answer:
+            # Clear saved geometry so next launch recalculates the correct default
+            self.window_geometry = ""
+            self._graceful_close()
+        else:
+            # User declined — update title bar and resume periodic monitoring
+            if hasattr(self, 'update_windows_title_bar'):
+                self.update_windows_title_bar()
+            self.root.after(3000, self.periodic_display_check)
