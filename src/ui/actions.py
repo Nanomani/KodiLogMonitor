@@ -538,47 +538,61 @@ class ActionsMixin:
             return
 
         if self.filter_vars.get("all") and self.filter_vars["all"].get():
+            # Capture the first visible character before the refresh.
+            # bulk_insert resets scroll (to top when paused, to END when not paused).
+            # after(0, ...) fires after bulk_insert's own see() and restores position.
+            anchor = self.txt_area.index("@0,0")
             self.refresh_natural_order()
+            self.root.after(0, lambda: self.txt_area.see(anchor))
 
     def toggle_full_load(self):
         """
         Toggles between loading the full log file and loading only the last 1000 lines.
-        Shows a warning for large files and updates UI colors accordingly.
+        The confirmation dialog (for large files) is shown BEFORE any state or color change,
+        so the button only updates after the user's decision.
         """
         if not self.check_log_loaded() or not self.check_log_available():
             return
 
-        # 1. Security Check: If user tries to enable "Unlimited" on a large file
-        if self.load_full_file.get():
-            if self.log_file_path and os.path.exists(self.log_file_path):
-                file_size_mb = os.path.getsize(self.log_file_path) / (1024 * 1024)
+        # Compute what the new value would be after toggling
+        new_value = not self.load_full_file.get()
 
-                if file_size_mb > DEFAULT_SECURITY_FILE_MAX_SIZE_BUTTON:
-                    l = LANGS.get(self.current_lang.get(), LANGS["EN"])
-                    title = l.get("perf_confirm_title", "Performance Warning")
-                    default_msg = (
-                        "This file is larger than 20 MB ({:.1f} MB).\n"
-                        "Loading it may cause performance issues.\n\nDo you want to proceed?"
-                    )
-                    msg = l.get("perf_confirm_msg", default_msg).format(file_size_mb)
+        # 1. Security check: warn before switching to unlimited on a large file
+        if new_value and self.log_file_path and os.path.exists(self.log_file_path):
+            file_size_mb = os.path.getsize(self.log_file_path) / (1024 * 1024)
+            if file_size_mb > DEFAULT_SECURITY_FILE_MAX_SIZE_BUTTON:
+                l = LANGS.get(self.current_lang.get(), LANGS["EN"])
+                title = l.get("perf_confirm_title", "Performance Warning")
+                default_msg = (
+                    "This file is larger than 20 MB ({:.1f} MB).\n"
+                    "Loading it may cause performance issues.\n\nDo you want to proceed?"
+                )
+                msg = l.get("perf_confirm_msg", default_msg).format(file_size_mb)
+                if not messagebox.askyesno(title, msg):
+                    return  # User cancelled — nothing changes (no .set, no color update)
 
-                    # If user cancels the action
-                    if not messagebox.askyesno(title, msg):
-                        self.load_full_file.set(False)  # Revert the state
-                        self.update_button_colors()     # Refresh UI to "Limited" state
-                        # Ensure the text is also updated back to "Limit"
-                        self.retranslate_ui(refresh_monitor=False)
-                        return
+        # 2. Commit the state change now that the user has confirmed (or no dialog was needed)
+        self.load_full_file.set(new_value)
 
-        # 2. Apply Visual Updates (Only reached if size is OK or user confirmed)
+        # If the user explicitly chose unlimited mode for a large file, mark the auto-limit
+        # flag as already triggered so that update_stats (scheduled via after(0,...) inside
+        # start_monitoring) does not immediately revert load_full_file back to False.
+        if new_value:
+            self.has_auto_limited = True
+
+        # 3. Apply visual updates
         self.update_button_colors()
 
-        # Update the button text (Limit/Unlimited)
+        # Update the button text (Limit / Unlimited)
         l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
-        new_text = l_ui.get("unlimited", "⚠️ Unlimited") if self.load_full_file.get() else l_ui.get("limit", "ℹ️ 1000 lines max")
+        new_text = (
+            l_ui.get("unlimited", "⚠️ Unlimited")
+            if new_value
+            else l_ui.get("limit", "ℹ️ 1000 lines max")
+        )
         self.limit_var.set(new_text)
 
-        # 3. Execute the heavy task (Loading file)
+        # 4. Execute the heavy task (reload file)
         self.root.update_idletasks()
 
         if self.log_file_path:
@@ -713,9 +727,8 @@ class ActionsMixin:
 
     def toggle_limit_from_keyboard(self, event=None):
         """Switch between limited (1000 lines) and full load mode using the keyboard."""
-        self.load_full_file.set(not self.load_full_file.get())
-        self.toggle_full_load()
-        self.update_button_colors()
+        self.toggle_full_load()  # toggle_full_load handles load_full_file.set() internally
+        self.root.update_idletasks()  # Force CTK repaint so text_color applies immediately
         return "break"
 
     def select_all_filter_from_keyboard(self, event=None):
@@ -789,6 +802,7 @@ class ActionsMixin:
         self.wrap_mode.set(not self.wrap_mode.get())
         self.toggle_line_break()
         self.update_button_colors()
+        self.root.update_idletasks()  # Force CTK repaint so text_color applies immediately
         return "break"
 
     def toggle_pause_from_keyboard(self, event=None):
@@ -799,6 +813,7 @@ class ActionsMixin:
         self.is_paused.set(not self.is_paused.get())
         self.toggle_pause_scroll()
         self.update_button_colors()
+        self.root.update_idletasks()  # Force CTK repaint so text_color applies immediately
         return "break"
 
     def select_reset_all_filters_from_keyboard(self, event=None):
@@ -865,6 +880,7 @@ class ActionsMixin:
         self.seen_lines.clear()
         self.refresh_natural_order()
         self.txt_area.see(tk.END)
+        self.txt_area.xview_moveto(0)
 
     def update_button_colors(self):
         """Applies background and text colors according to the state of each filter button.
@@ -1061,12 +1077,12 @@ class ActionsMixin:
                 tip_key = f"tip_filter_{mode}"
                 tooltip.text = l[tip_key]
 
-        # --- Context menu item labels (tk.Label — stays as .config()) ---
+        # --- Context menu item labels (tk.Label — uses .config()) ---
         if hasattr(self, "menu_items"):
-            self.menu_items[0].config(text=l["copy"])
-            self.menu_items[1].config(text=l["sel_all"])
-            self.menu_items[2].config(text=l["search_localy"])
-            self.menu_items[3].config(text=l["search_google"])
+            self.menu_items[0].config(text=f"  {l['copy']}  ")
+            self.menu_items[1].config(text=f"  {l['sel_all']}  ")
+            self.menu_items[2].config(text=f"  {l['search_localy']}  ")
+            self.menu_items[3].config(text=f"  {l['search_google']}  ")
 
         # --- Status label StringVars ---
         if self.is_paused.get():
@@ -1087,15 +1103,9 @@ class ActionsMixin:
         # --- Update Search Placeholder ---
         if hasattr(self, "placeholder_label"):
             self.placeholder_label.config(text=l.get("search_localy", "Search"))
-
-            # On Linux (Ubuntu)
-            y_offset = 4 if sys.platform != "win32" else 0
-
-            # Calcul final du Y
-            y_pos = int((self.sc(6) + y_offset) * self.scale)
-
-            if not self.search_query.get() and not self.search_entry.focus_get() == self.search_entry:
-                self.placeholder_label.place(x=int(60 * self.scale), y=y_pos)
+            # Re-run visibility logic in case the field is currently empty and unfocused
+            if not self.search_query.get() and self.search_entry.focus_get() != self.search_entry:
+                self.placeholder_label.place(relx=0, rely=0.5, anchor="w", x=5)
 
         self.refresh_keyword_list(trigger_monitor=refresh_monitor)
         self.update_stats()
@@ -1130,14 +1140,14 @@ class ActionsMixin:
     def on_search_change(self, *args):
         """
         Triggered on every keystroke in the search field.
-        Sanitizes input and refreshes the display.
+        Updates the ×-button immediately, then debounces the actual search so
+        the file is not scanned on every single character.
         """
         if not self.check_log_loaded():
             return
         if not self.check_log_available():
             return
 
-        self.clean_search_input()
         query = self.search_query.get()
 
         if query:
@@ -1145,7 +1155,145 @@ class ActionsMixin:
         else:
             self.btn_clear_search.pack_forget()
 
-        self.trigger_refresh()
+        # Debounce: cancel any pending search timer and start a fresh one.
+        # The actual file scan only starts 250 ms after the last keystroke.
+        if self._search_after_id:
+            self.root.after_cancel(self._search_after_id)
+        self._search_after_id = self.root.after(250, self._fire_search)
+
+    def _fire_search(self):
+        """
+        Called 250 ms after the last keystroke (debounce).
+        Captures all Tkinter variable state on the main thread, then hands off
+        the heavy file-read + filter work to a background thread.
+        """
+        self._search_after_id = None
+
+        if not self.check_log_loaded() or not self.check_log_available():
+            self.show_loading(False)
+            return
+
+        # --- Capture Tkinter state HERE (main thread only) ---
+        # Background threads must not call .get() on Tkinter variables.
+        query_lower      = self.search_query.get().strip().lower()
+        filter_all       = self.filter_vars["all"].get()
+        active_tags      = {k for k, v in self.filter_vars.items()
+                            if k != "all" and v.get()}
+        load_full        = self.load_full_file.get()
+        keywords_lower   = [k.lower() for k in self.get_keywords_from_file()]
+
+        # Increment version: any worker still running for the previous query
+        # will see the mismatch and stop early.
+        self._search_version += 1
+        version = self._search_version
+
+        self.show_loading(True)
+
+        threading.Thread(
+            target=self._search_worker,
+            args=(version, query_lower, filter_all, active_tags,
+                  load_full, keywords_lower),
+            daemon=True,
+        ).start()
+
+    def _search_worker(self, version, query_lower, filter_all,
+                       active_tags, load_full, keywords_lower):
+        """
+        Background thread: reads the log file and filters lines using only
+        plain Python values (no Tkinter calls — not thread-safe).
+
+        Aborts early whenever _search_version no longer matches, meaning
+        the user typed another character and a newer search has taken over.
+        """
+        _ts_re = re.compile(r"^\d{4}-\d{2}-\d{2}")
+        try:
+            if not self.log_file_path or not self.running:
+                return
+
+            with open(self.log_file_path, "r", encoding="utf-8",
+                      errors="ignore") as f:
+                if load_full:
+                    lines = f.readlines()
+                else:
+                    f.seek(0, os.SEEK_END)
+                    f.seek(max(0, f.tell() - 200_000))
+                    lines = f.readlines()[-1000:]
+
+            if version != self._search_version:
+                return
+
+            to_display = []
+            for line in lines:
+                if version != self._search_version:
+                    return  # Newer search started — discard current work
+
+                stripped = line.strip()
+                if not stripped:
+                    continue
+                if "info <general>: --------" in line:
+                    continue
+
+                low = line.lower()
+
+                # Determine log level (mirrors get_line_data)
+                if " error " in low or " critical " in low:
+                    current_tag = "error"
+                elif " warning " in low:
+                    current_tag = "warning"
+                elif " info " in low:
+                    current_tag = "info"
+                elif " debug " in low:
+                    current_tag = "debug"
+                else:
+                    current_tag = None
+
+                # Level filter (mirrors is_filter_match)
+                if not filter_all:
+                    if not _ts_re.match(stripped):
+                        continue
+                    if current_tag is None or current_tag not in active_tags:
+                        continue
+
+                # Text search filter
+                if query_lower and query_lower not in low:
+                    continue
+
+                # Keyword-list filter
+                if keywords_lower and not any(k in low for k in keywords_lower):
+                    continue
+
+                to_display.append((line, current_tag))
+
+            if version != self._search_version:
+                return
+
+            to_display.sort(key=lambda x: x[0])
+
+            if self.running:
+                self.root.after(0, self._apply_search_results,
+                                to_display, version)
+
+        except Exception as e:
+            if self.running:
+                print(f"[SEARCH ERROR] {type(e).__name__}: {e}")
+                try:
+                    self.root.after(0, self.show_loading, False)
+                except Exception:
+                    pass
+
+    def _apply_search_results(self, to_display, version):
+        """
+        Called on the main thread with the results from _search_worker.
+        Discards stale results if a newer search has already started.
+        """
+        if version != self._search_version:
+            return  # Superseded by a more recent search — ignore
+        # Clear the widget before calling bulk_insert so that, when to_display
+        # is empty, bulk_insert sees an empty widget and shows the "no results"
+        # message instead of leaving the previous log visible.
+        self.txt_area.config(state=tk.NORMAL)
+        self.txt_area.delete("1.0", tk.END)
+        self.bulk_insert(to_display)
 
     def clear_search(self):
         self.search_query.set("")
@@ -1193,9 +1341,43 @@ class ActionsMixin:
         except tk.TclError:
             pass
 
+    def _clamp_menu(self, menu, x, y):
+        """
+        Clamps a Toplevel context menu position so it never overflows
+        outside the application window boundaries.
+
+        Args:
+            menu (tk.Toplevel): The menu window to position.
+            x (int): Desired screen x coordinate (from event.x_root).
+            y (int): Desired screen y coordinate (from event.y_root).
+
+        Returns:
+            tuple[int, int]: Clamped (x, y) screen coordinates.
+        """
+        menu.update_idletasks()
+        mw = menu.winfo_reqwidth()
+        mh = menu.winfo_reqheight()
+
+        # App window bounds (screen coordinates)
+        rx = self.root.winfo_rootx()
+        ry = self.root.winfo_rooty()
+        rw = self.root.winfo_width()
+        rh = self.root.winfo_height()
+
+        # Clamp so the menu stays fully inside the app window
+        clamped_x = min(x, rx + rw - mw)
+        clamped_y = min(y, ry + rh - mh)
+
+        # Never place it above/left of the app window either
+        clamped_x = max(clamped_x, rx)
+        clamped_y = max(clamped_y, ry)
+
+        return clamped_x, clamped_y
+
     def show_context_menu(self, event):
         """
-        Displays the custom context menu at the mouse position.
+        Displays the custom context menu at the mouse position,
+        clamped so it never overflows outside the application window.
         Dynamically toggles the Google Search option.
         """
         self.txt_area.focus_set()
@@ -1205,19 +1387,33 @@ class ActionsMixin:
         else:
             self.google_menu_item.pack_forget()
 
+        # Pre-show offscreen to get real dimensions before clamping
         self.context_menu.geometry(f"+{event.x_root}+{event.y_root}")
         self.context_menu.deiconify()
+
+        cx, cy = self._clamp_menu(self.context_menu, event.x_root, event.y_root)
+        self.context_menu.geometry(f"+{cx}+{cy}")
+
         self.context_menu.lift()
         self.context_menu.focus_set()
         self.context_menu.bind("<FocusOut>", lambda e: self.context_menu.withdraw())
 
     def show_search_context_menu(self, event):
-        """Displays the search-field context menu."""
+        """
+        Displays the search-field context menu, clamped inside the app window.
+        """
         self.context_menu.withdraw()
+
+        # Pre-show offscreen to get real dimensions before clamping
         self.search_context_menu.geometry(f"+{event.x_root}+{event.y_root}")
         self.search_context_menu.deiconify()
+
+        cx, cy = self._clamp_menu(self.search_context_menu, event.x_root, event.y_root)
+        self.search_context_menu.geometry(f"+{cx}+{cy}")
+
         self.search_context_menu.lift()
         self.search_context_menu.focus_set()
+        self.search_context_menu.bind("<FocusOut>", lambda e: self.search_context_menu.withdraw())
 
     def _build_search_menu_items(self):
         """Rebuilds the search-field context menu items with current language strings."""
@@ -1226,47 +1422,41 @@ class ActionsMixin:
         for widget in self.search_menu_inner.winfo_children():
             widget.destroy()
 
-        # Paste button (tk.Label in a tk.Toplevel context menu)
-        btn_paste = tk.Label(
-            self.search_menu_inner,
-            text=l_ui["paste"],
-            bg=COLOR_BTN_DEFAULT,
-            fg=COLOR_TEXT_BRIGHT,
-            font=(self.main_font_family, 10),
-            padx=15,
-            pady=self.sc(7),
-            anchor="w",
-            cursor="hand2",
-        )
-        btn_paste.pack(fill="x")
-        btn_paste.bind("<Enter>", lambda e: btn_paste.config(bg=COLOR_ACCENT, fg=COLOR_TEXT_ON_ACCENT))
-        btn_paste.bind("<Leave>", lambda e: btn_paste.config(bg=COLOR_BTN_DEFAULT, fg=COLOR_TEXT_BRIGHT))
-        btn_paste.bind(
-            "<Button-1>",
-            lambda e: [
-                self.search_entry.event_generate("<<Paste>>"),  # tk.Entry
+        def _make_item(text, cmd):
+            """Create a tk.Label menu item with manual hover styling.
+            tk.Label is used instead of CTkButton because overrideredirect
+            windows don't propagate mouse events reliably to CTk's internal
+            canvas widgets, breaking hover detection."""
+            lbl = tk.Label(
+                self.search_menu_inner,
+                text=text,
+                bg=COLOR_BTN_DEFAULT,
+                fg=COLOR_TEXT_BRIGHT,
+                font=(self.main_font_family, 11),
+                padx=10,
+                pady=self.sc(7),
+                anchor="w",
+                cursor="hand2",
+            )
+            lbl.pack(fill="x")
+            lbl.bind("<Enter>", lambda e, l=lbl: l.config(bg=COLOR_ACCENT, fg=COLOR_TEXT_ON_ACCENT))
+            lbl.bind("<Leave>", lambda e, l=lbl: l.config(bg=COLOR_BTN_DEFAULT, fg=COLOR_TEXT_BRIGHT))
+            lbl.bind("<Button-1>", lambda e: cmd())
+            return lbl
+
+        _make_item(
+            text=f"  {l_ui['paste']}  ",
+            cmd=lambda: [
+                self.search_entry.event_generate("<<Paste>>"),
                 self.search_context_menu.withdraw(),
             ],
         )
-
-        # Clear button
-        btn_clear = tk.Label(
-            self.search_menu_inner,
-            text=l_ui["clear"],
-            bg=COLOR_BTN_DEFAULT,
-            fg=COLOR_TEXT_BRIGHT,
-            font=(self.main_font_family, 10),
-            padx=15,
-            pady=self.sc(7),
-            anchor="w",
-            cursor="hand2",
-        )
-        btn_clear.pack(fill="x")
-        btn_clear.bind("<Enter>", lambda e: btn_clear.config(bg=COLOR_ACCENT, fg=COLOR_TEXT_ON_ACCENT))
-        btn_clear.bind("<Leave>", lambda e: btn_clear.config(bg=COLOR_BTN_DEFAULT, fg=COLOR_TEXT_BRIGHT))
-        btn_clear.bind(
-            "<Button-1>",
-            lambda e: [self.search_query.set(""), self.search_context_menu.withdraw()],
+        _make_item(
+            text=f"  {l_ui['clear']}  ",
+            cmd=lambda: [
+                self.search_query.set(""),
+                self.search_context_menu.withdraw(),
+            ],
         )
 
     def open_url(self, url):

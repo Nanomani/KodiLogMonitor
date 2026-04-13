@@ -138,7 +138,7 @@ _LIGHT_PALETTE = {
     # --- Log text tag colors (darker variants for readability on light bg) ---
     "LOG_COLORS": {
         "info":              "#2e7d32",    # Dark green
-        "warning":           "#f0a020",    # Deep orange
+        "warning":           "#e69500",    # Deep orange
         "error":             "#c62828",    # Dark red
         "debug":             "#757575",    # Medium grey
         "summary":           "#1565c0",    # Dark blue

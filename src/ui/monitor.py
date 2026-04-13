@@ -9,6 +9,10 @@ import sys
 from config import *
 from languages import LANGS
 
+# Maximum number of lines collected in one batch before dispatching to the UI.
+# Keeps the main thread responsive even under intense log flux.
+_BATCH_MAX = 150
+
 class MonitorMixin:
     def monitor_loop(self):
         """Monitors the log file in a background thread and updates the UI."""
@@ -86,18 +90,10 @@ class MonitorMixin:
                             self.is_file_inaccessible = False
                             if self.running:
                                 self.root.after(0, self.inactivity_timer_var.set, "")
-                                final_color = COLOR_WARNING if not load_full else LOG_COLORS["info"]
-                                self.root.after(0, self.update_status_color, final_color)
-
-                                # Trigger a full UI refresh
+                                self.root.after(0, lambda: self.update_status_color(
+                                    LOG_COLORS["info"] if not self.load_full_file.get() else COLOR_WARNING
+                                ))
                                 self.root.after(0, self.reset_all_filters)
-                                # print(f"[DEBUG] File recovered, triggering full reset...")
-                                # self.root.after(0, lambda: self.start_monitoring(self.log_file_path, is_manual=False))
-
-                                # Clear the text area when the log file becomes accessible again
-                                # self.root.after(0, lambda: self.txt_area.config(state=tk.NORMAL))
-                                # self.root.after(0, lambda: self.txt_area.delete('1.0', tk.END))
-                                # self.root.after(0, lambda: self.txt_area.config(state=tk.DISABLED))
 
                         # 3. Detect Log Rotations (Kodi restarts)
                         if current_size < last_pos:
@@ -105,9 +101,36 @@ class MonitorMixin:
                                 self.root.after(0, self.start_monitoring, self.log_file_path, False, False)
                             return
 
-                        # 4. Read new line
-                        line = f.readline()
-                        if not line:
+                        # 4. Read all available lines as a batch.
+                        #    Collecting up to _BATCH_MAX lines before dispatching
+                        #    means one after() call instead of one per line, which
+                        #    prevents flooding the Tkinter event queue under high flux.
+                        batch = []
+                        while self.running and len(batch) < _BATCH_MAX:
+                            line = f.readline()
+                            if not line:
+                                break
+                            last_pos = f.tell()
+                            data = self.get_line_data(line)
+                            if data and not self.is_duplicate(data[0]):
+                                batch.append((data[0], data[1]))
+
+                        # 5a. Lines received: dispatch batch + update status once
+                        if batch:
+                            self.last_activity_time = time.time()
+                            self.is_file_inaccessible = False
+                            if self.running:
+                                self.root.after(0, self.append_batch_to_gui, batch)
+                                self.root.after(0, lambda: self.update_status_color(
+                                    LOG_COLORS["info"] if not self.load_full_file.get() else COLOR_WARNING
+                                ))
+                                self.root.after(0, self.inactivity_timer_var.set, "")
+                            # Brief pause between batches: gives the main thread time
+                            # to process the after() callback and remain responsive.
+                            time.sleep(0.05)
+
+                        # 5b. No new data: handle inactivity timer then wait
+                        else:
                             if self.inactivity_limit > 0:
                                 elapsed = time.time() - self.last_activity_time
                                 if elapsed >= self.inactivity_limit:
@@ -134,23 +157,7 @@ class MonitorMixin:
                                         self.root.after(0, self.update_stats)
                                     except Exception:
                                         pass
-
                             time.sleep(0.4)
-                            continue
-
-                        # 5. Data Received: Update activity and UI status
-                        self.last_activity_time = time.time()
-                        if self.running:
-                            self.is_file_inaccessible = False
-                            final_color = COLOR_WARNING if not load_full else LOG_COLORS["info"]
-                            self.root.after(0, self.update_status_color, final_color)
-                            self.root.after(0, self.inactivity_timer_var.set, "")
-
-                        # 6. Process line and append to GUI
-                        last_pos = f.tell()
-                        data = self.get_line_data(line)
-                        if data and self.running and not self.is_duplicate(data[0]):
-                            self.root.after(0, self.append_to_gui, data[0], data[1])
 
                     except (IOError, OSError):
                         # File becomes locked or deleted temporarily
@@ -188,7 +195,7 @@ class MonitorMixin:
         self.last_activity_time = time.time()
         self.inactivity_timer_var.set("")
         self.running = True
-        self.seen_lines.clear()
+        self._reset_seen_cache()   # clears deque + O(1) set together
         self.log_file_path = path
 
         # Reset footer stats so update_stats re-fetches fresh values for the new file
@@ -239,9 +246,22 @@ class MonitorMixin:
         self.monitor_thread = threading.Thread(target=self.monitor_loop, daemon=True)
         self.monitor_thread.start()
 
+    def _reset_seen_cache(self):
+        """
+        Clears both the deque and its companion set so they stay in sync.
+        Call this wherever seen_lines.clear() was previously used.
+        """
+        self.seen_lines.clear()
+        self._seen_set.clear()
+
     def is_duplicate(self, text):
         """
-        Checks if a line of text has already been processed using a deque buffer.
+        Checks if a line of text has already been processed.
+
+        Uses a set for O(1) lookup (vs O(n) on the deque).  The deque is kept
+        alongside to bound memory: when it is full the oldest entry is about to
+        be evicted by the maxlen mechanism, so we remove it from the set first
+        to keep both structures in sync.
 
         Args:
             text (str): The line text to check.
@@ -252,9 +272,13 @@ class MonitorMixin:
         clean_text = text.strip()
         if not clean_text:
             return True
-        if clean_text in self.seen_lines:
+        if clean_text in self._seen_set:          # O(1)
             return True
+        # Keep deque + set in sync: remove the item that is about to be evicted
+        if len(self.seen_lines) == self.seen_lines.maxlen:
+            self._seen_set.discard(self.seen_lines[0])
         self.seen_lines.append(clean_text)
+        self._seen_set.add(clean_text)
         return False
 
     def periodic_display_check(self):

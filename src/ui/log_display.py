@@ -2,6 +2,7 @@ import tkinter as tk
 import customtkinter as ctk
 import os
 import re
+from datetime import datetime
 
 from config import *
 from languages import LANGS
@@ -179,6 +180,31 @@ class LogDisplayMixin:
         self.update_stats()
         self.show_loading(False)
 
+    def append_batch_to_gui(self, batch):
+        """
+        Appends a batch of (text, tag) lines to the text area in a single lock
+        acquisition.  Called by monitor_loop instead of one append_to_gui() per
+        line, which would flood the Tkinter event queue under high log flux.
+
+        Behaviour mirrors append_to_gui(): silently returns when paused or stopped,
+        scrolls to end, and refreshes stats once for the whole batch.
+        """
+        if not self.running:
+            return
+        if self.is_paused.get():
+            return
+        if not batch:
+            return
+
+        with self.log_lock:
+            self.txt_area.config(state=tk.NORMAL)
+            for text, tag in batch:
+                self.insert_with_highlight(_pad_line(text), tag)
+            current_x = self.txt_area.xview()[0]
+            self.txt_area.see(tk.END)
+            self.txt_area.xview_moveto(current_x)
+            self.update_stats()
+
     def append_to_gui(self, text, tag):
         """
         Appends a single log line to the end of the text area.
@@ -312,7 +338,7 @@ class LogDisplayMixin:
             return
 
         self.show_loading(True)
-        self.seen_lines.clear()  # Clear the cache to avoid missing lines
+        self._reset_seen_cache()  # Clear deque + O(1) set together
 
         try:
             with open(self.log_file_path, "r", encoding="utf-8", errors="ignore") as f:
@@ -374,6 +400,13 @@ class LogDisplayMixin:
 
     def trigger_refresh(self, *args):
         """Triggered during a filter change or search."""
+        # Cancel any pending debounced search and invalidate a running worker
+        # so its results don't overwrite the filter refresh we're about to do.
+        if getattr(self, '_search_after_id', None):
+            self.root.after_cancel(self._search_after_id)
+            self._search_after_id = None
+        self._search_version = getattr(self, '_search_version', 0) + 1
+
         if not self.check_log_loaded():
             return
 
@@ -460,6 +493,8 @@ class LogDisplayMixin:
             self.label_lines.pack_forget()
             self.sep_size.pack_forget()
             self.label_size.pack_forget()
+            self.sep_duration.pack_forget()
+            self.label_duration.pack_forget()
 
             # Fetch translation for the "Select a LOG file" message
             l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
@@ -490,6 +525,8 @@ class LogDisplayMixin:
         self.label_lines.pack_forget()
         self.sep_size.pack_forget()
         self.label_size.pack_forget()
+        self.sep_duration.pack_forget()
+        self.label_duration.pack_forget()
         self.sep_limit.pack_forget()
         self.label_limit.pack_forget()
         self.sep_wrap.pack_forget()
@@ -524,6 +561,11 @@ class LogDisplayMixin:
                     if not getattr(self, "has_auto_limited", False) and self.load_full_file.get():
                         self.load_full_file.set(False)  # Activate the 1000-line limit
                         self.has_auto_limited = True     # Remember that we auto-limited it
+                        # Sync button appearance immediately (no hover needed)
+                        self.update_button_colors()
+                        l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
+                        self.limit_var.set(l_ui.get("limit", "ℹ️ 1000 lines max"))
+                        self.root.update_idletasks()
                 else:
                     self.label_size.configure(text_color=COLOR_TEXT_MAIN)
                     self.label_lines.configure(text_color=COLOR_TEXT_MAIN)
@@ -541,6 +583,16 @@ class LogDisplayMixin:
             self.sep_size.pack_forget()
             self.label_size.pack_forget()
             self.label_lines.configure(text_color=COLOR_TEXT_MAIN)
+
+        # --- LOG DURATION Block ---
+        duration_text = self.get_log_duration()
+        if duration_text:
+            self.label_duration.configure(text=duration_text)
+            self.sep_duration.pack(side=tk.LEFT, fill=tk.Y, padx=20, pady=2)
+            self.label_duration.pack(side=tk.LEFT)
+        else:
+            self.sep_duration.pack_forget()
+            self.label_duration.pack_forget()
 
         # --- LIMIT Block ---
         txt_limit = l["limit"]
@@ -687,6 +739,52 @@ class LogDisplayMixin:
             pass
         return "N/A", 0
 
+    def get_log_duration(self):
+        """
+        Returns the time span covered by the log as a formatted string '🕒 HH:MM:SS',
+        or an empty string if the duration cannot be determined.
+
+        Strategy: read only the first 4 KB for the earliest timestamp and the
+        last 4 KB for the latest timestamp — O(1) regardless of file size.
+        """
+        if not self.log_file_path or not os.path.exists(self.log_file_path):
+            return ""
+
+        TS_RE = re.compile(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}")
+        TS_FMT = "%Y-%m-%d %H:%M:%S.%f"
+        CHUNK = 4096
+
+        try:
+            with open(self.log_file_path, "r", encoding="utf-8", errors="ignore") as f:
+                # --- First timestamp: read from file start ---
+                head = f.read(CHUNK)
+                first_matches = TS_RE.findall(head)
+                if not first_matches:
+                    return ""
+                first_ts = datetime.strptime(first_matches[0], TS_FMT)
+
+                # --- Last timestamp: read from file end ---
+                f.seek(0, os.SEEK_END)
+                file_size = f.tell()
+                f.seek(max(0, file_size - CHUNK))
+                tail = f.read()
+                last_matches = TS_RE.findall(tail)
+                if not last_matches:
+                    return ""
+                last_ts = datetime.strptime(last_matches[-1], TS_FMT)
+
+            delta = last_ts - first_ts
+            if delta.total_seconds() < 1:
+                return ""
+
+            total_seconds = int(delta.total_seconds())
+            hours, remainder = divmod(total_seconds, 3600)
+            minutes, seconds = divmod(remainder, 60)
+            return f"🕒 {hours:02d}:{minutes:02d}:{seconds:02d}"
+
+        except Exception:
+            return ""
+
     def jump_to_timestamp(self, timestamp):
         self.root.after(100, lambda: self._execute_jump(timestamp))
 
@@ -762,57 +860,78 @@ class LogDisplayMixin:
     def on_double_click_line(self, event):
         """
         Double-click management: Full reset + Pause + Exact search (TS + Content).
+
+        Selection artefact — root cause:
+          The Text widget's <ButtonRelease-1> class binding re-applies word selection
+          after every double-click. Whether this event is already queued in the OS
+          buffer when update_idletasks() runs (→ drained mid-handler) or arrives after
+          our handler returns (→ fires before after(0,...)) is non-deterministic, which
+          explains the "occasional" spurious selection.
+
+        Fix — one-shot <ButtonRelease-1> intercept:
+          Just before returning we register a temporary instance binding for
+          <ButtonRelease-1>. Instance bindings fire before class bindings in Tkinter;
+          returning "break" stops propagation and prevents the Text class binding from
+          re-selecting the word. The binding removes itself immediately after firing,
+          leaving normal click-drag behaviour intact.
         """
-        # --- NEW SECURITY CHECK ---
-        # If no log is loaded, show the warning message and stop the event
+        def _clear_sel():
+            self.txt_area.tag_remove("sel", "1.0", tk.END)
+
+        def _intercept_release(e):
+            """One-shot: intercept the ButtonRelease-1 from this double-click."""
+            self.txt_area.unbind("<ButtonRelease-1>")
+            _clear_sel()
+            return "break"
+
         if not self.check_log_loaded():
             return "break"
 
         if not self.check_log_available():
             return "break"
 
-        # 1. Clear selection to avoid visual conflicts
-        self.txt_area.tag_remove("sel", "1.0", tk.END)
+        # Clear the word selection that Tkinter's Button-1 class binding already applied
+        _clear_sel()
 
         try:
-            # 2. Retrieve the index and complete content of the clicked line
             line_index = self.txt_area.index(tk.CURRENT)
             line_content = self.txt_area.get(
                 line_index + " linestart", line_index + " lineend"
             ).strip()
 
             if not line_content:
-                return
+                return "break"
 
-            # Extracting the timestamp for the initial search
             timestamp_match = re.search(
                 r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}", line_content
             )
 
             if not timestamp_match:
-                return
+                return "break"
 
             target_ts = timestamp_match.group(0)
-            # Keep the entire line content to remove any ambiguity during search
             target_content = line_content
 
         except Exception as e:
             print(f"[ERROR] {type(e).__name__}: {e}")
-            return
+            return "break"
 
-        # 3. Complete reset of filters to ensure the line is visible
         self.reset_all_filters()
 
-        # 4. Pause monitoring to let the user analyze the specific line
         self.is_paused.set(True)
         if hasattr(self, "update_button_colors"):
             self.update_button_colors()
 
-        # 5. Force the interface to update so that the entire log is loaded if needed
         self.root.update_idletasks()
 
-        # 6. Search with TIMESTAMP and CONTENT
         self.find_and_highlight_timestamp(target_ts, target_content)
+
+        _clear_sel()
+
+        # Register the one-shot intercept. It handles both timing cases:
+        #   • ButtonRelease-1 already queued → intercepted immediately
+        #   • ButtonRelease-1 arrives later  → intercepted when it fires
+        self.txt_area.bind("<ButtonRelease-1>", _intercept_release)
 
         return "break"
 

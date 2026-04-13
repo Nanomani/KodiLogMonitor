@@ -462,9 +462,14 @@ class UIBuilderMixin:
         ).pack(side=tk.LEFT, padx=(8, 0), pady=(1, 1))
 
         # Search entry field — kept as tk.Entry for full API compatibility
-        # (icursor, selection_range, event_generate, etc. used throughout actions.py)
+        # (icursor, selection_range, event_generate, etc. used throughout actions.py).
+        # Wrapped in a plain tk.Frame so the placeholder label can be positioned
+        # with relative coordinates (rely=0.5) instead of fragile pixel offsets.
+        _entry_frame = tk.Frame(search_box, bg=COLOR_BG_MAIN)
+        _entry_frame.pack(side=tk.LEFT, padx=5, pady=3)
+
         self.search_entry = tk.Entry(
-            search_box,
+            _entry_frame,
             textvariable=self.search_query,
             bg=COLOR_BG_MAIN,
             fg=COLOR_TEXT_BRIGHT,
@@ -477,36 +482,30 @@ class UIBuilderMixin:
             highlightbackground=COLOR_BG_MAIN,
             highlightcolor=COLOR_BG_MAIN,
         )
-        self.search_entry.pack(side=tk.LEFT, padx=5, pady=3)
+        self.search_entry.pack(fill=tk.BOTH, expand=True)
 
         # --- Visual Placeholder Overlay ---
-        # This label is purely visual and doesn't affect the search logic
+        # Placed inside _entry_frame with relative coordinates:
+        # rely=0.5 + anchor="w" = always vertically centred, regardless of OS or scale.
+        # x=5 is a small fixed left-padding (does not depend on scale).
         placeholder_text = l_ui.get("search_localy", "Rechercher")
 
         self.placeholder_label = tk.Label(
-            search_box,
+            _entry_frame,
             text=placeholder_text,
             font=(main_fam, 12),
             bg=COLOR_BG_MAIN,
-            fg=COLOR_TEXT_LIGHT, # Very light gray
-            cursor="xterm" # Cursor looks like a text selector
+            fg=COLOR_TEXT_LIGHT,   # Very light gray
+            cursor="xterm",        # Cursor looks like a text selector
         )
-
-        # On Linux (Ubuntu)
-        y_offset = 4 if sys.platform != "win32" else 0
-
-        # Calcul final du Y
-        y_pos = int((self.sc(6) + y_offset) * self.scale)
-
-        # Place the label exactly over the entry field
-        self.placeholder_label.place(x=int(60 * self.scale), y=y_pos)
+        self.placeholder_label.place(relx=0, rely=0.5, anchor="w", x=5)
 
         def handle_placeholder(event=None):
-            """Hide label if there is text or if the field is focused"""
+            """Hide label if there is text or if the field is focused."""
             if self.search_query.get() or self.search_entry.focus_get() == self.search_entry:
                 self.placeholder_label.place_forget()
             else:
-                self.placeholder_label.place(x=int(60 * self.scale), y=y_pos)
+                self.placeholder_label.place(relx=0, rely=0.5, anchor="w", x=5)
 
         # Click on the placeholder must focus the entry
         self.placeholder_label.bind("<Button-1>", lambda e: self.search_entry.focus_set())
@@ -633,10 +632,7 @@ class UIBuilderMixin:
             opt_box,
             text="♾",
             font=ctk.CTkFont(family=emoji_fam, size=12),
-            command=lambda: (
-                self.load_full_file.set(not self.load_full_file.get()),
-                self.toggle_full_load(),
-            ),
+            command=self.toggle_full_load,  # toggle_full_load handles .set() internally
             **opt_btn_common
         )
         self.cde_limit.pack(side=tk.LEFT, padx=5)
@@ -836,7 +832,8 @@ class UIBuilderMixin:
         self.h_scrollbar.grid(row=1, column=0, sticky="ew", pady=(2, 0))
 
         # --- Custom Context Menu (right-click on log area) ---
-        # Uses tk.Toplevel with overrideredirect for a frameless popup
+        # Uses tk.Toplevel with overrideredirect for a frameless popup;
+        # items are ctk.CTkButton for built-in hover + tuple padx support.
         self.context_menu = tk.Toplevel(self.root)
         self.context_menu.withdraw()
         self.context_menu.overrideredirect(True)
@@ -857,25 +854,25 @@ class UIBuilderMixin:
         self._build_search_menu_items()
 
         def add_custom_item(command):
-            """Add a clickable styled label as a context menu item."""
+            """Add a clickable tk.Label as a context menu item.
+            tk.Label is used instead of CTkButton because overrideredirect
+            windows don't propagate mouse events reliably to CTk's internal
+            canvas widgets, breaking hover detection."""
             item = tk.Label(
                 self.menu_inner,
                 text="",
                 bg=COLOR_BTN_DEFAULT,
                 fg=COLOR_TEXT_BRIGHT,
-                font=(main_fam, 10),
-                padx=15,
+                font=(main_fam, 11),
+                padx=10,
                 pady=self.sc(7),
                 anchor="w",
                 cursor="hand2",
             )
             item.pack(fill="x")
-            item.bind("<Enter>", lambda event, i=item: i.config(bg=COLOR_ACCENT, fg=COLOR_TEXT_ON_ACCENT))
-            item.bind("<Leave>", lambda event, i=item: i.config(bg=COLOR_BTN_DEFAULT, fg=COLOR_TEXT_BRIGHT))
-            item.bind(
-                "<Button-1>",
-                lambda event: [command(), self.context_menu.withdraw()],
-            )
+            item.bind("<Enter>", lambda e, i=item: i.config(bg=COLOR_ACCENT, fg=COLOR_TEXT_ON_ACCENT))
+            item.bind("<Leave>", lambda e, i=item: i.config(bg=COLOR_BTN_DEFAULT, fg=COLOR_TEXT_BRIGHT))
+            item.bind("<Button-1>", lambda e: [command(), self.context_menu.withdraw()])
             return item
 
         # Context menu items (order matters)
@@ -1011,6 +1008,12 @@ class UIBuilderMixin:
 
         self.sep_size    = tk.Frame(footer_inner, bg=COLOR_SEPARATOR, width=2)
         self.label_size  = ctk.CTkLabel(
+            footer_inner, text="",
+            text_color=COLOR_TEXT_MAIN, **_fs
+        )
+
+        self.sep_duration = tk.Frame(footer_inner, bg=COLOR_SEPARATOR, width=2)
+        self.label_duration = ctk.CTkLabel(
             footer_inner, text="",
             text_color=COLOR_TEXT_MAIN, **_fs
         )

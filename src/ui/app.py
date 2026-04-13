@@ -82,8 +82,11 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
         self.running = False
         self.monitor_thread = None
         self.seen_lines = deque(maxlen=2000)
+        self._seen_set = set()          # O(1) companion set for is_duplicate()
         self.pending_jump_timestamp = None
         self.log_lock = threading.Lock()
+        self._search_version = 0        # Incremented on each new search to cancel stale workers
+        self._search_after_id = None    # Pending debounce timer ID
 
         # --- Tkinter control variables (compatible with CTK) ---
         self.load_full_file = tk.BooleanVar(value=False)
