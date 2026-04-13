@@ -152,6 +152,11 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
         self.txt_area.bind("<Control-c>", self.copy_to_clipboard)
         self.txt_area.bind("<Control-C>", self.copy_to_clipboard)
 
+        # Ctrl+A: select all text in the log area only (not bound on root to avoid
+        # interfering with the search entry or other text inputs)
+        self.txt_area.bind("<Control-a>", lambda e: (self.txt_area.tag_add("sel", "1.0", tk.END), "break")[1])
+        self.txt_area.bind("<Control-A>", lambda e: (self.txt_area.tag_add("sel", "1.0", tk.END), "break")[1])
+
         self.root.bind("<Control-o>", self.open_file)
         self.root.bind("<Control-O>", self.open_file)
         self.txt_area.bind("<Control-o>", self.open_file)

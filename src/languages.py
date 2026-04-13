@@ -49,7 +49,7 @@ LANGS = {
         "list_filter": "Recherche par liste",
         "no_match": "❌ Aucun résultat correspondant aux critères sélectionnés",
         "copy": "Copier",
-        "sel_all": "Tout sélectionner",
+        "sel_all": "Sélectionner tout",
         "search_localy": "Rechercher",
         "search_google": "Rechercher sur Google",
         "paste": "Coller",
