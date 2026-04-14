@@ -602,9 +602,12 @@ class ActionsMixin:
             self.root.after(0, _focus_line)
 
         else:
-            # No focused line and no remembered anchor: snapshot the current top-visible
-            # line and remember it so repeated toggles stay in the same area
-            anchor = self.txt_area.index("@0,0")
+            # No focused line and no remembered anchor: use the ~10th visible line as
+            # anchor so repeated toggles stay in the same area (more stable than @0,0)
+            first_line = int(self.txt_area.index("@0,0").split(".")[0])
+            total_lines = int(self.txt_area.index(tk.END).split(".")[0])
+            anchor_line = min(first_line + 9, total_lines)
+            anchor = f"{anchor_line}.0"
             self._last_wrap_anchor = anchor
             self.refresh_natural_order()
             self.root.after(0, lambda: self.txt_area.see(anchor))
