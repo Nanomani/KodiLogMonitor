@@ -400,6 +400,7 @@ class LogDisplayMixin:
 
     def trigger_refresh(self, *args):
         """Triggered during a filter change or search."""
+        self._last_wrap_anchor = None   # Filter change invalidates the remembered line
         # Cancel any pending debounced search and invalidate a running worker
         # so its results don't overwrite the filter refresh we're about to do.
         if getattr(self, '_search_after_id', None):

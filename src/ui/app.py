@@ -87,6 +87,7 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
         self.log_lock = threading.Lock()
         self._search_version = 0        # Incremented on each new search to cancel stale workers
         self._search_after_id = None    # Pending debounce timer ID
+        self._last_wrap_anchor = None   # Last explicitly-focused line index for wrap toggle
 
         # --- Tkinter control variables (compatible with CTK) ---
         self.load_full_file = tk.BooleanVar(value=False)
@@ -249,6 +250,9 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
         # Linux
         self.txt_area.bind("<Button-4>", self.safe_vertical_scroll)
         self.txt_area.bind("<Button-5>", self.safe_vertical_scroll)
+
+        # Clear the wrap anchor whenever focus leaves the log area
+        self.txt_area.bind("<FocusOut>", lambda e: setattr(self, "_last_wrap_anchor", None), add="+")
 
         # Escape in search field clears it and returns focus to log
         self.search_entry.bind("<Escape>", self.reset_search_and_focus_log)

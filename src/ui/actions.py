@@ -556,7 +556,21 @@ class ActionsMixin:
         except tk.TclError:
             pass
 
+        # Fall back to the last remembered anchor if no live cursor focus
+        if not (cursor_idx and cursor_line_content) and getattr(self, "_last_wrap_anchor", None):
+            try:
+                cursor_idx = self._last_wrap_anchor
+                cursor_line_content = self.txt_area.get(
+                    cursor_idx + " linestart", cursor_idx + " lineend"
+                ).strip()
+            except tk.TclError:
+                cursor_idx = None
+                cursor_line_content = ""
+
         if cursor_idx and cursor_line_content:
+            # Remember this anchor for the next toggle
+            self._last_wrap_anchor = cursor_idx
+
             # Pause before refresh so bulk_insert does not scroll to END
             self.is_paused.set(True)
             if hasattr(self, "update_button_colors"):
@@ -588,8 +602,10 @@ class ActionsMixin:
             self.root.after(0, _focus_line)
 
         else:
-            # No focused line: restore the scroll position that was visible before
+            # No focused line and no remembered anchor: snapshot the current top-visible
+            # line and remember it so repeated toggles stay in the same area
             anchor = self.txt_area.index("@0,0")
+            self._last_wrap_anchor = anchor
             self.refresh_natural_order()
             self.root.after(0, lambda: self.txt_area.see(anchor))
 
@@ -658,6 +674,8 @@ class ActionsMixin:
             current_x = self.txt_area.xview()[0]
             self.txt_area.see(tk.END)
             self.txt_area.xview_moveto(current_x)
+
+        self._last_wrap_anchor = None   # Pause toggle invalidates the remembered line
 
         # Immediately sync button color and tooltip to new state
         self.update_button_colors()
@@ -905,6 +923,7 @@ class ActionsMixin:
 
     def reset_all_filters(self):
         """Resets all filters, search, and pause state to defaults."""
+        self._last_wrap_anchor = None   # Reset invalidates the remembered line
         self.root.focus_set()
         self.search_query.set("")
         self.selected_list.set("")
