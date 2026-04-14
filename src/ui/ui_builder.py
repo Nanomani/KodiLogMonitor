@@ -183,7 +183,7 @@ class UIBuilderMixin:
         # --- Button: Open log file ---
         self.btn_log = self.create_custom_button(h_left, l_ui["log"], self.open_file)
         self.btn_log.pack(side=tk.LEFT, padx=5)
-        self.btn_open_tooltip = ToolTip(self.btn_log, l_ui["tip_wrap"], scale=self.scale)
+        self.btn_open_tooltip = ToolTip(self.btn_log, l_ui["tip_open"], scale=self.scale)
 
         # --- Button: Export log ---
         self.btn_exp = self.create_custom_button(h_left, l_ui["exp"], self.export_log)
@@ -644,7 +644,7 @@ class UIBuilderMixin:
             fg_color=LOG_COLORS["warning"] if self.load_full_file.get() else COLOR_BTN_DEFAULT,
             text_color=COLOR_TEXT_ON_ACCENT if self.load_full_file.get() else COLOR_TEXT_BRIGHT,
         ))
-        self.btn_limit_tooltip = ToolTip(self.cde_limit, l_ui["tip_limit"], scale=self.scale)
+        self.btn_limit_tooltip = ToolTip(self.cde_limit, l_ui["tip_limit_off"], scale=self.scale)
 
         # Word Wrap (↩) toggle
         self.cde_wrap = ctk.CTkButton(
@@ -666,7 +666,7 @@ class UIBuilderMixin:
             fg_color=COLOR_ACCENT if self.wrap_mode.get() else COLOR_BTN_DEFAULT,
             text_color=COLOR_TEXT_ON_ACCENT if self.wrap_mode.get() else COLOR_TEXT_BRIGHT,
         ))
-        self.btn_wrap_tooltip = ToolTip(self.cde_wrap, l_ui["tip_wrap"], scale=self.scale)
+        self.btn_wrap_tooltip = ToolTip(self.cde_wrap, l_ui["tip_wrap_off"], scale=self.scale)
 
         # Pause (⏸️) toggle
         self.cde_pause = ctk.CTkButton(
@@ -688,7 +688,7 @@ class UIBuilderMixin:
             fg_color=COLOR_DANGER if self.is_paused.get() else COLOR_BTN_DEFAULT,
             text_color=COLOR_TEXT_ON_ACCENT if self.is_paused.get() else COLOR_TEXT_BRIGHT,
         ))
-        self.btn_pause_tooltip = ToolTip(self.cde_pause, l_ui["tip_pause"], scale=self.scale)
+        self.btn_pause_tooltip = ToolTip(self.cde_pause, l_ui["tip_pause_off"], scale=self.scale)
 
         # Vertical separator
         tk.Frame(opt_box, bg=COLOR_SEPARATOR, width=2).pack(
@@ -1016,6 +1016,9 @@ class UIBuilderMixin:
         self.label_duration = ctk.CTkLabel(
             footer_inner, text="",
             text_color=COLOR_TEXT_MAIN, **_fs
+        )
+        self.label_duration_tooltip = ToolTip(
+            self.label_duration, l_ui.get("tip_duration", ""), scale=self.scale
         )
 
         self.sep_limit   = tk.Frame(footer_inner, bg=COLOR_SEPARATOR, width=2)

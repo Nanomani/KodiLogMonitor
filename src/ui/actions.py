@@ -535,11 +535,8 @@ class ActionsMixin:
         new_mode = tk.WORD if self.wrap_mode.get() else tk.NONE
         self.txt_area.config(wrap=new_mode)
 
-        # Immediately sync button color to new state
-        if hasattr(self, "cde_wrap"):
-            self.cde_wrap.configure(
-                fg_color=COLOR_ACCENT if self.wrap_mode.get() else COLOR_BTN_DEFAULT
-            )
+        # Immediately sync button color and tooltip to new state
+        self.update_button_colors()
 
         if not self.check_log_loaded() or not self.check_log_available():
             return
@@ -662,11 +659,8 @@ class ActionsMixin:
             self.txt_area.see(tk.END)
             self.txt_area.xview_moveto(current_x)
 
-        # Immediately sync button color to new state
-        if hasattr(self, "cde_pause"):
-            self.cde_pause.configure(
-                fg_color=COLOR_DANGER if self.is_paused.get() else COLOR_BTN_DEFAULT
-            )
+        # Immediately sync button color and tooltip to new state
+        self.update_button_colors()
 
         self.update_stats()
 
@@ -947,25 +941,41 @@ class ActionsMixin:
                 else:
                     widget.configure(fg_color=COLOR_BTN_DEFAULT, text_color=COLOR_TEXT_BRIGHT)
 
-        # Sync option button colors to their BooleanVar state
+        # Sync option button colors and tooltips to their BooleanVar state
+        l = LANGS.get(self.current_lang.get(), LANGS["EN"])
+
         if hasattr(self, "cde_limit"):
             _active = self.load_full_file.get()
             self.cde_limit.configure(
                 fg_color=LOG_COLORS["warning"] if _active else COLOR_BTN_DEFAULT,
                 text_color=COLOR_TEXT_ON_ACCENT if _active else COLOR_TEXT_BRIGHT,
             )
+            if hasattr(self, "btn_limit_tooltip") and self.btn_limit_tooltip:
+                self.btn_limit_tooltip.text = l.get(
+                    "tip_limit_on" if _active else "tip_limit_off", ""
+                )
+
         if hasattr(self, "cde_wrap"):
             _active = self.wrap_mode.get()
             self.cde_wrap.configure(
                 fg_color=COLOR_ACCENT if _active else COLOR_BTN_DEFAULT,
                 text_color=COLOR_TEXT_ON_ACCENT if _active else COLOR_TEXT_BRIGHT,
             )
+            if hasattr(self, "btn_wrap_tooltip") and self.btn_wrap_tooltip:
+                self.btn_wrap_tooltip.text = l.get(
+                    "tip_wrap_on" if _active else "tip_wrap_off", ""
+                )
+
         if hasattr(self, "cde_pause"):
             _active = self.is_paused.get()
             self.cde_pause.configure(
                 fg_color=COLOR_DANGER if _active else COLOR_BTN_DEFAULT,
                 text_color=COLOR_TEXT_ON_ACCENT if _active else COLOR_TEXT_BRIGHT,
             )
+            if hasattr(self, "btn_pause_tooltip") and self.btn_pause_tooltip:
+                self.btn_pause_tooltip.text = l.get(
+                    "tip_pause_on" if _active else "tip_pause_off", ""
+                )
 
     def on_hover_filter(self, widget, mode, is_entering):
         """
@@ -1073,12 +1083,14 @@ class ActionsMixin:
             self.btn_summary_tooltip.text = l["tip_summary"]
         if hasattr(self, "btn_clear_tooltip") and self.btn_clear_tooltip:
             self.btn_clear_tooltip.text = l["tip_clear"]
+        if hasattr(self, "label_duration_tooltip") and self.label_duration_tooltip:
+            self.label_duration_tooltip.text = l.get("tip_duration", "")
         if hasattr(self, "btn_limit_tooltip") and self.btn_limit_tooltip:
-            self.btn_limit_tooltip.text = l["tip_limit"]
+            self.btn_limit_tooltip.text = l["tip_limit_on" if not self.load_full_file.get() else "tip_limit_off"]
         if hasattr(self, "btn_wrap_tooltip") and self.btn_wrap_tooltip:
-            self.btn_wrap_tooltip.text = l["tip_wrap"]
+            self.btn_wrap_tooltip.text = l["tip_wrap_on" if self.wrap_mode.get() else "tip_wrap_off"]
         if hasattr(self, "btn_pause_tooltip") and self.btn_pause_tooltip:
-            self.btn_pause_tooltip.text = l["tip_pause"]
+            self.btn_pause_tooltip.text = l["tip_pause_on" if self.is_paused.get() else "tip_pause_off"]
         if hasattr(self, "btn_single_instance_tooltip") and self.btn_single_instance_tooltip:
             _tip_si_key = "tip_single_instance" if self.enable_single_instance_var else "tip_multi_instance"
             self.btn_single_instance_tooltip.text = l[_tip_si_key]
