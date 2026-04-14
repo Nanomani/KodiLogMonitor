@@ -799,7 +799,7 @@ class UIBuilderMixin:
             pady=5,
             undo=False,
             selectforeground=COLOR_TEXT_ON_ACCENT,  # Always white on blue selection (readable in both themes)
-            insertwidth=4,
+            insertwidth=max(1, self.sc(4)),
             insertontime=600,
             insertofftime=300,
             insertbackground=COLOR_TEXT_BRIGHT,

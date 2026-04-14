@@ -264,10 +264,10 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
         # History event bindings
         self.setup_history_events()
 
-        # --- FILTER CHANGE TRACES ---
-        for key, var in self.filter_vars.items():
-            if key != "all":
-                var.trace_add("write", self.trigger_refresh)
+        # Note: filter_vars traces are intentionally omitted here.
+        # on_filter_toggle() calls trigger_refresh / refresh_natural_order directly,
+        # so adding traces would double-trigger with an inconsistent state in between,
+        # causing a brief "no results" flash when de-selecting a filter.
 
         self.search_query.trace_add("write", self.clean_search_input)
         self.search_query.trace_add("write", self.on_search_change)
