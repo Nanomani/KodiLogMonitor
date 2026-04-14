@@ -1385,10 +1385,14 @@ class ActionsMixin:
         self.search_entry.focus_set()  # tk.Entry / CTkEntry both support focus_set()
 
     def reset_search_and_focus_log(self, event=None):
-        """Clears the search field, hides history, and returns focus to the log."""
+        """Clears the search field, hides history, and returns focus to the log.
+        Also deactivates pause mode if it was active."""
         self.search_query.set("")
         if hasattr(self, 'history_listbox'):
             self.history_listbox.place_forget()
+        if self.is_paused.get():
+            self.is_paused.set(False)
+            self.toggle_pause_scroll()
         if hasattr(self, 'txt_area'):
             self.txt_area.focus_set()
         return "break"
@@ -1459,18 +1463,88 @@ class ActionsMixin:
 
         return clamped_x, clamped_y
 
+    def _menu_visible_items(self):
+        """Returns the list of visible (packed) log context menu items."""
+        return [item for item in self.menu_items if item.winfo_ismapped()]
+
+    def _menu_highlight(self, delta):
+        """
+        Moves keyboard focus within the context menu by delta steps.
+        delta=0 initialises the highlight on the first item.
+        """
+        items = self._menu_visible_items()
+        if not items:
+            return
+        n = len(items)
+        # Clear current highlight
+        if 0 <= self._menu_kbfocus < n:
+            items[self._menu_kbfocus].config(bg=COLOR_BTN_DEFAULT, fg=COLOR_TEXT_BRIGHT)
+        # Compute new index (wraps around)
+        if self._menu_kbfocus < 0:
+            new_idx = 0 if delta >= 0 else n - 1
+        else:
+            new_idx = (self._menu_kbfocus + delta) % n
+        self._menu_kbfocus = new_idx
+        items[new_idx].config(bg=COLOR_ACCENT, fg=COLOR_TEXT_ON_ACCENT)
+
+    def _menu_activate(self):
+        """Triggers the currently highlighted context menu item."""
+        items = self._menu_visible_items()
+        if 0 <= self._menu_kbfocus < len(items):
+            items[self._menu_kbfocus].event_generate("<Button-1>")
+
+    def show_context_menu_from_keyboard(self, event=None):
+        """
+        Opens the log context menu via keyboard shortcut (M key).
+        Positions the menu below the insertion cursor when visible,
+        otherwise at the centre of the log area.
+        Keyboard navigation (Up/Down/Return/Escape) is enabled.
+        Requires an active text selection in the log area.
+        """
+        if not self.txt_area.tag_ranges("sel"):
+            return "break"
+        try:
+            bbox = self.txt_area.bbox(tk.INSERT)
+            if bbox:
+                bx, by, _, bh = bbox
+                x_root = self.txt_area.winfo_rootx() + bx
+                y_root = self.txt_area.winfo_rooty() + by + bh
+            else:
+                raise tk.TclError
+        except (tk.TclError, TypeError):
+            x_root = self.txt_area.winfo_rootx() + self.txt_area.winfo_width() // 2
+            y_root = self.txt_area.winfo_rooty() + self.txt_area.winfo_height() // 2
+
+        class _Ev:
+            pass
+        ev = _Ev()
+        ev.x_root = x_root
+        ev.y_root = y_root
+        self.show_context_menu(ev)
+
+        # Start keyboard navigation on first item
+        self._menu_kbfocus = -1
+        self._menu_highlight(0)
+        return "break"
+
     def show_context_menu(self, event):
         """
         Displays the custom context menu at the mouse position,
         clamped so it never overflows outside the application window.
         Dynamically toggles the Google Search option.
+        Requires an active text selection in the log area.
         """
+        if not self.txt_area.tag_ranges("sel"):
+            return
         self.txt_area.focus_set()
 
         if self.show_google_search.get():
             self.google_menu_item.pack(fill="x")
         else:
             self.google_menu_item.pack_forget()
+
+        # Reset keyboard focus index on each display
+        self._menu_kbfocus = -1
 
         # Pre-show offscreen to get real dimensions before clamping
         self.context_menu.geometry(f"+{event.x_root}+{event.y_root}")
@@ -1482,6 +1556,15 @@ class ActionsMixin:
         self.context_menu.lift()
         self.context_menu.focus_set()
         self.context_menu.bind("<FocusOut>", lambda e: self.context_menu.withdraw())
+
+        # Keyboard navigation bindings (bound once, persistent)
+        if not getattr(self, "_context_menu_kb_bound", False):
+            self.context_menu.bind("<Up>",     lambda e: self._menu_highlight(-1))
+            self.context_menu.bind("<Down>",   lambda e: self._menu_highlight(1))
+            self.context_menu.bind("<Return>",  lambda e: self._menu_activate())
+            self.context_menu.bind("<KP_Enter>", lambda e: self._menu_activate())
+            self.context_menu.bind("<Escape>",  lambda e: self.context_menu.withdraw())
+            self._context_menu_kb_bound = True
 
     def show_search_context_menu(self, event):
         """
@@ -1767,9 +1850,29 @@ class ActionsMixin:
             self.history_window.withdraw()
 
     def reset_search_and_focus_log(self, event=None):
-        """Clears the search, hides history, and returns focus to the log area."""
+        """Clears the search, hides history, and returns focus to the log area.
+        Cancels the debounced _fire_search that on_search_change schedules when
+        search_query is cleared, then restores file order via refresh_natural_order.
+        Also deactivates pause mode if it was active."""
+        had_query = bool(self.search_query.get())
         self.search_query.set("")
         self.hide_history_dropdown()
+
+        # Cancel the debounced search timer triggered by search_query.set("") above,
+        # and invalidate any running background search worker, so they don't
+        # overwrite the refresh_natural_order call below.
+        if getattr(self, '_search_after_id', None):
+            self.root.after_cancel(self._search_after_id)
+            self._search_after_id = None
+        self._search_version = getattr(self, '_search_version', 0) + 1
+
+        if self.is_paused.get():
+            self.is_paused.set(False)
+            self._last_wrap_anchor = None
+            self.update_button_colors()
+        if had_query:
+            self.refresh_natural_order()
+            self.root.after(0, lambda: self.txt_area.see(tk.END))
         if hasattr(self, 'txt_area'):
             self.txt_area.focus_set()
         return "break"

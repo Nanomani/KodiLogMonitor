@@ -554,7 +554,15 @@ class UIBuilderMixin:
         else:
             self.btn_clear_search.pack(expand=True)
 
-        self.search_bar_tooltip = ToolTip(self.search_entry, l_ui["tip_search_bar"], scale=self.scale)
+        self.search_bar_tooltip = ToolTip(
+            self.search_entry,
+            l_ui["tip_search_bar"],
+            scale=self.scale,
+            condition=lambda: (
+                self.root.focus_get() != self.search_entry and
+                self.root.focus_get() != self.history_listbox
+            )
+        )
 
         # Clear search history button
         self.btn_clear_history = ctk.CTkButton(
@@ -1144,10 +1152,11 @@ class ToolTip:
     Uses a bare tk.Toplevel with overrideredirect for a clean popup.
     """
 
-    def __init__(self, widget, text, scale=1.0):
+    def __init__(self, widget, text, scale=1.0, condition=None):
         self.widget = widget
         self.text = text
         self.scale = scale
+        self.condition = condition  # Optional callable: tooltip only shows if condition() is True
         self.tip_window = None
         self.id = None
         self.delay = 1000  # milliseconds before tooltip appears
@@ -1170,6 +1179,8 @@ class ToolTip:
     def show_tip(self, event=None):
         """Create and position the tooltip window."""
         if not self.text:
+            return
+        if self.condition is not None and not self.condition():
             return
 
         self.tip_window = tw = tk.Toplevel(self.widget)

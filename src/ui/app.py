@@ -88,6 +88,7 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
         self._search_version = 0        # Incremented on each new search to cancel stale workers
         self._search_after_id = None    # Pending debounce timer ID
         self._last_wrap_anchor = None   # Last explicitly-focused line index for wrap toggle
+        self._menu_kbfocus = -1         # Keyboard-focused item index in the log context menu
 
         # --- Tkinter control variables (compatible with CTK) ---
         self.load_full_file = tk.BooleanVar(value=False)
@@ -231,6 +232,9 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
         self.txt_area.bind("<d>", self.toggle_debug_filter_from_keyboard)
         self.txt_area.bind("<D>", self.toggle_debug_filter_from_keyboard)
 
+        self.txt_area.bind("<m>", self.show_context_menu_from_keyboard)
+        self.txt_area.bind("<M>", self.show_context_menu_from_keyboard)
+
         self.root.bind("<F1>", lambda e: self.show_help())
         self.txt_area.bind("<F1>", lambda e: self.show_help())
 
@@ -275,22 +279,61 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
         self.history_window = tk.Toplevel(self.root)
         self.history_window.withdraw()
         self.history_window.overrideredirect(True)
+        # 1px COLOR_SEPARATOR border — same technique as the context menus
+        self.history_window.configure(bg=COLOR_SEPARATOR)
 
         # Style the history listbox to match dark theme
         self.history_listbox = tk.Listbox(
             self.history_window,
-            bg=COLOR_BG_MAIN,
+            bg=COLOR_BG_HEADER,
             fg=COLOR_TEXT_MAIN,
             selectbackground=COLOR_ACCENT,
             selectforeground=COLOR_TEXT_BRIGHT,
             font=(self._main_font, 12),
-            borderwidth=1,
+            borderwidth=0,
             highlightthickness=0,
             activestyle="none",
             exportselection=False
         )
-        self.history_listbox.pack(fill=tk.BOTH, expand=True)
+        self.history_listbox.pack(fill=tk.BOTH, expand=True, padx=1, pady=1)
         self.history_listbox.bind("<ButtonRelease-1>", self.on_history_select)
+
+        # Hover highlight for history listbox (tk.Listbox has no native hover)
+        self._history_hover_idx = None
+
+        def _on_history_motion(event):
+            idx = self.history_listbox.nearest(event.y)
+            if idx == self._history_hover_idx:
+                return
+            # Restore previous hovered item
+            if self._history_hover_idx is not None:
+                try:
+                    self.history_listbox.itemconfigure(
+                        self._history_hover_idx, background=COLOR_BG_HEADER, foreground=COLOR_TEXT_MAIN
+                    )
+                except tk.TclError:
+                    pass
+            # Highlight new hovered item
+            try:
+                self.history_listbox.itemconfigure(
+                    idx, background=COLOR_ACCENT, foreground=COLOR_TEXT_ON_ACCENT
+                )
+                self._history_hover_idx = idx
+            except tk.TclError:
+                self._history_hover_idx = None
+
+        def _on_history_leave(event):
+            if self._history_hover_idx is not None:
+                try:
+                    self.history_listbox.itemconfigure(
+                        self._history_hover_idx, background=COLOR_BG_HEADER, foreground=COLOR_TEXT_MAIN
+                    )
+                except tk.TclError:
+                    pass
+            self._history_hover_idx = None
+
+        self.history_listbox.bind("<Motion>", _on_history_motion)
+        self.history_listbox.bind("<Leave>", _on_history_leave)
 
         self.root.after(5000, self.scheduled_stats_update)
 
