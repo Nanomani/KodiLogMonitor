@@ -524,7 +524,14 @@ class ActionsMixin:
         self.update_stats()
 
     def toggle_line_break(self, *args):
-        """Sets the wrap mode and refreshes only if 'All' filter is active."""
+        """
+        Toggles word-wrap mode and refreshes the log display.
+
+        If the log area has keyboard focus and the cursor is on a non-empty line,
+        monitoring is paused, the view centres on that line after the refresh,
+        and the line is highlighted briefly so the user can locate it immediately.
+        Otherwise the current scroll position is simply restored.
+        """
         new_mode = tk.WORD if self.wrap_mode.get() else tk.NONE
         self.txt_area.config(wrap=new_mode)
 
@@ -537,10 +544,54 @@ class ActionsMixin:
         if not self.check_log_loaded() or not self.check_log_available():
             return
 
-        if self.filter_vars.get("all") and self.filter_vars["all"].get():
-            # Capture the first visible character before the refresh.
-            # bulk_insert resets scroll (to top when paused, to END when not paused).
-            # after(0, ...) fires after bulk_insert's own see() and restores position.
+        if not (self.filter_vars.get("all") and self.filter_vars["all"].get()):
+            return
+
+        # --- Detect whether the cursor is on a meaningful line ---
+        cursor_line_content = ""
+        cursor_idx = None
+        try:
+            if self.root.focus_get() == self.txt_area:
+                cursor_idx = self.txt_area.index(tk.INSERT)
+                cursor_line_content = self.txt_area.get(
+                    cursor_idx + " linestart", cursor_idx + " lineend"
+                ).strip()
+        except tk.TclError:
+            pass
+
+        if cursor_idx and cursor_line_content:
+            # Pause before refresh so bulk_insert does not scroll to END
+            self.is_paused.set(True)
+            if hasattr(self, "update_button_colors"):
+                self.update_button_colors()
+
+            anchor = cursor_idx
+            self.refresh_natural_order()
+
+            def _focus_line():
+                try:
+                    line_start = self.txt_area.index(anchor + " linestart")
+                    line_end   = self.txt_area.index(anchor + " lineend")
+                    self.txt_area.see(line_start)
+                    self.txt_area.xview_moveto(0)
+                    self.txt_area.tag_remove("highlight_temp", "1.0", tk.END)
+                    self.txt_area.tag_add("highlight_temp", line_start, line_end)
+                    self.txt_area.tag_config(
+                        "highlight_temp",
+                        background=LOG_COLORS["highlight_kwl_bg"],
+                        foreground=LOG_COLORS["highlight_kwl_fg"],
+                        font=(self.mono_font_family, self.font_size),
+                    )
+                    self.root.after(
+                        3000, lambda: self.txt_area.tag_remove("highlight_temp", "1.0", tk.END)
+                    )
+                except tk.TclError:
+                    pass
+
+            self.root.after(0, _focus_line)
+
+        else:
+            # No focused line: restore the scroll position that was visible before
             anchor = self.txt_area.index("@0,0")
             self.refresh_natural_order()
             self.root.after(0, lambda: self.txt_area.see(anchor))

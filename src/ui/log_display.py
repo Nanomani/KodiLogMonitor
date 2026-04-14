@@ -641,13 +641,10 @@ class LogDisplayMixin:
 
         self.root.after(4000, self.scheduled_stats_update)
 
-    # ── File-info caching ────────────────────────────────────────────────────────
-    # get_file_info() previously counted every line on the main thread, which
-    # could freeze the UI for hundreds of ms on large files.  The new approach:
-    #   • size is obtained instantly via os.path.getsize()
-    #   • line-count is computed in a daemon thread and cached
-    #   • a stale cached value is shown immediately; the UI refreshes once the
-    #     background thread finishes (via root.after on the main thread)
+    # ── File-info helpers ────────────────────────────────────────────────────────
+    # Size is read instantly via os.path.getsize().
+    # Line-count is computed in a daemon thread and cached; a stale value is
+    # shown immediately and refreshed once the background thread completes.
 
     def _format_size(self, size_bytes):
         """Convert a byte count to a human-readable string."""
@@ -859,27 +856,19 @@ class LogDisplayMixin:
 
     def on_double_click_line(self, event):
         """
-        Double-click management: Full reset + Pause + Exact search (TS + Content).
+        Resets all filters, pauses monitoring, and scrolls to the exact line
+        that was double-clicked, identified by its timestamp and full content.
 
-        Selection artefact — root cause:
-          The Text widget's <ButtonRelease-1> class binding re-applies word selection
-          after every double-click. Whether this event is already queued in the OS
-          buffer when update_idletasks() runs (→ drained mid-handler) or arrives after
-          our handler returns (→ fires before after(0,...)) is non-deterministic, which
-          explains the "occasional" spurious selection.
-
-        Fix — one-shot <ButtonRelease-1> intercept:
-          Just before returning we register a temporary instance binding for
-          <ButtonRelease-1>. Instance bindings fire before class bindings in Tkinter;
-          returning "break" stops propagation and prevents the Text class binding from
-          re-selecting the word. The binding removes itself immediately after firing,
-          leaving normal click-drag behaviour intact.
+        A one-shot <ButtonRelease-1> instance binding is registered before
+        returning to suppress the Text widget's class binding, which would
+        otherwise re-apply a word selection after the handler exits.
+        Instance bindings fire before class bindings; returning "break" stops
+        propagation and the binding removes itself immediately after firing.
         """
         def _clear_sel():
             self.txt_area.tag_remove("sel", "1.0", tk.END)
 
         def _intercept_release(e):
-            """One-shot: intercept the ButtonRelease-1 from this double-click."""
             self.txt_area.unbind("<ButtonRelease-1>")
             _clear_sel()
             return "break"
@@ -928,9 +917,6 @@ class LogDisplayMixin:
 
         _clear_sel()
 
-        # Register the one-shot intercept. It handles both timing cases:
-        #   • ButtonRelease-1 already queued → intercepted immediately
-        #   • ButtonRelease-1 arrives later  → intercepted when it fires
         self.txt_area.bind("<ButtonRelease-1>", _intercept_release)
 
         return "break"
