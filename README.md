@@ -7,6 +7,7 @@
 
 A lightweight and intuitive real-time log viewer and simple log editor for Kodi.  
 It helps users and developers track events, troubleshoot errors, and monitor system status through a clean, color-coded interface.
+🚀 Designed for both users and developers to quickly analyze and troubleshoot Kodi logs.
 
 ![2026-04-10_183538](https://github.com/user-attachments/assets/06b52ded-0a25-4cb6-8241-cf376868fc38)
 
@@ -15,7 +16,7 @@ It helps users and developers track events, troubleshoot errors, and monitor sys
 ---
 
 ### ✨ Features
-* **Real-time Log Monitoring**: Instantly view new log entries as they are written.  
+* **Real-Time Log Monitoring**: Instantly view new log entries as they are written.  
 * **Advanced Filtering**: Filter logs by level (Info, Warning, Error, Debug) or custom keywords.  
 * **Keyword Lists**: Use custom keyword files for targeted log analysis and highlighting.  
 * **Dynamic Search**: Fast and responsive search, even on large log files.  
@@ -28,7 +29,7 @@ It helps users and developers track events, troubleshoot errors, and monitor sys
 * **Responsive UI**: Optimized display across HD, FHD, and 4K screens.  
 * **Light & Dark Themes**: Adapt the interface to your preference and reduce eye strain.  
 * **Localization Support**: Multi-language interface with automatic OS language detection.  
-* **Robust Log Access**: Handles network logs and connection loss with improved recovery.  
+* **Robust Log Access**: Handles network logs and connection loss with improved recovery mechanisms.  
 ---
 
 ### 🎯 What is it for?
@@ -60,13 +61,13 @@ Quick keyboard shortcuts to navigate and control the application efficiently.
 Space        : Pause / Resume auto-scroll  
 Ctrl + O     : Open log file  
 Ctrl + S     : Export log
-Ctrl + P     : Upload LOG  
-Ctrl + F     : Search keyword  
-Ctrl + G     : Clear console display  
+Ctrl + P     : Upload log  
+Ctrl + F     : Search keywords  
+Ctrl + G     : Clear console  
 Ctrl + L     : Toggle word wrap  
 Ctrl + T     : Unlimited mode (∞) / 1000 lines  
 Ctrl + A     : Select all
-M            : Open the context menu in the log
+M            : Open context menu in the log
 S            : Show system summary (also accessible via F1)  
 A            : Show Info, Warn, Error, Debug  
 I, W, E, D   : Filter Info, Warn, Error or Debug  
