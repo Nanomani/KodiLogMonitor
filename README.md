@@ -6,7 +6,7 @@
 ![Téléchargements Latest](https://img.shields.io/github/downloads/Nanomani/KodiLogMonitor/latest/total)
 
 A lightweight and intuitive real-time log viewer and simple log editor for Kodi.  
-It helps users and developers track events, troubleshoot errors, and monitor system status through a clean, color-coded interface.
+It helps users and developers track events, troubleshoot errors, and monitor system status through a clean, color-coded interface.  
 🚀 Designed for both users and developers to quickly analyze and troubleshoot Kodi logs.
 
 ![2026-04-10_183538](https://github.com/user-attachments/assets/06b52ded-0a25-4cb6-8241-cf376868fc38)
