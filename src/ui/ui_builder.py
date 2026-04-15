@@ -538,7 +538,7 @@ class UIBuilderMixin:
             text="×",
             fg_color=COLOR_BG_MAIN,
             text_color=COLOR_TEXT_DIM,
-            font=ctk.CTkFont(family=main_fam, size=15, weight="bold"),
+            font=ctk.CTkFont(family=main_fam, size=17, weight="bold"),
             cursor="hand2",
         )
         self.btn_clear_search.bind(
@@ -635,10 +635,10 @@ class UIBuilderMixin:
         # Remember active check function for each option button
         self._get_opt_active = _get_opt_active
 
-        # Full Load (♾) toggle
+        # Limit toggle: 🛡️ = limited (default), ♾ = unlimited (full load)
         self.cde_limit = ctk.CTkButton(
             opt_box,
-            text="♾",
+            text="🛡️",
             font=ctk.CTkFont(family=emoji_fam, size=12),
             command=self.toggle_full_load,  # toggle_full_load handles .set() internally
             **opt_btn_common
@@ -654,10 +654,10 @@ class UIBuilderMixin:
         ))
         self.btn_limit_tooltip = ToolTip(self.cde_limit, l_ui["tip_limit_off"], scale=self.scale)
 
-        # Word Wrap (↩) toggle
+        # Wrap toggle: ➡️ = wrap off (default), ↩ = wrap on
         self.cde_wrap = ctk.CTkButton(
             opt_box,
-            text="↩",
+            text="➡️",
             font=ctk.CTkFont(family=emoji_fam, size=12),
             command=lambda: (
                 self.wrap_mode.set(not self.wrap_mode.get()),
@@ -676,10 +676,10 @@ class UIBuilderMixin:
         ))
         self.btn_wrap_tooltip = ToolTip(self.cde_wrap, l_ui["tip_wrap_off"], scale=self.scale)
 
-        # Pause (⏸️) toggle
+        # Pause toggle: ▶️ = running (pause inactive), ⏸️ = paused (pause active)
         self.cde_pause = ctk.CTkButton(
             opt_box,
-            text="⏸️",
+            text="▶️",
             font=ctk.CTkFont(family=emoji_fam, size=12),
             command=lambda: (
                 self.is_paused.set(not self.is_paused.get()),

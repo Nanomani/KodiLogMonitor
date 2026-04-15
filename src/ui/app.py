@@ -89,6 +89,7 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
         self._search_after_id = None    # Pending debounce timer ID
         self._last_wrap_anchor = None   # Last explicitly-focused line index for wrap toggle
         self._menu_kbfocus = -1         # Keyboard-focused item index in the log context menu
+        self._summary_showing = False   # True while the summary view is displayed
 
         # --- Tkinter control variables (compatible with CTK) ---
         self.load_full_file = tk.BooleanVar(value=False)

@@ -80,6 +80,7 @@ class ActionsMixin:
             return
 
         self.is_paused.set(True)
+        self._summary_showing = True
         self.update_button_colors()
         self.update_stats()
 
@@ -674,6 +675,14 @@ class ActionsMixin:
             return
 
         if not self.is_paused.get() and self.log_file_path:
+            # If the summary was displayed, clear it and restore normal log view
+            if getattr(self, "_summary_showing", False):
+                self._summary_showing = False
+                self._last_wrap_anchor = None
+                self.update_button_colors()
+                self.trigger_refresh()
+                return
+
             current_x = self.txt_area.xview()[0]
             self.txt_area.see(tk.END)
             self.txt_area.xview_moveto(current_x)
@@ -971,6 +980,7 @@ class ActionsMixin:
             self.cde_limit.configure(
                 fg_color=LOG_COLORS["warning"] if _active else COLOR_BTN_DEFAULT,
                 text_color=COLOR_TEXT_ON_ACCENT if _active else COLOR_TEXT_BRIGHT,
+                text="♾" if _active else "🛡️",
             )
             if hasattr(self, "btn_limit_tooltip") and self.btn_limit_tooltip:
                 self.btn_limit_tooltip.text = l.get(
@@ -982,6 +992,7 @@ class ActionsMixin:
             self.cde_wrap.configure(
                 fg_color=COLOR_ACCENT if _active else COLOR_BTN_DEFAULT,
                 text_color=COLOR_TEXT_ON_ACCENT if _active else COLOR_TEXT_BRIGHT,
+                text="↩" if _active else "➡️",
             )
             if hasattr(self, "btn_wrap_tooltip") and self.btn_wrap_tooltip:
                 self.btn_wrap_tooltip.text = l.get(
@@ -993,6 +1004,7 @@ class ActionsMixin:
             self.cde_pause.configure(
                 fg_color=COLOR_DANGER if _active else COLOR_BTN_DEFAULT,
                 text_color=COLOR_TEXT_ON_ACCENT if _active else COLOR_TEXT_BRIGHT,
+                text="⏸️" if _active else "▶️",
             )
             if hasattr(self, "btn_pause_tooltip") and self.btn_pause_tooltip:
                 self.btn_pause_tooltip.text = l.get(
@@ -1755,7 +1767,7 @@ class ActionsMixin:
         if text in self.search_history:
             self.search_history.remove(text)
         self.search_history.insert(0, text)
-        self.search_history = self.search_history[:15]
+        self.search_history = self.search_history[:SEARCH_HISTORY_MAX_SIZE]
         self.save_search_history()
 
     def clear_all_history_data(self):
