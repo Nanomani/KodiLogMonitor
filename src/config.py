@@ -36,6 +36,13 @@ ENABLE_SINGLE_INSTANCE = False
 # short lines are visible. Trailing spaces have no impact on performance.
 LOG_MIN_LINE_WIDTH = 500
 
+# Maximum number of characters displayed per log line.
+# Lines exceeding this limit are truncated in the UI and a suffix indicating
+# the number of hidden characters is appended. The source log file is never
+# modified. Increase this value if you need more context, but be aware that
+# very long lines (> ~10 000 chars) significantly slow down word-wrap rendering.
+LOG_MAX_LINE_DISPLAY = 5000
+
 # ==============================================================
 # THEME PALETTES
 # Each palette maps every COLOR_* key + LOG_COLORS to theme values.

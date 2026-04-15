@@ -8,17 +8,23 @@ from config import *
 from languages import LANGS
 
 
-def _pad_line(text: str) -> str:
+def _pad_line(text: str, chars_label: str = "chars") -> str:
     """
-    Pads a log line to LOG_MIN_LINE_WIDTH characters (before the newline).
-    Every displayed line occupies at least LOG_MIN_LINE_WIDTH chars of horizontal
-    space, so the scroll region never shrinks and the scrollbar thumb stays
-    stable regardless of line lengths. Trailing spaces are invisible to the user.
+    Prepares a log line for display:
+    1. Truncates lines exceeding LOG_MAX_LINE_DISPLAY characters and appends a
+       translated suffix with the number of hidden characters.
+       The source file is never modified.
+    2. Pads to LOG_MIN_LINE_WIDTH so the horizontal scroll region stays stable.
     """
-    if text.endswith("\n"):
-        content = text[:-1]
-        return content.ljust(LOG_MIN_LINE_WIDTH) + "\n"
-    return text.ljust(LOG_MIN_LINE_WIDTH)
+    has_newline = text.endswith("\n")
+    content = text[:-1] if has_newline else text
+
+    if len(content) > LOG_MAX_LINE_DISPLAY:
+        hidden = len(content) - LOG_MAX_LINE_DISPLAY
+        content = content[:LOG_MAX_LINE_DISPLAY] + f"  […+{hidden:,} {chars_label}]"
+
+    content = content.ljust(LOG_MIN_LINE_WIDTH)
+    return content + "\n" if has_newline else content
 
 
 class LogDisplayMixin:
@@ -86,12 +92,15 @@ class LogDisplayMixin:
         self.txt_area.config(state=tk.NORMAL)
 
         if not valid_data:
-            # Check if we should ignore this empty call
-            current_text = self.txt_area.get("1.0", tk.END).strip()
-            if current_text != "" and "Aucune" not in current_text:
-                self.show_loading(False)
-                self.update_stats()
-                return
+            # Skip the no-results screen only when real log content is visible.
+            # If the no-results screen is already showing (_no_results_showing=True),
+            # always rebuild it so the filter summary reflects the current state.
+            if not getattr(self, "_no_results_showing", False):
+                current_text = self.txt_area.get("1.0", tk.END).strip()
+                if current_text:
+                    self.show_loading(False)
+                    self.update_stats()
+                    return
 
             # --- BUILD DETAILED MESSAGE ---
             l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
@@ -154,15 +163,48 @@ class LogDisplayMixin:
             # Final "No matches" message
             final_no_match = l_ui.get('no_match', "❌ No matches found")
             self.txt_area.insert(tk.END, f"\n\t\t{final_no_match}", "no_match_text")
+            self._no_results_showing = True   # Flag: no-results screen is active
 
             self.show_loading(False)
             self.update_stats()
             return
 
         # Normal insertion if valid_data exists
+        self._no_results_showing = False      # Flag: real content is being displayed
         self.txt_area.delete('1.0', tk.END)
-        for text, tag in valid_data:
-            self.insert_with_highlight(_pad_line(text), tag)
+
+        # Hoist keyword detection outside the loop (avoid N Tkinter .get() calls)
+        l_ui_bulk   = LANGS.get(self.current_lang.get(), LANGS["EN"])
+        search_term = self.search_query.get().strip()
+        has_list    = self.selected_list.get() not in ("", l_ui_bulk.get("none", "None"))
+        list_kw     = self.get_keywords_from_file() if has_list else []
+
+        chars_label = l_ui_bulk.get("truncated_chars", "chars")
+
+        if not search_term and not list_kw:
+            # Fast path: no highlighting needed.
+            # Batch consecutive lines that share the same tag into a single insert()
+            # call. This reduces the number of Tk tag-range B-tree entries from N
+            # (one per line) to at most the number of tag transitions, which for a
+            # typical log file is orders of magnitude smaller. The result is
+            # dramatically faster scrolling on large files.
+            prev_tag = None
+            batch    = []
+            for text, tag in valid_data:
+                padded = _pad_line(text, chars_label)
+                if tag == prev_tag:
+                    batch.append(padded)
+                else:
+                    if batch:
+                        self.txt_area.insert(tk.END, "".join(batch), prev_tag)
+                    prev_tag = tag
+                    batch    = [padded]
+            if batch:
+                self.txt_area.insert(tk.END, "".join(batch), prev_tag)
+        else:
+            # Slow path: per-line keyword highlighting (unavoidable)
+            for text, tag in valid_data:
+                self.insert_with_highlight(_pad_line(text, chars_label), tag)
 
         if self.pending_jump_timestamp:
             self.jump_to_timestamp(self.pending_jump_timestamp)
@@ -198,8 +240,9 @@ class LogDisplayMixin:
 
         with self.log_lock:
             self.txt_area.config(state=tk.NORMAL)
+            chars_label = LANGS.get(self.current_lang.get(), LANGS["EN"]).get("truncated_chars", "chars")
             for text, tag in batch:
-                self.insert_with_highlight(_pad_line(text), tag)
+                self.insert_with_highlight(_pad_line(text, chars_label), tag)
             current_x = self.txt_area.xview()[0]
             self.txt_area.see(tk.END)
             self.txt_area.xview_moveto(current_x)
@@ -222,7 +265,8 @@ class LogDisplayMixin:
 
         with self.log_lock:  # Prevents mixing during writing
             self.txt_area.config(state=tk.NORMAL)
-            self.insert_with_highlight(_pad_line(text), tag)
+            chars_label = LANGS.get(self.current_lang.get(), LANGS["EN"]).get("truncated_chars", "chars")
+            self.insert_with_highlight(_pad_line(text, chars_label), tag)
 
             # Scroll to end (pause already checked above)
             current_x = self.txt_area.xview()[0]
