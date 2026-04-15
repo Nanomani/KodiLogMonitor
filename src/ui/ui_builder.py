@@ -532,27 +532,31 @@ class UIBuilderMixin:
         clear_container.pack(side=tk.LEFT)
         clear_container.pack_propagate(False)
 
-        # "×" clear button — shown only when search field is non-empty
-        self.btn_clear_search = ctk.CTkLabel(
+        # "×" clear button — tk.Label for precise vertical centering (CTkLabel has
+        # fixed internal padding that ignores font size and resists centering).
+        self.btn_clear_search = tk.Label(
             clear_container,
             text="×",
-            fg_color=COLOR_BG_MAIN,
-            text_color=COLOR_TEXT_DIM,
-            font=ctk.CTkFont(family=main_fam, size=17, weight="bold"),
+            bg=COLOR_BG_MAIN,
+            fg=COLOR_TEXT_DIM,
+            font=(main_fam, 13, "bold"),
             cursor="hand2",
+            padx=0,
+            pady=0,
+            anchor="center",
         )
         self.btn_clear_search.bind(
-            "<Enter>", lambda e: self.btn_clear_search.configure(text_color=COLOR_TEXT_BRIGHT)
+            "<Enter>", lambda e: self.btn_clear_search.configure(fg=COLOR_TEXT_BRIGHT)
         )
         self.btn_clear_search.bind(
-            "<Leave>", lambda e: self.btn_clear_search.configure(text_color=COLOR_TEXT_DIM)
+            "<Leave>", lambda e: self.btn_clear_search.configure(fg=COLOR_TEXT_DIM)
         )
         self.btn_clear_search.bind("<Button-1>", lambda event: self.clear_search())
 
         if not self.search_query.get():
-            self.btn_clear_search.pack_forget()
+            self.btn_clear_search.place_forget()
         else:
-            self.btn_clear_search.pack(expand=True)
+            self.btn_clear_search.place(relx=0.5, rely=0.5, anchor="center")
 
         self.search_bar_tooltip = ToolTip(
             self.search_entry,

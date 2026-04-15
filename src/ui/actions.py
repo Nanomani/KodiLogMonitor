@@ -41,7 +41,10 @@ class ActionsMixin:
         if save_path:
             try:
                 with open(save_path, "w", encoding="utf-8") as f:
-                    f.write(self.txt_area.get("1.0", tk.END))
+                    raw = self.txt_area.get("1.0", tk.END)
+                    # Strip trailing whitespace added by _pad_line for fixed-width display
+                    cleaned = "\n".join(line.rstrip() for line in raw.splitlines())
+                    f.write(cleaned)
             except IOError as e:
                 print(f"Error exporting log: {e}")
 
@@ -1248,9 +1251,9 @@ class ActionsMixin:
         query = self.search_query.get()
 
         if query:
-            self.btn_clear_search.pack(expand=True)
+            self.btn_clear_search.place(relx=0.5, rely=0.5, anchor="center")
         else:
-            self.btn_clear_search.pack_forget()
+            self.btn_clear_search.place_forget()
 
         # Debounce: cancel any pending search timer and start a fresh one.
         # The actual file scan only starts 250 ms after the last keystroke.
