@@ -65,7 +65,7 @@ Ctrl + F     : Search keyword
 Ctrl + G     : Clear console display  
 Ctrl + L     : Toggle word wrap  
 Ctrl + T     : Unlimited mode (∞) / 1000 lines  
-Ctrl + M     : Delect all
+Ctrl + A     : Select all
 M            : Open the context menu in the log
 S            : Show system summary (also accessible via F1)  
 A            : Show Info, Warn, Error, Debug  
