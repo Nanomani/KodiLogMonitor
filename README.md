@@ -5,7 +5,8 @@
 ![Total Downloads](https://img.shields.io/github/downloads/Nanomani/KodiLogMonitor/total)
 ![Téléchargements Latest](https://img.shields.io/github/downloads/Nanomani/KodiLogMonitor/latest/total)
 
-A lightweight and intuitive real-time log viewer or a simple log editor for Kodi. It helps users and developers track events, troubleshoot errors, and monitor system status through a clean, color-coded interface.
+A lightweight and intuitive real-time log viewer and simple log editor for Kodi.  
+It helps users and developers track events, troubleshoot errors, and monitor system status through a clean, color-coded interface.
 
 ![2026-04-10_183538](https://github.com/user-attachments/assets/06b52ded-0a25-4cb6-8241-cf376868fc38)
 
@@ -13,25 +14,65 @@ A lightweight and intuitive real-time log viewer or a simple log editor for Kodi
 
 ---
 
-### 🎯 What is it for?
-Kodi generates a log file that records everything happening in the background. This application allows you to:
-* **Monitor in real-time**: See new log lines instantly as they are written.
-* **Identify issues**: Errors are highlighted in red and warnings in orange for quick spotting.
-* **Filter easily**: Focus on specific levels (Error, Warning, Info, Debug) or search for keywords.
-* **Analyze setup**: Access a quick system summary to check your Kodi version and environment.
+### ✨ Features
+* **Real-time Log Monitoring**: Instantly view new log entries as they are written.  
+* **Advanced Filtering**: Filter logs by level (Info, Warning, Error, Debug) or custom keywords.  
+* **Keyword Lists**: Use custom keyword files for targeted log analysis and highlighting.  
+* **Dynamic Search**: Fast and responsive search, even on large log files.  
+* **Color-Coded Interface**: Quickly identify issues with intuitive color highlighting.  
+* **Large Log Handling**: Optimized for high-volume logs with smart limiting and performance safeguards.  
+* **Log Upload Integration**: Upload logs to paste.kodi.tv with one click or via shortcut (Ctrl + P).  
+* **System Summary**: Access key system and Kodi information instantly.  
+* **Multi-Instance Support**: Run multiple instances with optional single-instance lock.  
+* **Keyboard Shortcuts**: Full control via shortcuts for efficient navigation and actions.  
+* **Responsive UI**: Optimized display across HD, FHD, and 4K screens.  
+* **Light & Dark Themes**: Adapt the interface to your preference and reduce eye strain.  
+* **Localization Support**: Multi-language interface with automatic OS language detection.  
+* **Robust Log Access**: Handles network logs and connection loss with improved recovery.  
+---
 
+### 🎯 What is it for?
+Kodi generates a log file that records everything happening in the background.  
+This tool helps you quickly understand and analyze that data:
+
+* **Monitor activity in real time**
+* **Quickly spot errors and warnings**
+* **Focus on relevant information using filters and search**
+* **Get a clear overview of your system and Kodi environment**
 ---
 
 ### 🔍 Keyword Lists (v1.2.0+)
-You can now filter your logs using custom keyword lists:
-* **Custom Filtering**: Create a `.txt` file in the `keyword_list` folder (one keyword or phrase per line).
-* **Smart Highlighting**: The monitor only displays lines containing your keywords and highlights them for better visibility.
-* **Easy Management**: Use the 📁 button to open the folder and ♻️ to refresh your lists instantly.
+You can filter your logs using custom keyword lists:
 
-Some sample: [here](https://github.com/Nanomani/KodiLogMonitor/tree/main/keyword_list)
+* **Custom filtering**: Create a `.txt` file in the `keyword_list` folder (one keyword or phrase per line).  
+* **Smart highlighting**: Only matching lines are displayed and highlighted for better visibility.  
+* **Easy management**: Use the 📁 button to open the folder and ♻️ to refresh your lists instantly.  
+
+Examples available [here](https://github.com/Nanomani/KodiLogMonitor/tree/main/keyword_list).
 
 ---
 
+### ⌨️ Shortcuts (v1.3.7+)
+
+Quick keyboard shortcuts to navigate and control the application efficiently.  
+**Tip**: Press **F1** or click the **?** button at any time to display help.  
+```
+Space        : Pause / Resume auto-scroll  
+Ctrl + O     : Open log file  
+Ctrl + S     : Export log
+Ctrl + P     : Upload LOG  
+Ctrl + F     : Search keyword  
+Ctrl + G     : Clear console display  
+Ctrl + L     : Toggle word wrap  
+Ctrl + T     : Unlimited mode (∞) / 1000 lines  
+Ctrl + M     : Delect all
+M            : Open the context menu in the log
+S            : Show system summary (also accessible via F1)  
+A            : Show Info, Warn, Error, Debug  
+I, W, E, D   : Filter Info, Warn, Error or Debug  
+Ctrl + R     : Reset all filters  
+```
+---
 ### 🔔 Update Notifications (v1.4.0+)
 
 The application can automatically detect new versions available on GitHub.
@@ -44,53 +85,38 @@ Disable      : Turns off update notifications permanently.
 ```
 ℹ️ Notes
 
-Update preferences are stored in the .kodi_monitor_config file:
+Update preferences are stored in the `.kodi_monitor_config` file.  
 You can edit or delete this file to reset the settings.
 
 ---
-
-### ⌨️ Shortcuts (v1.3.7+)
-
-Quick keyboard shortcuts to navigate and control the application efficiently.  
-**Tip**: Press **F1** or the button **?** at any time to display help.  
-```
-Space        : Pause / Resume auto-scroll  
-Ctrl + O     : Open log file  
-Ctrl + S     : Export log
-Ctrl + P     : Upload LOG  
-Ctrl + F     : Search keyword  
-Ctrl + G     : Clear console display  
-Ctrl + L     : Toggle word wrap  
-Ctrl + T     : Unlimited mode (∞) / 1000 lines  
-S            : Show system summary (also accessible via F1)  
-A            : Show Info, Warn, Error, Debug  
-I, W, E, D   : Filter Info, Warn, Error or Debug  
-Ctrl + R     : Reset all filters  
-```
----
-
 ### 💡 Google Search Context Menu (v1.3.2+)
-The application provides a convenient "Search on Google" option in the right-click context menu, allowing you to quickly look up any selected text from the logs.
+The application provides a convenient "Search on Google" option in the right-click context menu, allowing you to quickly search any selected text from the logs.
 
 ---
+### 🌐 Upload to Paste Kodi web service (v1.4.0+)
+The application provides a convenient way to quickly upload logs to the Paste Kodi web service.
 
+Use the **"UPLOAD"** button or **Ctrl + P** shortcut.  
+The log is automatically copied to the clipboard, and paste.kodi.tv opens in your browser for easy sharing.
+
+---
 ### 🚀 For Regular Users
-If you just want to use the tool without installing Python:
+If you want to use the tool without installing Python:
 
-1. Go to the **[Releases](../../releases)** section on the right.
-2. Download the latest for your OS.
-3. Run the file. No installation is required.
+1. Go to the **[Releases](../../releases)** section.  
+2. Download the latest version for your OS.  
+3. Run the file — no installation required.  
 
 ---
 
 ### 🛠️ For Advanced Users & Developers
-If you want to run the script manually or explore the code:
+If you want to run the application from source or explore the code:
 
 #### Running from source
 Ensure you have Python 3.x installed, then:
 ```bash
-git clone [https://github.com/YOUR_USERNAME/YOUR_REPO.git](https://github.com/YOUR_USERNAME/YOUR_REPO.git)
-cd YOUR_REPO/src
+git clone https://github.com/Nanomani/KodiLogMonitor.git
+cd KodiLogMonitor/src
 python main.py
 ```
 
