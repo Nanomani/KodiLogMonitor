@@ -4,7 +4,6 @@
 ![Python](https://img.shields.io/badge/Python-3.0%2B-green?logo=python)
 [![License](https://img.shields.io/badge/License-GPLv3-orange)](LICENSE.txt)
 ![Downloads](https://img.shields.io/github/downloads/Nanomani/KodiLogMonitor/total)
-![Téléchargements Latest](https://img.shields.io/github/downloads/Nanomani/KodiLogMonitor/latest/total)
 
 🚀 **A fast, lightweight real-time log viewer for Kodi — built for users and developers.**
 
@@ -32,8 +31,8 @@ Quickly monitor, filter, and analyze Kodi logs with a clean and responsive inter
 
 ### 📸 Screenshots
 
-![screenshot1](https://github.com/user-attachments/assets/06b52ded-0a25-4cb6-8241-cf376868fc38)
-![screenshot2](https://github.com/user-attachments/assets/92a5cee4-bb74-496c-bf0b-330258555d06)
+<img width="3121" height="1735" alt="2026-04-16_204943" src="https://github.com/user-attachments/assets/6e019bf0-8ae9-439d-8b44-109aa8479aa6" />
+<img width="3121" height="1735" alt="2026-04-16_204848" src="https://github.com/user-attachments/assets/8c21a3f2-3fb4-4f56-9d2b-34f4a7c8fcac" />
 
 ---
 
