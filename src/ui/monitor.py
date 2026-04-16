@@ -91,7 +91,7 @@ class MonitorMixin:
                             if self.running:
                                 self.root.after(0, self.inactivity_timer_var.set, "")
                                 self.root.after(0, lambda: self.update_status_color(
-                                    LOG_COLORS["info"] if not self.load_full_file.get() else COLOR_WARNING
+                                    LOG_COLORS["info"] if not self.load_full_file.get() else LOG_COLORS["warning"]
                                 ))
                                 self.root.after(0, self.reset_all_filters)
 
@@ -126,7 +126,7 @@ class MonitorMixin:
                                 if batch:
                                     self.root.after(0, self.append_batch_to_gui, batch)
                                 self.root.after(0, lambda: self.update_status_color(
-                                    LOG_COLORS["info"] if not self.load_full_file.get() else COLOR_WARNING
+                                    LOG_COLORS["info"] if not self.load_full_file.get() else LOG_COLORS["warning"]
                                 ))
                                 self.root.after(0, self.inactivity_timer_var.set, "")
                             # Brief pause between batches: gives the main thread time
