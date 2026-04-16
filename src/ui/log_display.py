@@ -115,15 +115,12 @@ class LogDisplayMixin:
             self.txt_area.tag_configure("separator", foreground=COLOR_SEPARATOR)
 
             # Header with spacing
-            self.txt_area.insert(tk.END, "\n\n\n\n\t\t")
+            self.txt_area.insert(tk.END, "\n\n\n\n\t")
             self.txt_area.insert(tk.END, l_ui.get('filter_applied', 'Applied filter(s):'), "filter_header")
             self.txt_area.insert(tk.END, "\n")
 
-            # Horizontal separator line
-            self.txt_area.insert(tk.END, "\t\t" + "─" * 65 + "\n", "separator")
-
-            # Padding width for labels alignment
-            pad = 25
+            # --- Collect rows to display (label, value) ---
+            rows = []
 
             # 1. Message types filter
             if not self.filter_vars["all"].get():
@@ -133,36 +130,50 @@ class LogDisplayMixin:
                     ("error", "err"),
                     ("debug", "debug")
                 ]
-
                 active_labels = []
                 for internal_key, trans_key in display_order:
                     if self.filter_vars.get(internal_key) and self.filter_vars[internal_key].get():
                         active_labels.append(l_ui.get(trans_key, trans_key))
-
                 if active_labels:
-                    label = f" - {l_ui.get('type_filter', 'Message type')}"
-                    type_str = ", ".join(active_labels)
-                    # Align using the pad variable
-                    self.txt_area.insert(tk.END, f"\t\t{label:<{pad}} : \"{type_str}\"\n", "filter_list")
+                    rows.append((
+                        f" - {l_ui.get('type_filter', 'Message type')}",
+                        ", ".join(active_labels)
+                    ))
 
             # 2. Keyword search filter
             query = self.search_query.get().strip()
             if query:
-                label = f" - {l_ui.get('keyword_filter', 'Keyword search')}"
-                self.txt_area.insert(tk.END, f"\t\t{label:<{pad}} : \"{query}\"\n", "filter_list")
+                rows.append((f" - {l_ui.get('keyword_filter', 'Keyword search')}", query))
 
             # 3. Keyword list filter
             kw_list = self.selected_list.get()
             if kw_list and kw_list != l_ui.get("none", "None"):
-                label = f" - {l_ui.get('list_filter', 'List search')}"
-                self.txt_area.insert(tk.END, f"\t\t{label:<{pad}} : \"{kw_list}\"\n", "filter_list")
+                rows.append((f" - {l_ui.get('list_filter', 'List search')}", kw_list))
+
+            # 4. Search scope (always shown)
+            scope_value = (
+                l_ui.get("scope_full_log", "Full log")
+                if self.load_full_file.get()
+                else l_ui.get("scope_last_1000", "Last 1,000 lines")
+            )
+            rows.append((l_ui.get("search_scope", " - Search scope"), scope_value))
+
+            # Compute pad from the longest label so all ":" align regardless of language
+            pad = max(len(label) for label, _ in rows) + 1
+
+            # Horizontal separator line (extra margin so values have room too)
+            sep_width = pad + 35
+            self.txt_area.insert(tk.END, "\t" + "─" * sep_width + "\n", "separator")
+
+            for label, value in rows:
+                self.txt_area.insert(tk.END, f"\t{label:<{pad}} : \"{value}\"\n", "filter_list")
 
             # Add second separator line
-            self.txt_area.insert(tk.END, "\t\t" + "─" * 65 + "\n", "separator")
+            self.txt_area.insert(tk.END, "\t" + "─" * sep_width + "\n", "separator")
 
             # Final "No matches" message
             final_no_match = l_ui.get('no_match', "❌ No matches found")
-            self.txt_area.insert(tk.END, f"\n\t\t{final_no_match}", "no_match_text")
+            self.txt_area.insert(tk.END, f"\n\t{final_no_match}", "no_match_text")
             self._no_results_showing = True   # Flag: no-results screen is active
 
             self.show_loading(False)
@@ -235,6 +246,8 @@ class LogDisplayMixin:
             return
         if self.is_paused.get():
             return
+        if getattr(self, "_no_results_showing", False):
+            return
         if not batch:
             return
 
@@ -257,6 +270,8 @@ class LogDisplayMixin:
             tag (str): The Tkinter tag associated with the log level.
         """
         if not self.running:
+            return
+        if getattr(self, "_no_results_showing", False):
             return
         # Capture once to avoid a race condition with the pause toggle
         paused = self.is_paused.get()
