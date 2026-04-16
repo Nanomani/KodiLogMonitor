@@ -257,10 +257,14 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
         self.txt_area.bind("<Button-4>", self.safe_vertical_scroll)
         self.txt_area.bind("<Button-5>", self.safe_vertical_scroll)
 
-        # Clear the wrap anchors whenever focus leaves the log area
+        # Clear the wrap anchor whenever focus leaves the log area.
+        # _last_wrap_content is intentionally NOT cleared here: it must survive
+        # programmatic focus changes such as reset_all_filters() calling
+        # root.focus_set(), so that toggle_line_break() can still use it on the
+        # first attempt after a double-click. It is cleared only by explicit
+        # user single-click (Button-1 binding in ui_builder.py).
         def _clear_wrap_anchors(e):
-            self._last_wrap_anchor  = None
-            self._last_wrap_content = None
+            self._last_wrap_anchor = None
         self.txt_area.bind("<FocusOut>", _clear_wrap_anchors, add="+")
 
         # Escape in search field clears it and returns focus to log
