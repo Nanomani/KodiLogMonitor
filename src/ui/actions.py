@@ -996,6 +996,7 @@ class ActionsMixin:
     def reset_all_filters(self):
         """Resets all filters, search, and pause state to defaults."""
         self._last_wrap_anchor = None   # Reset invalidates the remembered line
+        self.hide_history_dropdown()
         self.root.focus_set()
         self.search_query.set("")
         self.selected_list.set("")
