@@ -545,34 +545,40 @@ class ActionsMixin:
         if not self.check_log_loaded() or not self.check_log_available():
             return
 
-        # --- Detect whether the cursor is on a meaningful line ---
+        # --- Detect the target line, by priority ---
+
         cursor_line_content = ""
         cursor_idx = None
-        try:
-            if self.root.focus_get() == self.txt_area:
-                cursor_idx = self.txt_area.index(tk.INSERT)
-                cursor_line_content = self.txt_area.get(
-                    cursor_idx + " linestart", cursor_idx + " lineend"
-                ).strip()
-        except tk.TclError:
-            pass
 
-        # Fall back to the last remembered anchor if no live cursor focus
-        if not (cursor_idx and cursor_line_content) and getattr(self, "_last_wrap_anchor", None):
-            try:
-                cursor_idx = self._last_wrap_anchor
-                cursor_line_content = self.txt_area.get(
-                    cursor_idx + " linestart", cursor_idx + " lineend"
-                ).strip()
-            except tk.TclError:
-                cursor_idx = None
-                cursor_line_content = ""
-
-        # Content-based fallback: set by double-click, survives filter resets and
-        # content rebuilds (unlike the index-based _last_wrap_anchor).
-        if not cursor_line_content and getattr(self, "_last_wrap_content", None):
+        # Priority 1: explicit double-click anchor (set by on_double_click_line).
+        # After reset_all_filters the INSERT cursor lands at "1.0" which would
+        # silently win over _last_wrap_content if checked first — so we check
+        # _last_wrap_content first and skip the live-cursor read entirely.
+        if getattr(self, "_last_wrap_content", None):
             cursor_line_content = self._last_wrap_content
             cursor_idx = "1.0"  # dummy — _focus_line uses content search, not this index
+
+        else:
+            # Priority 2: live INSERT cursor (keyboard navigation / manual click)
+            try:
+                if self.root.focus_get() == self.txt_area:
+                    cursor_idx = self.txt_area.index(tk.INSERT)
+                    cursor_line_content = self.txt_area.get(
+                        cursor_idx + " linestart", cursor_idx + " lineend"
+                    ).strip()
+            except tk.TclError:
+                pass
+
+            # Priority 3: remembered index anchor from the previous toggle
+            if not (cursor_idx and cursor_line_content) and getattr(self, "_last_wrap_anchor", None):
+                try:
+                    cursor_idx = self._last_wrap_anchor
+                    cursor_line_content = self.txt_area.get(
+                        cursor_idx + " linestart", cursor_idx + " lineend"
+                    ).strip()
+                except tk.TclError:
+                    cursor_idx = None
+                    cursor_line_content = ""
 
         if cursor_idx and cursor_line_content:
             # Remember this anchor for the next toggle
@@ -594,15 +600,43 @@ class ActionsMixin:
             else:
                 self.refresh_natural_order()
 
+            # Pre-scroll to END while still in synchronous context so the first
+            # rendered frame shows the bottom of the log instead of the top.
+            # _focus_line will fine-tune to the exact anchor line afterwards.
+            self.txt_area.see(tk.END)
+
             # After any rebuild the widget indices are reassigned: find the line
             # by its text content rather than the pre-rebuild cursor_idx.
             search_text = cursor_line_content
 
             def _focus_line():
                 try:
-                    pos = self.txt_area.search(
-                        search_text, "1.0", stopindex=tk.END, exact=True
+                    # Prefer timestamp-based search (millisecond precision → near-unique)
+                    # then validate the full line content, exactly like
+                    # find_and_highlight_timestamp does.  Fall back to plain content
+                    # search for lines that carry no timestamp.
+                    ts_match = re.search(
+                        r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}", search_text
                     )
+                    pos = None
+                    if ts_match:
+                        ts = ts_match.group(0)
+                        scan = "1.0"
+                        while True:
+                            idx = self.txt_area.search(ts, scan, stopindex=tk.END, exact=True)
+                            if not idx:
+                                break
+                            line_txt = self.txt_area.get(
+                                idx + " linestart", idx + " lineend"
+                            ).strip()
+                            if search_text in line_txt:
+                                pos = idx
+                                break
+                            scan = self.txt_area.index(idx + " lineend")
+                    if pos is None:
+                        pos = self.txt_area.search(
+                            search_text, "1.0", stopindex=tk.END, exact=True
+                        )
                     if not pos:
                         return
                     line_start = self.txt_area.index(pos + " linestart")

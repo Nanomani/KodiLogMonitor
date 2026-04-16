@@ -246,9 +246,13 @@ class LogDisplayMixin:
             return
         if self.is_paused.get():
             return
-        if getattr(self, "_no_results_showing", False):
-            return
         if not batch:
+            return
+        if getattr(self, "_no_results_showing", False):
+            # Matching lines arrived while no-results was showing (e.g. after a log
+            # rotation): rebuild the view once. trigger_refresh sets
+            # _no_results_showing = False so subsequent batches are appended normally.
+            self.trigger_refresh()
             return
 
         with self.log_lock:
@@ -271,11 +275,14 @@ class LogDisplayMixin:
         """
         if not self.running:
             return
-        if getattr(self, "_no_results_showing", False):
-            return
         # Capture once to avoid a race condition with the pause toggle
         paused = self.is_paused.get()
         if paused:
+            return
+        if getattr(self, "_no_results_showing", False):
+            # Same logic as append_batch_to_gui: a matching line arrived while
+            # no-results was showing → rebuild once, then resume normal flow.
+            self.trigger_refresh()
             return
 
         with self.log_lock:  # Prevents mixing during writing

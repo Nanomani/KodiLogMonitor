@@ -904,6 +904,9 @@ class UIBuilderMixin:
         # --- Text area event bindings ---
         self.txt_area.bind("<Button-1>", lambda event: self.txt_area.focus_set())
         self.txt_area.bind("<Button-1>", self.reset_cursor_timer, add="+")
+        # A single click means the user is navigating manually: discard the
+        # double-click content anchor so Ctrl+L uses the live cursor instead.
+        self.txt_area.bind("<Button-1>", lambda e: setattr(self, "_last_wrap_content", None), add="+")
         self.txt_area.bind("<Key>", self.reset_cursor_timer, add="+")
         self.txt_area.bind("<Motion>", self.reset_cursor_timer, add="+")
         self.reset_cursor_timer()

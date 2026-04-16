@@ -106,21 +106,25 @@ class MonitorMixin:
                         #    means one after() call instead of one per line, which
                         #    prevents flooding the Tkinter event queue under high flux.
                         batch = []
+                        has_new_lines = False  # raw file activity, independent of filters
                         while self.running and len(batch) < _BATCH_MAX:
                             line = f.readline()
                             if not line:
                                 break
                             last_pos = f.tell()
+                            has_new_lines = True  # file wrote something, regardless of filter
                             data = self.get_line_data(line)
                             if data and not self.is_duplicate(data[0]):
                                 batch.append((data[0], data[1]))
 
-                        # 5a. Lines received: dispatch batch + update status once
-                        if batch:
+                        # 5a. File had new content: update indicator on raw activity,
+                        #     dispatch only the filtered batch to the GUI.
+                        if has_new_lines:
                             self.last_activity_time = time.time()
                             self.is_file_inaccessible = False
                             if self.running:
-                                self.root.after(0, self.append_batch_to_gui, batch)
+                                if batch:
+                                    self.root.after(0, self.append_batch_to_gui, batch)
                                 self.root.after(0, lambda: self.update_status_color(
                                     LOG_COLORS["info"] if not self.load_full_file.get() else COLOR_WARNING
                                 ))
