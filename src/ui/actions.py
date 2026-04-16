@@ -545,9 +545,6 @@ class ActionsMixin:
         if not self.check_log_loaded() or not self.check_log_available():
             return
 
-        if not (self.filter_vars.get("all") and self.filter_vars["all"].get()):
-            return
-
         # --- Detect whether the cursor is on a meaningful line ---
         cursor_line_content = ""
         cursor_idx = None
@@ -571,6 +568,12 @@ class ActionsMixin:
                 cursor_idx = None
                 cursor_line_content = ""
 
+        # Content-based fallback: set by double-click, survives filter resets and
+        # content rebuilds (unlike the index-based _last_wrap_anchor).
+        if not cursor_line_content and getattr(self, "_last_wrap_content", None):
+            cursor_line_content = self._last_wrap_content
+            cursor_idx = "1.0"  # dummy — _focus_line uses content search, not this index
+
         if cursor_idx and cursor_line_content:
             # Remember this anchor for the next toggle
             self._last_wrap_anchor = cursor_idx
@@ -580,13 +583,32 @@ class ActionsMixin:
             if hasattr(self, "update_button_colors"):
                 self.update_button_colors()
 
-            anchor = cursor_idx
-            self.refresh_natural_order()
+            # When type filters are active, refresh_natural_order ignores them and
+            # rebuilds with all lines, making cursor_idx point to the wrong line.
+            # Use refresh_display_with_sorting instead to keep the filtered view.
+            has_type_filter = not self.filter_vars.get("all", tk.BooleanVar(value=True)).get()
+            if has_type_filter:
+                self.txt_area.config(state=tk.NORMAL)
+                self.txt_area.delete("1.0", tk.END)
+                self.refresh_display_with_sorting()
+            else:
+                self.refresh_natural_order()
+
+            # After any rebuild the widget indices are reassigned: find the line
+            # by its text content rather than the pre-rebuild cursor_idx.
+            search_text = cursor_line_content
 
             def _focus_line():
                 try:
-                    line_start = self.txt_area.index(anchor + " linestart")
-                    line_end   = self.txt_area.index(anchor + " lineend")
+                    pos = self.txt_area.search(
+                        search_text, "1.0", stopindex=tk.END, exact=True
+                    )
+                    if not pos:
+                        return
+                    line_start = self.txt_area.index(pos + " linestart")
+                    line_end   = self.txt_area.index(pos + " lineend")
+                    # Keep _last_wrap_anchor valid for the next toggle
+                    self._last_wrap_anchor = line_start
                     self.txt_area.see(line_start)
                     self.txt_area.xview_moveto(0)
                     self.txt_area.tag_remove("highlight_temp", "1.0", tk.END)
@@ -690,7 +712,8 @@ class ActionsMixin:
             self.txt_area.see(tk.END)
             self.txt_area.xview_moveto(current_x)
 
-        self._last_wrap_anchor = None   # Pause toggle invalidates the remembered line
+        self._last_wrap_anchor  = None  # Pause toggle invalidates the remembered line
+        self._last_wrap_content = None
 
         # Immediately sync button color and tooltip to new state
         self.update_button_colors()

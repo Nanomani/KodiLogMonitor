@@ -951,6 +951,10 @@ class LogDisplayMixin:
             if not line_content:
                 return "break"
 
+            # Save the line text as wrap anchor so Ctrl+L can find it after any rebuild
+            self._last_wrap_content = line_content
+            self._last_wrap_anchor  = None  # index is stale after reset_all_filters
+
             timestamp_match = re.search(
                 r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}", line_content
             )

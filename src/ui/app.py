@@ -88,6 +88,7 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
         self._search_version = 0        # Incremented on each new search to cancel stale workers
         self._search_after_id = None    # Pending debounce timer ID
         self._last_wrap_anchor = None   # Last explicitly-focused line index for wrap toggle
+        self._last_wrap_content = None  # Line text set by double-click; survives filter resets
         self._menu_kbfocus = -1         # Keyboard-focused item index in the log context menu
         self._summary_showing = False   # True while the summary view is displayed
 
@@ -256,8 +257,11 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
         self.txt_area.bind("<Button-4>", self.safe_vertical_scroll)
         self.txt_area.bind("<Button-5>", self.safe_vertical_scroll)
 
-        # Clear the wrap anchor whenever focus leaves the log area
-        self.txt_area.bind("<FocusOut>", lambda e: setattr(self, "_last_wrap_anchor", None), add="+")
+        # Clear the wrap anchors whenever focus leaves the log area
+        def _clear_wrap_anchors(e):
+            self._last_wrap_anchor  = None
+            self._last_wrap_content = None
+        self.txt_area.bind("<FocusOut>", _clear_wrap_anchors, add="+")
 
         # Escape in search field clears it and returns focus to log
         self.search_entry.bind("<Escape>", self.reset_search_and_focus_log)
