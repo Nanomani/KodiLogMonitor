@@ -4,7 +4,6 @@
 ![Python](https://img.shields.io/badge/Python-3.0%2B-green?logo=python)
 [![License](https://img.shields.io/badge/License-GPLv3-orange)](LICENSE.txt)
 ![Downloads](https://img.shields.io/github/downloads/Nanomani/KodiLogMonitor/total)
-![Téléchargements Latest](https://img.shields.io/github/downloads/Nanomani/KodiLogMonitor/latest/total)
 
 🚀 **A fast, lightweight real-time log viewer for Kodi — built for users and developers.**
 
