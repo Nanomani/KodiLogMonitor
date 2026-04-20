@@ -88,6 +88,15 @@ LANGS = {
         "tip_reset": "Réinitialiser filtres et affichage",
         "tip_duration": "Durée couverte par le journal (du premier au dernier événement)",
         "truncated_chars": "car.",
+        "yes": "Oui",
+        "no":  "Non",
+        "ok":  "OK",
+        "exclude":                "Exclure",
+        "exclude_confirm_title":  "Confirmer l'exclusion",
+        "exclude_confirm_msg":    "Exclure tous les messages contenant :\n\n\"{}\"",
+        "exclude_already":        "Ce terme est déjà dans la liste d'exclusion.",
+        "exclude_max_title":      "Limite atteinte",
+        "exclude_max_msg":        "La liste est limitée à {} entrées.\nSupprimez une entrée avant d'en ajouter une nouvelle.",
         "search_scope":       " - Périmètre de recherche",
         "scope_last_1000":    "1 000 dernières lignes",
         "scope_full_log":     "Journal complet",
@@ -135,6 +144,15 @@ LANGS = {
         "tip_lang": "Choisir la langue de l'interface",
         "tip_search_bar": "Rechercher un mot-clé dans les logs",
         "tip_history_clear": "Supprimer tout l'historique de recherche",
+        "tip_history_manage": "Historique de recherche — cliquer pour gérer",
+        "tip_history_empty":  "Aucun historique de recherche",
+        "tip_exclude_empty":  "Aucune exclusion active",
+        "tip_exclude_active": "Exclusions actives — cliquer pour gérer",
+        "exclude_list_title": "Liste d'exclusions",
+        "exclude_list_empty": "Aucune exclusion active.",
+        "history_list_title": "Historique de recherche",
+        "history_list_empty": "Aucun historique de recherche.",
+        "exclude_clear_all":  "Tout effacer",
         "tip_kw_list": "Séléctionner une liste de mot à rechercher",
         "help_text": (
             "F1 : Afficher aide\n"
@@ -144,6 +162,7 @@ LANGS = {
             "Ctrl + S : Exporter le LOG\n"
             "Ctrl + P : Uploader le LOG\n"
             "Ctrl + F : Rechercher mot clé\n"
+            "Ctrl + N : Ouvrir les exclusions\n"
             "Ctrl + G : Vider l'affichage de la console\n"
             "Ctrl + L : Retour à la ligne auto\n"
             "Ctrl + T : Mode illimité (∞) / 1000 lignes\n"
@@ -230,6 +249,15 @@ LANGS = {
         "tip_reset": "Reset filters and display",
         "tip_duration": "Time span covered by the log (from first to last event)",
         "truncated_chars": "chars",
+        "yes": "Yes",
+        "no":  "No",
+        "ok":  "OK",
+        "exclude":                "Exclude",
+        "exclude_confirm_title":  "Confirm exclusion",
+        "exclude_confirm_msg":    "Exclude all messages containing:\n\n\"{}\"",
+        "exclude_already":        "This term is already in the exclusion list.",
+        "exclude_max_title":      "Limit reached",
+        "exclude_max_msg":        "The exclusion list is limited to {} entries.\nRemove an entry before adding a new one.",
         "search_scope":       " - Search scope",
         "scope_last_1000":    "Last 1,000 lines",
         "scope_full_log":     "Full log",
@@ -277,6 +305,15 @@ LANGS = {
         "tip_lang": "Choose interface language",
         "tip_search_bar": "Search for a keyword in the logs",
         "tip_history_clear": "Delete all search history",
+        "tip_history_manage": "Search history — click to manage",
+        "tip_history_empty":  "No search history",
+        "tip_exclude_empty":  "No active exclusions",
+        "tip_exclude_active": "Active exclusions — click to manage",
+        "exclude_list_title": "Exclusion list",
+        "exclude_list_empty": "No active exclusions.",
+        "history_list_title": "Search history",
+        "history_list_empty": "No search history.",
+        "exclude_clear_all":  "Clear all",
         "tip_kw_list": "Select a list of keywords to search for",
         "help_text": (
             "F1 : Show help\n"
@@ -286,6 +323,7 @@ LANGS = {
             "Ctrl + S : Export LOG\n"
             "Ctrl + P : Upload LOG\n"
             "Ctrl + F : Search keyword\n"
+            "Ctrl + N : Open exclusions\n"
             "Ctrl + G : Clear console\n"
             "Ctrl + L : Toggle word wrap\n"
             "Ctrl + T : Unlimited mode (∞) / 1000 lines\n"
@@ -372,6 +410,15 @@ LANGS = {
         "tip_reset": "Restablecer filtros y visualización",
         "tip_duration": "Período de tiempo cubierto por el registro (del primer al último evento)",
         "truncated_chars": "car.",
+        "yes": "Sí",
+        "no":  "No",
+        "ok":  "OK",
+        "exclude":                "Excluir",
+        "exclude_confirm_title":  "Confirmar exclusión",
+        "exclude_confirm_msg":    "Excluir todos los mensajes que contengan:\n\n\"{}\"",
+        "exclude_already":        "Este término ya está en la lista de exclusión.",
+        "exclude_max_title":      "Límite alcanzado",
+        "exclude_max_msg":        "La lista está limitada a {} entradas.\nElimine una entrada antes de añadir una nueva.",
         "search_scope":       " - Ámbito de búsqueda",
         "scope_last_1000":    "Últimas 1.000 líneas",
         "scope_full_log":     "Registro completo",
@@ -419,6 +466,15 @@ LANGS = {
         "tip_lang": "Elegir el idioma de la interfaz",
         "tip_search_bar": "Buscar una palabra clave en los logs",
         "tip_history_clear": "Eliminar todo el historial de búsqueda",
+        "tip_history_manage": "Historial de búsqueda — clic para gestionar",
+        "tip_history_empty":  "Sin historial de búsqueda",
+        "tip_exclude_empty":  "Sin exclusiones activas",
+        "tip_exclude_active": "Exclusiones activas — clic para gestionar",
+        "exclude_list_title": "Lista de exclusiones",
+        "exclude_list_empty": "Sin exclusiones activas.",
+        "history_list_title": "Historial de búsqueda",
+        "history_list_empty": "No hay historial de búsqueda.",
+        "exclude_clear_all":  "Borrar todo",
         "tip_kw_list": "Seleccionar una lista de palabras para buscar",
         "help_text": (
             "F1 : Mostrar ayuda\n"
@@ -428,6 +484,7 @@ LANGS = {
             "Ctrl + S : Exportar LOG\n"
             "Ctrl + P : Subir LOG\n"
             "Ctrl + F : Buscar palabra clave\n"
+            "Ctrl + N : Abrir exclusiones\n"
             "Ctrl + G : Limpiar pantalla de la consola\n"
             "Ctrl + L : Ajuste de línea automático\n"
             "Ctrl + T : Modo ilimitado (∞) / 1000 líneas\n"
@@ -514,6 +571,15 @@ LANGS = {
         "tip_reset": "Filter und Anzeige zurücksetzen",
         "tip_duration": "Zeitspanne des Protokolls (vom ersten bis zum letzten Ereignis)",
         "truncated_chars": "Zeichen",
+        "yes": "Ja",
+        "no":  "Nein",
+        "ok":  "OK",
+        "exclude":                "Ausschließen",
+        "exclude_confirm_title":  "Ausschluss bestätigen",
+        "exclude_confirm_msg":    "Alle Meldungen ausschließen, die enthalten:\n\n\"{}\"",
+        "exclude_already":        "Dieser Begriff ist bereits in der Ausschlussliste.",
+        "exclude_max_title":      "Limit erreicht",
+        "exclude_max_msg":        "Die Liste ist auf {} Einträge begrenzt.\nEntfernen Sie einen Eintrag, bevor Sie einen neuen hinzufügen.",
         "search_scope":       " - Suchbereich",
         "scope_last_1000":    "Letzte 1.000 Zeilen",
         "scope_full_log":     "Vollständiges Protokoll",
@@ -561,6 +627,15 @@ LANGS = {
         "tip_lang": "Sprache de Benutzeroberfläche wählen",
         "tip_search_bar": "Nach einem Stichwort in den Logs suchen",
         "tip_history_clear": "Gesamten Suchverlauf löschen",
+        "tip_history_manage": "Suchverlauf — klicken zum Verwalten",
+        "tip_history_empty":  "Kein Suchverlauf vorhanden",
+        "tip_exclude_empty":  "Keine aktiven Ausschlüsse",
+        "tip_exclude_active": "Aktive Ausschlüsse — klicken zum Verwalten",
+        "exclude_list_title": "Ausschlussliste",
+        "exclude_list_empty": "Keine aktiven Ausschlüsse.",
+        "history_list_title": "Suchverlauf",
+        "history_list_empty": "Kein Suchverlauf vorhanden.",
+        "exclude_clear_all":  "Alle löschen",
         "tip_kw_list": "Eine Liste von Suchbegriffen auswählen",
         "help_text": (
             "F1 : Hilfe anzeigen\n"
@@ -570,6 +645,7 @@ LANGS = {
             "Ctrl + S : LOG exportieren\n"
             "Ctrl + P : LOG hochladen\n"
             "Ctrl + F : Stichwort suchen\n"
+            "Ctrl + N : Ausschlüsse öffnen\n"
             "Ctrl + G : Konsolenanzeige leeren\n"
             "Ctrl + L : Automatischer Zeilenumbruch\n"
             "Ctrl + T : Unbegrenzter Modus (∞) / 1000 Zeilen\n"
@@ -656,6 +732,15 @@ LANGS = {
         "tip_reset": "Ripristina filtri e visualizzazione",
         "tip_duration": "Intervallo di tempo coperto dal registro (dal primo all'ultimo evento)",
         "truncated_chars": "car.",
+        "yes": "Sì",
+        "no":  "No",
+        "ok":  "OK",
+        "exclude":                "Escludi",
+        "exclude_confirm_title":  "Conferma esclusione",
+        "exclude_confirm_msg":    "Escludere tutti i messaggi contenenti:\n\n\"{}\"",
+        "exclude_already":        "Questo termine è già nell'elenco delle esclusioni.",
+        "exclude_max_title":      "Limite raggiunto",
+        "exclude_max_msg":        "L'elenco è limitato a {} voci.\nRimuovere una voce prima di aggiungerne una nuova.",
         "search_scope":       " - Ambito di ricerca",
         "scope_last_1000":    "Ultime 1.000 righe",
         "scope_full_log":     "Registro completo",
@@ -703,6 +788,15 @@ LANGS = {
         "tip_lang": "Scegli la lingua dell'interfaccia",
         "tip_search_bar": "Cerca una parola chiave nei log",
         "tip_history_clear": "Cancella tutta la cronologia delle ricerche",
+        "tip_history_manage": "Cronologia ricerche — clic per gestire",
+        "tip_history_empty":  "Nessuna cronologia di ricerca",
+        "tip_exclude_empty":  "Nessuna esclusione attiva",
+        "tip_exclude_active": "Esclusioni attive — clic per gestire",
+        "exclude_list_title": "Elenco esclusioni",
+        "exclude_list_empty": "Nessuna esclusione attiva.",
+        "history_list_title": "Cronologia ricerche",
+        "history_list_empty": "Nessuna cronologia di ricerca.",
+        "exclude_clear_all":  "Cancella tutto",
         "tip_kw_list": "Selezionare un elenco di parole da cercare",
         "help_text": (
             "F1 : Mostra aiuto\n"
@@ -712,6 +806,7 @@ LANGS = {
             "Ctrl + S : Esporta LOG\n"
             "Ctrl + P : Carica LOG\n"
             "Ctrl + F : Cerca parola chiave\n"
+            "Ctrl + N : Apri esclusioni\n"
             "Ctrl + G : Pulisci visualizzazione console\n"
             "Ctrl + L : A capo automatico\n"
             "Ctrl + T : Modalità illimitata (∞) / 1000 righe\n"

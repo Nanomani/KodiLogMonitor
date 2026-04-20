@@ -5,6 +5,7 @@ import re
 import subprocess
 import tkinter as tk
 import sys
+import customtkinter as ctk
 
 from config import *
 from languages import LANGS
@@ -342,10 +343,94 @@ class MonitorMixin:
             "Close now?"
         )
 
-        answer = messagebox.askyesno(title, msg)
+        confirmed = [False]
+
+        dlg = ctk.CTkToplevel(self.root)
+        dlg.title(title)
+        dlg.configure(fg_color=COLOR_BG_DIALOG)
+        dlg.transient(self.root)
+        dlg.resizable(False, False)
+
+        ctk.CTkLabel(
+            dlg,
+            text=msg,
+            font=(self._main_font, 13),
+            text_color=COLOR_TEXT_MAIN,
+            wraplength=360,
+            justify="center",
+        ).pack(padx=24, pady=(24, 20))
+
+        btn_frame = tk.Frame(dlg, bg=COLOR_BG_DIALOG)
+        btn_frame.pack(padx=24, pady=(0, self.sc(48)))
+
+        def _confirm():
+            confirmed[0] = True
+            dlg.destroy()
+
+        def _cancel():
+            dlg.destroy()
+
+        btn_yes = ctk.CTkButton(
+            btn_frame,
+            text=LANGS.get(self.current_lang.get(), LANGS["EN"]).get("yes", "Yes"),
+            width=90,
+            fg_color=COLOR_BTN_DEFAULT,
+            hover_color=COLOR_BTN_ACTIVE,
+            text_color=COLOR_TEXT_BRIGHT,
+            font=(self._main_font, 13),
+            command=_confirm,
+        )
+        btn_yes.pack(side="left", padx=(0, 10))
+
+        btn_no = ctk.CTkButton(
+            btn_frame,
+            text=LANGS.get(self.current_lang.get(), LANGS["EN"]).get("no", "No"),
+            width=90,
+            fg_color=COLOR_BTN_DEFAULT,
+            hover_color=COLOR_BTN_ACTIVE,
+            text_color=COLOR_TEXT_BRIGHT,
+            font=(self._main_font, 13),
+            command=_cancel,
+        )
+        btn_no.pack(side="left")
+
+        _focused = ["yes"]
+
+        def _set_focus(which):
+            _focused[0] = which
+            if which == "yes":
+                btn_yes.configure(fg_color=COLOR_BTN_ACTIVE)
+                btn_no.configure(fg_color=COLOR_BTN_DEFAULT)
+            else:
+                btn_no.configure(fg_color=COLOR_BTN_ACTIVE)
+                btn_yes.configure(fg_color=COLOR_BTN_DEFAULT)
+
+        def _activate(e=None):
+            if _focused[0] == "yes":
+                _confirm()
+            else:
+                _cancel()
+
+        dlg.bind("<Left>",     lambda e: _set_focus("no"  if _focused[0] == "yes" else "yes"))
+        dlg.bind("<Right>",    lambda e: _set_focus("no"  if _focused[0] == "yes" else "yes"))
+        dlg.bind("<Return>",   _activate)
+        dlg.bind("<KP_Enter>", _activate)
+        dlg.bind("<Escape>",   lambda e: _cancel())
+
+        # Default focus on Yes — closing is the recommended action
+        _set_focus("yes")
+
+        self._center_dialog(dlg, 430)
+
+        dlg.lift()
+        dlg.attributes("-topmost", True)
+        dlg.after(150, lambda: dlg.attributes("-topmost", False))
+        dlg.grab_set()
+        self.root.wait_window(dlg)
+
         self._showing_dpi_msg = False
 
-        if answer:
+        if confirmed[0]:
             # Clear saved geometry so next launch recalculates the correct default
             self.window_geometry = ""
             self._graceful_close()

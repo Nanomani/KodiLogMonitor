@@ -580,7 +580,7 @@ class UIBuilderMixin:
             corner_radius=0,
             width=28,
             height=28,
-            command=self.clear_all_history_data,
+            command=self.show_history_manager,
             cursor="hand2",
         )
         self.btn_clear_history.pack(side=tk.RIGHT, padx=(4, 4), pady=(1, 1))
@@ -588,10 +588,43 @@ class UIBuilderMixin:
             "<Enter>", lambda e: self.btn_clear_history.configure(text_color=COLOR_TEXT_BRIGHT)
         )
         self.btn_clear_history.bind(
-            "<Leave>", lambda e: self.btn_clear_history.configure(text_color=COLOR_TEXT_DIM)
+            "<Leave>", lambda e: self.btn_clear_history.configure(
+                text_color=COLOR_TEXT_DIM if self.search_history else COLOR_TEXT_LIGHT
+            )
         )
         tip_text = l_ui.get("btn_clear_history", "Delete all search history")
         self.history_clear_tooltip = ToolTip(self.btn_clear_history, tip_text, scale=self.scale)
+
+        # Exclusion list button — ☰ = no exclusions, ⛔ = active exclusions.
+        # Placed in sh_left, between the search box and the options separator,
+        # with the same visual style as the limit/wrap/pause toggle buttons.
+        self.btn_exclude_list = ctk.CTkButton(
+            sh_left,
+            text="☰",
+            font=ctk.CTkFont(family=emoji_fam, size=12),
+            fg_color=COLOR_BTN_DEFAULT,
+            hover=False,
+            text_color=COLOR_TEXT_BRIGHT,
+            corner_radius=5,
+            border_width=0,
+            height=28,
+            width=40,
+            command=self.show_exclude_list,
+        )
+        self.btn_exclude_list.pack(side=tk.LEFT, padx=(self.sc(10), self.sc(5)))
+        self.btn_exclude_list.bind("<Enter>", lambda e: self.btn_exclude_list.configure(
+            fg_color=self._lighten_color(COLOR_DANGER, 0.25) if self.exclude_patterns else COLOR_BTN_ACTIVE,
+            text_color=COLOR_TEXT_ON_ACCENT if self.exclude_patterns else COLOR_TEXT_BRIGHT,
+        ))
+        self.btn_exclude_list.bind("<Leave>", lambda e: self.btn_exclude_list.configure(
+            fg_color=COLOR_DANGER if self.exclude_patterns else COLOR_BTN_DEFAULT,
+            text_color=COLOR_TEXT_ON_ACCENT if self.exclude_patterns else COLOR_TEXT_BRIGHT,
+        ))
+        self.exclude_list_tooltip = ToolTip(
+            self.btn_exclude_list,
+            l_ui.get("tip_exclude_empty", "No active exclusions"),
+            scale=self.scale,
+        )
 
         # Vertical separator
         tk.Frame(sh_left, bg=COLOR_SEPARATOR, width=2).pack(
@@ -802,13 +835,13 @@ class UIBuilderMixin:
             padx=5,
             pady=5,
             undo=False,
-            selectforeground=COLOR_TEXT_ON_ACCENT,  # Always white on blue selection (readable in both themes)
+            selectforeground=COLOR_LOG_SELECTION_FG,
             insertwidth=max(1, self.sc(4)),
             insertontime=600,
             insertofftime=300,
             insertbackground=COLOR_TEXT_BRIGHT,
-            selectbackground=COLOR_ACCENT,
-            inactiveselectbackground=COLOR_ACCENT,
+            selectbackground=COLOR_LOG_SELECTION,
+            inactiveselectbackground=COLOR_LOG_SELECTION,
             exportselection=False,
         )
         self.txt_area.grid(row=0, column=0, sticky="nsew")
@@ -900,6 +933,9 @@ class UIBuilderMixin:
         self.menu_items.append(self.google_menu_item)
         if not self.show_google_search.get():
             self.google_menu_item.pack_forget()
+
+        # 4: Exclude selection
+        self.menu_items.append(add_custom_item(self.exclude_selection))         # 4: Exclude
 
         # --- Text area event bindings ---
         self.txt_area.bind("<Button-1>", lambda event: self.txt_area.focus_set())
@@ -1164,6 +1200,7 @@ class ToolTip:
         self.text = text
         self.scale = scale
         self.condition = condition  # Optional callable: tooltip only shows if condition() is True
+        self.fg_override = None     # Optional foreground color override; falls back to COLOR_TEXT_TIPS
         self.tip_window = None
         self.id = None
         self.delay = 1000  # milliseconds before tooltip appears
@@ -1203,7 +1240,7 @@ class ToolTip:
             text=self.text,
             justify="left",
             background=COLOR_BG_TIPS,
-            foreground=COLOR_TEXT_TIPS,
+            foreground=self.fg_override if self.fg_override else COLOR_TEXT_TIPS,
             relief="solid",
             borderwidth=0,
             font=("Segoe UI", "9", "normal"),

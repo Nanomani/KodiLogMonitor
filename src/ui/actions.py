@@ -73,6 +73,606 @@ class ActionsMixin:
         except Exception as e:
             messagebox.showerror("Error", f"Unable to read the file: {e}")
 
+    # ------------------------------------------------------------------
+    # Exclusion list  (file: .kodi_show_exclude, one pattern per line)
+    # ------------------------------------------------------------------
+
+    def update_exclude_button(self):
+        """
+        Refreshes the exclusion list button icon and tooltip to reflect
+        whether any exclusion patterns are currently active.
+        ☰ = empty list (neutral);  ⛔ = at least one active exclusion.
+        Safe to call at any time; no-ops if the button does not exist yet.
+        """
+        if not hasattr(self, "btn_exclude_list"):
+            return
+        l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
+        if self.exclude_patterns:
+            self.btn_exclude_list.configure(
+                text="⛔",
+                fg_color=COLOR_DANGER,
+                text_color=COLOR_TEXT_ON_ACCENT,
+            )
+            tip = l_ui.get("tip_exclude_active", "Active exclusions — click to manage")
+        else:
+            self.btn_exclude_list.configure(
+                text="☰",
+                fg_color=COLOR_BTN_DEFAULT,
+                text_color=COLOR_TEXT_BRIGHT,
+            )
+            tip = l_ui.get("tip_exclude_empty", "No active exclusions")
+        if hasattr(self, "exclude_list_tooltip"):
+            self.exclude_list_tooltip.text = tip
+
+    def show_exclude_list(self):
+        """Opens the exclusion pattern manager."""
+        if not self.check_log_loaded():
+            return
+        if not self.check_log_available():
+            return
+        l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
+
+        def _on_save(new_list):
+            self.save_exclude_patterns(new_list)
+            self.update_exclude_button()
+            self.trigger_refresh()
+
+        self.show_list_manager(
+            title=l_ui.get("exclude_list_title", "Exclusion list"),
+            get_items=lambda: list(self.exclude_patterns),
+            on_save=_on_save,
+            empty_msg=l_ui.get("exclude_list_empty", "No active exclusions."),
+        )
+
+    def show_history_manager(self):
+        """Opens the search history manager."""
+        l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
+
+        def _on_save(new_list):
+            self.search_history = new_list
+            self.save_search_history()
+            self.history_listbox.delete(0, tk.END)
+            for item in new_list:
+                self.history_listbox.insert(tk.END, item)
+            self.hide_history_dropdown()
+            self.update_history_clear_tooltip()
+
+        self.show_list_manager(
+            title=l_ui.get("history_list_title", "Search history"),
+            get_items=lambda: list(self.search_history),
+            on_save=_on_save,
+            empty_msg=l_ui.get("history_list_empty", "No search history."),
+        )
+
+    def show_list_manager(self, title, get_items, on_save, empty_msg=""):
+        """
+        Generic list manager window.
+        Handles exclusions, search history, or any simple string list.
+        - title     : str — window title and header label
+        - get_items : callable → list[str] — always-fresh item list
+        - on_save   : callable(list[str]) — persist + refresh UI after any change
+        - empty_msg : str — message shown when the list is empty
+        """
+        # Only one manager can be open at a time
+        if getattr(self, "_list_manager_open", False):
+            return
+        self._list_manager_open = True
+
+        l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
+
+        # --- Window ---
+        win = ctk.CTkToplevel(self.root)
+        win.title(title)
+        win.configure(fg_color=COLOR_BG_DIALOG)
+        win.transient(self.root)
+        win.resizable(False, False)
+        # Start off-screen to avoid flicker during build.
+        # Avoid withdraw(): CTkToplevel may call deiconify() internally after
+        # its own init delay, leaving the window in an inconsistent state.
+        win.geometry("+10000+10000")
+
+        def _on_close(event=None):
+            self._list_manager_open = False
+            try:
+                win.grab_release()
+                win.destroy()
+            except Exception:
+                pass
+
+        win.protocol("WM_DELETE_WINDOW", _on_close)
+        win.bind("<Escape>", _on_close)
+
+        # --- Layout ---
+        content = ctk.CTkFrame(win, fg_color=COLOR_BG_DIALOG, corner_radius=0)
+        content.pack(fill="both", expand=True, padx=0, pady=0)
+
+        tk.Label(
+            content,
+            text=title,
+            bg=COLOR_BG_DIALOG,
+            fg=COLOR_ACCENT,
+            font=(self._main_font, 14, "bold"),
+        ).pack(pady=(20, 10), fill="x")
+        tk.Frame(content, bg=COLOR_SEPARATOR, height=2).pack(fill="x", padx=self.sc(40))
+
+        # Buttons packed first (bottom) so they are always visible
+        btn_frame = tk.Frame(content, bg=COLOR_BG_DIALOG)
+        btn_frame.pack(side="bottom", pady=(self.sc(50), self.sc(40)))
+
+        # Scrollable list area
+        list_container = tk.Frame(content, bg=COLOR_BG_DIALOG)
+        list_container.pack(fill="both", expand=True, padx=self.sc(40), pady=(14, 4))
+
+        vscroll = ctk.CTkScrollbar(
+            list_container,
+            orientation="vertical",
+            width=12,
+            fg_color="transparent",
+            button_color=SCROLL_THUMB_DEFAULT,
+            button_hover_color=SCROLL_THUMB_HOVER,
+            corner_radius=10,
+            border_spacing=2,
+        )
+        vscroll.pack(side="right", fill="y", padx=(5, 0))
+
+        list_canvas = tk.Canvas(
+            list_container,
+            bg=COLOR_BG_DIALOG,
+            highlightthickness=0,
+            bd=0,
+            yscrollcommand=vscroll.set,
+        )
+        list_canvas.pack(side="left", fill="both", expand=True)
+        vscroll.configure(command=list_canvas.yview)
+
+        inner_frame = tk.Frame(list_canvas, bg=COLOR_BG_DIALOG)
+        _canvas_win = list_canvas.create_window((0, 0), window=inner_frame, anchor="nw")
+
+        def _on_inner_configure(e=None):
+            list_canvas.configure(scrollregion=list_canvas.bbox("all"))
+
+        def _on_canvas_configure(e=None):
+            list_canvas.itemconfig(_canvas_win, width=list_canvas.winfo_width())
+            list_canvas.configure(scrollregion=list_canvas.bbox("all"))
+
+        inner_frame.bind("<Configure>", _on_inner_configure)
+        list_canvas.bind("<Configure>", _on_canvas_configure)
+
+        def _on_mousewheel(e):
+            bbox = list_canvas.bbox("all")
+            if bbox and bbox[3] > list_canvas.winfo_height():
+                list_canvas.yview_scroll(int(-1 * (e.delta / 120)), "units")
+        list_canvas.bind("<MouseWheel>", _on_mousewheel)
+        inner_frame.bind("<MouseWheel>", _on_mousewheel)
+
+        # --- Buttons ---
+        def _clear_all():
+            on_save([])
+            _rebuild()
+
+        btn_clear_all = ctk.CTkButton(
+            btn_frame,
+            text=l_ui.get("exclude_clear_all", "Clear all"),
+            fg_color=COLOR_BTN_DEFAULT,
+            hover=False,
+            text_color=COLOR_TEXT_MAIN,
+            font=ctk.CTkFont(family=self._main_font, size=12, weight="bold"),
+            corner_radius=5,
+            width=120,
+            height=32,
+            command=_clear_all,
+        )
+        btn_clear_all.bind("<Enter>", lambda e: btn_clear_all.configure(fg_color=COLOR_DANGER,      text_color="#ffffff"),       add="+")
+        btn_clear_all.bind("<Leave>", lambda e: btn_clear_all.configure(fg_color=COLOR_BTN_DEFAULT, text_color=COLOR_TEXT_MAIN), add="+")
+
+        btn_ok = ctk.CTkButton(
+            btn_frame,
+            text="Ok",
+            command=_on_close,
+            fg_color=COLOR_BTN_DEFAULT,
+            hover_color=COLOR_BTN_ACTIVE,
+            text_color=COLOR_TEXT_MAIN,
+            font=ctk.CTkFont(family=self._main_font, size=12, weight="bold"),
+            corner_radius=5,
+            width=120,
+            height=32,
+        )
+        btn_ok.pack(side="left")
+
+        # --- Keyboard navigation state ---
+        _LABEL_MAX_CHARS = 55
+        _del_buttons  = []                          # list of (CTkButton, command_fn)
+        _focus_state  = {"type": "none", "idx": 0} # "delete" | "ok" | "clear"
+
+        def _set_focus(ftype, idx=0):
+            """Move visual keyboard focus to the target button."""
+            prev = _focus_state["type"]
+            if prev == "delete" and _focus_state["idx"] < len(_del_buttons):
+                _del_buttons[_focus_state["idx"]][0].configure(
+                    fg_color=COLOR_BTN_DEFAULT, text_color=COLOR_TEXT_BRIGHT
+                )
+            elif prev == "ok":
+                btn_ok.configure(fg_color=COLOR_BTN_DEFAULT)
+            elif prev == "clear":
+                try:
+                    if btn_clear_all.winfo_ismapped():
+                        btn_clear_all.configure(fg_color=COLOR_BTN_DEFAULT, text_color=COLOR_TEXT_MAIN)
+                except Exception:
+                    pass
+
+            _focus_state["type"] = ftype
+            _focus_state["idx"]  = idx
+
+            if ftype == "delete" and idx < len(_del_buttons):
+                btn = _del_buttons[idx][0]
+                btn.configure(fg_color=COLOR_DANGER, text_color="#ffffff")
+                # Auto-scroll so the focused button stays visible
+                inner_frame.update_idletasks()
+                bbox = list_canvas.bbox("all")
+                if bbox:
+                    total_h  = bbox[3] - bbox[1]
+                    canvas_h = list_canvas.winfo_height()
+                    if total_h > canvas_h:
+                        btn_y     = btn.winfo_rooty() - inner_frame.winfo_rooty()
+                        btn_h     = btn.winfo_height()
+                        top_px    = list_canvas.yview()[0] * total_h
+                        bottom_px = top_px + canvas_h
+                        if btn_y < top_px:
+                            list_canvas.yview_moveto(btn_y / total_h)
+                        elif btn_y + btn_h > bottom_px:
+                            list_canvas.yview_moveto((btn_y + btn_h - canvas_h) / total_h)
+            elif ftype == "ok":
+                btn_ok.configure(fg_color=COLOR_BTN_ACTIVE)
+            elif ftype == "clear":
+                btn_clear_all.configure(fg_color=COLOR_DANGER, text_color="#ffffff")
+
+        def _rebuild(restore_idx=None):
+            """Clears and redraws the list rows, then syncs button visibility."""
+            _del_buttons.clear()
+            for w in inner_frame.winfo_children():
+                w.destroy()
+
+            items = get_items()
+
+            if not items:
+                tk.Label(
+                    inner_frame,
+                    text=empty_msg,
+                    bg=COLOR_BG_DIALOG,
+                    fg=COLOR_TEXT_DIM,
+                    font=(self._mono_font, 11),
+                    justify="left",
+                ).pack(anchor="w", pady=(0, 4))
+            else:
+                for idx, item in enumerate(items):
+                    row = tk.Frame(inner_frame, bg=COLOR_BG_DIALOG)
+                    row.pack(fill="x", pady=2)
+
+                    display = item if len(item) <= _LABEL_MAX_CHARS else item[:_LABEL_MAX_CHARS - 1] + "…"
+                    lbl = tk.Label(
+                        row,
+                        text=display,
+                        bg=COLOR_BG_DIALOG,
+                        fg=COLOR_TEXT_MAIN,
+                        font=(self._mono_font, 11),
+                        justify="left",
+                        anchor="w",
+                    )
+                    lbl.pack(side="left", fill="x", expand=True, padx=(0, 10))
+                    if display != item:
+                        ToolTip(lbl, item)
+
+                    def _make_remove(i):
+                        def _remove():
+                            current   = get_items()
+                            updated   = [p for j, p in enumerate(current) if j != i]
+                            on_save(updated)
+                            n_after   = len(updated)
+                            _rebuild(restore_idx=min(i, n_after - 1) if n_after > 0 else None)
+                        return _remove
+
+                    cmd = _make_remove(idx)
+                    btn_del = ctk.CTkButton(
+                        row,
+                        text="×",
+                        width=28,
+                        height=22,
+                        fg_color=COLOR_BTN_DEFAULT,
+                        hover=False,
+                        text_color=COLOR_TEXT_BRIGHT,
+                        font=(self._main_font, 14, "bold"),
+                        corner_radius=4,
+                        command=cmd,
+                    )
+                    btn_del.bind("<Enter>", lambda e, b=btn_del: b.configure(fg_color=COLOR_DANGER,      text_color="#ffffff"),         add="+")
+                    btn_del.bind("<Leave>", lambda e, b=btn_del: b.configure(fg_color=COLOR_BTN_DEFAULT, text_color=COLOR_TEXT_BRIGHT), add="+")
+                    btn_del.pack(side="right")
+                    _del_buttons.append((btn_del, cmd))
+
+            if len(items) >= 2:
+                btn_clear_all.pack(side="left", padx=(0, 10))
+                btn_ok.pack_forget()
+                btn_ok.pack(side="left")
+            else:
+                btn_clear_all.pack_forget()
+
+            _focus_state["type"] = "none"
+            if restore_idx is not None and _del_buttons:
+                _set_focus("delete", restore_idx)
+            elif _del_buttons:
+                _set_focus("delete", 0)
+            else:
+                _set_focus("ok")
+
+        def _on_key(e):
+            """Arrow / Enter keyboard navigation."""
+            key       = e.keysym
+            n         = len(_del_buttons)
+            t         = _focus_state["type"]
+            idx       = _focus_state["idx"]
+            has_clear = btn_clear_all.winfo_ismapped()
+
+            if key == "Return":
+                if t == "delete" and idx < n: _del_buttons[idx][1]()
+                elif t == "ok":               _on_close()
+                elif t == "clear":            _clear_all()
+                return "break"
+            elif key == "Down":
+                if t == "delete" and idx + 1 < n:      _set_focus("delete", idx + 1)
+                elif t in ("ok", "clear") and n > 0:   _set_focus("delete", 0)
+                return "break"
+            elif key == "Up":
+                if t == "delete" and idx - 1 >= 0:     _set_focus("delete", idx - 1)
+                elif t in ("ok", "clear") and n > 0:   _set_focus("delete", n - 1)
+                return "break"
+            elif key == "Right":
+                if t == "delete":                       _set_focus("clear" if has_clear else "ok")
+                elif t == "clear":                      _set_focus("ok")
+                elif t == "ok" and has_clear:           _set_focus("clear")
+                return "break"
+            elif key == "Left":
+                if t == "ok" and has_clear:             _set_focus("clear")
+                elif t == "clear":                      _set_focus("ok")
+                elif t == "delete":                     _set_focus("clear" if has_clear else "ok")
+                return "break"
+
+        _rebuild()
+        win.bind("<Key>", _on_key)
+
+        # --- Geometry (identical to show_help) ---
+        win.update()
+
+        dpi_scale = 1.0
+        if sys.platform == "win32":
+            try:
+                from ctypes import windll
+                hwnd = windll.user32.GetParent(win.winfo_id())
+                dpi  = windll.user32.GetDpiForWindow(hwnd)
+                if dpi > 0:
+                    dpi_scale = dpi / 96.0
+            except Exception:
+                pass
+        else:
+            try:
+                dpi_scale = ctk.ScalingTracker.get_widget_scaling(win)
+            except Exception:
+                pass
+
+        TARGET_W_LOGICAL  = 560
+        n                 = max(1, len(get_items()))
+        TARGET_H_LOGICAL  = max(280, min(440, 160 + n * 32))
+        final_w           = int(TARGET_W_LOGICAL * dpi_scale)
+        final_h           = int(TARGET_H_LOGICAL * dpi_scale)
+        pos_x             = self.root.winfo_x() + (self.root.winfo_width()  // 2) - (final_w // 2)
+        pos_y             = self.root.winfo_y() + (self.root.winfo_height() // 2) - (final_h // 2)
+        win.wm_geometry(f"{final_w}x{final_h}+{max(0, pos_x)}+{max(0, pos_y)}")
+
+        def _finalize():
+            try:
+                win.lift()
+                win.attributes("-topmost", True)
+                win.after(150, lambda: win.attributes("-topmost", False))
+                win.focus_force()
+                win.grab_set()
+                list_canvas.yview_moveto(0)
+            except Exception:
+                pass
+
+        win.after(150, _finalize)
+
+    def load_exclude_patterns(self):
+        """
+        Loads exclusion patterns from EXCLUDE_LIST_FILE into self.exclude_patterns.
+        Patterns are stored lowercase for case-insensitive matching.
+        Safe to call at startup or whenever the file is modified.
+        """
+        patterns = []
+        try:
+            if os.path.exists(EXCLUDE_LIST_FILE):
+                with open(EXCLUDE_LIST_FILE, "r", encoding="utf-8") as f:
+                    for line in f:
+                        p = line.strip()
+                        if p:
+                            patterns.append(p.lower())
+        except Exception as e:
+            print(f"[EXCLUDE] Failed to load {EXCLUDE_LIST_FILE}: {e}")
+        self.exclude_patterns = patterns[:EXCLUDE_LIST_MAX_SIZE]
+        self.update_exclude_button()
+
+    def save_exclude_patterns(self, patterns):
+        """
+        Persists the exclusion list to EXCLUDE_LIST_FILE (one entry per line).
+        Updates self.exclude_patterns in memory immediately.
+        """
+        try:
+            with open(EXCLUDE_LIST_FILE, "w", encoding="utf-8") as f:
+                for p in patterns:
+                    f.write(p + "\n")
+            self.exclude_patterns = [p.lower() for p in patterns]
+        except Exception as e:
+            print(f"[EXCLUDE] Failed to save {EXCLUDE_LIST_FILE}: {e}")
+
+    def exclude_selection(self):
+        """
+        Adds the current text selection to the exclusion list after confirmation.
+        Shows a themed CTkToplevel dialog; refreshes the display on confirm.
+        """
+        l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
+
+        # --- Retrieve and validate selection ---
+        try:
+            selected = self.txt_area.get(tk.SEL_FIRST, tk.SEL_LAST).strip()
+        except tk.TclError:
+            return
+        if not selected:
+            return
+
+        # Truncate display label if the selection is very long
+        display_label = selected if len(selected) <= 60 else selected[:57] + "..."
+
+        # --- Guard: already in list ---
+        if selected.lower() in self.exclude_patterns:
+            self._show_info_dialog(
+                l_ui.get("exclude_confirm_title", "Exclude"),
+                l_ui.get("exclude_already", "This term is already in the exclusion list."),
+            )
+            return
+
+        # --- Guard: list full ---
+        current_patterns = list(self.exclude_patterns)
+        if len(current_patterns) >= EXCLUDE_LIST_MAX_SIZE:
+            self._show_info_dialog(
+                l_ui.get("exclude_max_title", "Limit reached"),
+                l_ui.get("exclude_max_msg", "The list is limited to {} entries.").format(EXCLUDE_LIST_MAX_SIZE),
+            )
+            return
+
+        # --- Confirmation dialog ---
+        confirmed = [False]
+
+        dlg = ctk.CTkToplevel(self.root)
+        dlg.title(l_ui.get("exclude_confirm_title", "Confirm exclusion"))
+        dlg.configure(fg_color=COLOR_BG_DIALOG)
+        dlg.transient(self.root)
+        dlg.resizable(False, False)
+
+        # Message: split template at {} so the excluded string renders in mono font
+        msg_template = l_ui.get("exclude_confirm_msg", "Exclude all messages containing:\n\n\"{}\"")
+        msg_intro = msg_template.split("{}")[0].rstrip('\n "')
+
+        ctk.CTkLabel(
+            dlg,
+            text=msg_intro,
+            font=(self._main_font, 13),
+            text_color=COLOR_TEXT_MAIN,
+            wraplength=380,
+            justify="center",
+        ).pack(padx=24, pady=(20, 8))
+
+        ctk.CTkLabel(
+            dlg,
+            text=display_label,
+            font=(self._mono_font, 15),
+            text_color=COLOR_TEXT_MAIN,
+            wraplength=380,
+            justify="center",
+        ).pack(padx=24, pady=(0, 20))
+
+        # Buttons
+        btn_frame = tk.Frame(dlg, bg=COLOR_BG_DIALOG)
+        btn_frame.pack(padx=24, pady=(0, self.sc(48)))
+
+        def _confirm():
+            confirmed[0] = True
+            dlg.destroy()
+
+        def _cancel():
+            dlg.destroy()
+
+        btn_yes = ctk.CTkButton(
+            btn_frame,
+            text=l_ui.get("yes", "Yes"),
+            width=90,
+            fg_color=COLOR_BTN_DEFAULT,
+            hover_color=COLOR_BTN_ACTIVE,
+            text_color=COLOR_TEXT_BRIGHT,
+            font=(self._main_font, 13),
+            command=_confirm,
+        )
+        btn_yes.pack(side="left", padx=(0, 10))
+
+        btn_no = ctk.CTkButton(
+            btn_frame,
+            text=l_ui.get("no", "No"),
+            width=90,
+            fg_color=COLOR_BTN_DEFAULT,
+            hover_color=COLOR_BTN_ACTIVE,
+            text_color=COLOR_TEXT_BRIGHT,
+            font=(self._main_font, 13),
+            command=_cancel,
+        )
+        btn_no.pack(side="left")
+
+        # Keyboard navigation: track which button has keyboard focus
+        _focused = ["no"]
+
+        def _set_focus(which):
+            """Highlight the keyboard-focused button; dim the other."""
+            _focused[0] = which
+            if which == "no":
+                btn_no.configure(fg_color=COLOR_BTN_ACTIVE)
+                btn_yes.configure(fg_color=COLOR_BTN_DEFAULT)
+            else:
+                btn_yes.configure(fg_color=COLOR_BTN_ACTIVE)
+                btn_no.configure(fg_color=COLOR_BTN_DEFAULT)
+
+        def _activate(e=None):
+            """Trigger the currently focused button."""
+            if _focused[0] == "yes":
+                _confirm()
+            else:
+                _cancel()
+
+        dlg.bind("<Left>",    lambda e: _set_focus("yes" if _focused[0] == "no" else "no"))
+        dlg.bind("<Right>",   lambda e: _set_focus("yes" if _focused[0] == "no" else "no"))
+        dlg.bind("<Return>",  _activate)
+        dlg.bind("<KP_Enter>", _activate)
+        dlg.bind("<Escape>",  lambda e: _cancel())
+
+        # Default keyboard focus on No
+        _set_focus("no")
+
+        # Center over the main window (DPI-aware, identical to show_help)
+        self._center_dialog(dlg, 460)
+
+        dlg.lift()
+        dlg.attributes("-topmost", True)
+        dlg.after(150, lambda: dlg.attributes("-topmost", False))
+        dlg.grab_set()
+        self.root.wait_window(dlg)
+
+        if not confirmed[0]:
+            return
+
+        # Defer the entire post-confirm logic so the event queue is fully flushed
+        # before we touch txt_area. CTkButton fires its command on <ButtonRelease-1>;
+        # when the dialog is destroyed and the grab released, a residual release event
+        # can reach txt_area if the cursor overlaps the log area, causing a spurious
+        # selection. The after() delay lets those events drain first.
+        def _apply():
+            try:
+                self.txt_area.tag_remove(tk.SEL, "1.0", tk.END)
+            except tk.TclError:
+                pass
+            # --- Append, save, refresh ---
+            # Preserve original case in file; matching is always done lowercase
+            current_patterns.append(selected)
+            self.save_exclude_patterns(current_patterns)
+            self.update_exclude_button()
+            self.trigger_refresh()
+
+        self.root.after(50, _apply)
+
     def show_summary(self):
         """Displays the system summary and pauses the log scrolling."""
         if not self.check_log_loaded():
@@ -226,7 +826,7 @@ class ActionsMixin:
 
         # FIXED SETTINGS
         TARGET_W_LOGICAL = 510
-        MAX_H_LOGICAL = 440
+        MAX_H_LOGICAL = 470
 
         req_h = help_win.winfo_reqheight()
 
@@ -358,10 +958,94 @@ class ActionsMixin:
             safe_close()
 
         def on_disable():
-            if messagebox.askyesno(
-                l_ui.get("upd_confirm_title", "Confirm"),
-                l_ui.get("upd_confirm_msg", "Disable?")
-            ):
+            upd_title = l_ui.get("upd_confirm_title", "Confirm")
+            upd_msg   = l_ui.get("upd_confirm_msg",   "Disable update notifications permanently?")
+
+            dis_confirmed = [False]
+
+            dis_dlg = ctk.CTkToplevel(self.root)
+            dis_dlg.title(upd_title)
+            dis_dlg.configure(fg_color=COLOR_BG_DIALOG)
+            dis_dlg.transient(self.root)
+            dis_dlg.resizable(False, False)
+
+            ctk.CTkLabel(
+                dis_dlg,
+                text=upd_msg,
+                font=(self._main_font, 13),
+                text_color=COLOR_TEXT_MAIN,
+                wraplength=340,
+                justify="center",
+            ).pack(padx=24, pady=(24, 20))
+
+            dis_btn_frame = tk.Frame(dis_dlg, bg=COLOR_BG_DIALOG)
+            dis_btn_frame.pack(padx=24, pady=(0, self.sc(48)))
+
+            def _dis_confirm():
+                dis_confirmed[0] = True
+                dis_dlg.destroy()
+
+            def _dis_cancel():
+                dis_dlg.destroy()
+
+            dis_btn_yes = ctk.CTkButton(
+                dis_btn_frame,
+                text=l_ui.get("yes", "Yes"),
+                width=90,
+                fg_color=COLOR_BTN_DEFAULT,
+                hover_color=COLOR_BTN_ACTIVE,
+                text_color=COLOR_TEXT_BRIGHT,
+                font=(self._main_font, 13),
+                command=_dis_confirm,
+            )
+            dis_btn_yes.pack(side="left", padx=(0, 10))
+
+            dis_btn_no = ctk.CTkButton(
+                dis_btn_frame,
+                text=l_ui.get("no", "No"),
+                width=90,
+                fg_color=COLOR_BTN_DEFAULT,
+                hover_color=COLOR_BTN_ACTIVE,
+                text_color=COLOR_TEXT_BRIGHT,
+                font=(self._main_font, 13),
+                command=_dis_cancel,
+            )
+            dis_btn_no.pack(side="left")
+
+            _dis_focused = ["no"]
+
+            def _dis_set_focus(which):
+                _dis_focused[0] = which
+                if which == "no":
+                    dis_btn_no.configure(fg_color=COLOR_BTN_ACTIVE)
+                    dis_btn_yes.configure(fg_color=COLOR_BTN_DEFAULT)
+                else:
+                    dis_btn_yes.configure(fg_color=COLOR_BTN_ACTIVE)
+                    dis_btn_no.configure(fg_color=COLOR_BTN_DEFAULT)
+
+            def _dis_activate(e=None):
+                if _dis_focused[0] == "yes":
+                    _dis_confirm()
+                else:
+                    _dis_cancel()
+
+            dis_dlg.bind("<Left>",     lambda e: _dis_set_focus("yes" if _dis_focused[0] == "no" else "no"))
+            dis_dlg.bind("<Right>",    lambda e: _dis_set_focus("yes" if _dis_focused[0] == "no" else "no"))
+            dis_dlg.bind("<Return>",   _dis_activate)
+            dis_dlg.bind("<KP_Enter>", _dis_activate)
+            dis_dlg.bind("<Escape>",   lambda e: _dis_cancel())
+
+            _dis_set_focus("no")
+
+            self._center_dialog(dis_dlg, 400)
+
+            dis_dlg.lift()
+            dis_dlg.attributes("-topmost", True)
+            dis_dlg.after(150, lambda: dis_dlg.attributes("-topmost", False))
+            dis_dlg.grab_set()
+            self.root.wait_window(dis_dlg)
+
+            if dis_confirmed[0]:
                 self.updates_enabled = False
                 self.save_session()
                 safe_close()
@@ -691,11 +1375,97 @@ class ActionsMixin:
                 l = LANGS.get(self.current_lang.get(), LANGS["EN"])
                 title = l.get("perf_confirm_title", "Performance Warning")
                 default_msg = (
-                    "This file is larger than 20 MB ({:.1f} MB).\n"
-                    "Loading it may cause performance issues.\n\nDo you want to proceed?"
+                    "This file is larger than 10 MB ({:.1f} MB).\n"
+                    "Loading it completely may cause performance issues or freezes.\n\n"
+                    "Do you want to proceed?"
                 )
                 msg = l.get("perf_confirm_msg", default_msg).format(file_size_mb)
-                if not messagebox.askyesno(title, msg):
+
+                confirmed = [False]
+
+                dlg = ctk.CTkToplevel(self.root)
+                dlg.title(title)
+                dlg.configure(fg_color=COLOR_BG_DIALOG)
+                dlg.transient(self.root)
+                dlg.resizable(False, False)
+
+                ctk.CTkLabel(
+                    dlg,
+                    text=msg,
+                    font=(self._main_font, 13),
+                    text_color=COLOR_TEXT_MAIN,
+                    wraplength=360,
+                    justify="center",
+                ).pack(padx=24, pady=(24, 20))
+
+                btn_frame = tk.Frame(dlg, bg=COLOR_BG_DIALOG)
+                btn_frame.pack(padx=24, pady=(0, self.sc(48)))
+
+                def _confirm():
+                    confirmed[0] = True
+                    dlg.destroy()
+
+                def _cancel():
+                    dlg.destroy()
+
+                btn_yes = ctk.CTkButton(
+                    btn_frame,
+                    text=l.get("yes", "Yes"),
+                    width=90,
+                    fg_color=COLOR_BTN_DEFAULT,
+                    hover_color=COLOR_BTN_ACTIVE,
+                    text_color=COLOR_TEXT_BRIGHT,
+                    font=(self._main_font, 13),
+                    command=_confirm,
+                )
+                btn_yes.pack(side="left", padx=(0, 10))
+
+                btn_no = ctk.CTkButton(
+                    btn_frame,
+                    text=l.get("no", "No"),
+                    width=90,
+                    fg_color=COLOR_BTN_DEFAULT,
+                    hover_color=COLOR_BTN_ACTIVE,
+                    text_color=COLOR_TEXT_BRIGHT,
+                    font=(self._main_font, 13),
+                    command=_cancel,
+                )
+                btn_no.pack(side="left")
+
+                _focused = ["no"]
+
+                def _set_focus(which):
+                    _focused[0] = which
+                    if which == "no":
+                        btn_no.configure(fg_color=COLOR_BTN_ACTIVE)
+                        btn_yes.configure(fg_color=COLOR_BTN_DEFAULT)
+                    else:
+                        btn_yes.configure(fg_color=COLOR_BTN_ACTIVE)
+                        btn_no.configure(fg_color=COLOR_BTN_DEFAULT)
+
+                def _activate(e=None):
+                    if _focused[0] == "yes":
+                        _confirm()
+                    else:
+                        _cancel()
+
+                dlg.bind("<Left>",     lambda e: _set_focus("yes" if _focused[0] == "no" else "no"))
+                dlg.bind("<Right>",    lambda e: _set_focus("yes" if _focused[0] == "no" else "no"))
+                dlg.bind("<Return>",   _activate)
+                dlg.bind("<KP_Enter>", _activate)
+                dlg.bind("<Escape>",   lambda e: _cancel())
+
+                _set_focus("no")
+
+                self._center_dialog(dlg, 440)
+
+                dlg.lift()
+                dlg.attributes("-topmost", True)
+                dlg.after(150, lambda: dlg.attributes("-topmost", False))
+                dlg.grab_set()
+                self.root.wait_window(dlg)
+
+                if not confirmed[0]:
                     return  # User cancelled — nothing changes (no .set, no color update)
 
         # 2. Commit the state change now that the user has confirmed (or no dialog was needed)
@@ -754,6 +1524,85 @@ class ActionsMixin:
 
         self.update_stats()
 
+    def _show_info_dialog(self, title, msg, w_logical=400):
+        """
+        Shows a themed single-button info/warning dialog centered over the main window.
+        Blocks until the user closes it (grab_set + wait_window).
+        """
+        dlg = ctk.CTkToplevel(self.root)
+        dlg.title(title)
+        dlg.configure(fg_color=COLOR_BG_DIALOG)
+        dlg.transient(self.root)
+        dlg.resizable(False, False)
+
+        ctk.CTkLabel(
+            dlg,
+            text=msg,
+            font=(self._main_font, 13),
+            text_color=COLOR_TEXT_MAIN,
+            wraplength=w_logical - 80,
+            justify="center",
+        ).pack(padx=24, pady=(24, 16))
+
+        l = LANGS.get(self.current_lang.get(), LANGS["EN"])
+        btn_frame = tk.Frame(dlg, bg=COLOR_BG_DIALOG)
+        btn_frame.pack(padx=24, pady=(0, self.sc(48)))
+
+        ctk.CTkButton(
+            btn_frame,
+            text=l.get("ok", "OK"),
+            width=90,
+            fg_color=COLOR_BTN_DEFAULT,
+            hover_color=COLOR_BTN_ACTIVE,
+            text_color=COLOR_TEXT_BRIGHT,
+            font=(self._main_font, 13),
+            command=dlg.destroy,
+        ).pack()
+
+        dlg.bind("<Return>",   lambda e: dlg.destroy())
+        dlg.bind("<KP_Enter>", lambda e: dlg.destroy())
+        dlg.bind("<Escape>",   lambda e: dlg.destroy())
+
+        self._center_dialog(dlg, w_logical)
+
+        dlg.lift()
+        dlg.attributes("-topmost", True)
+        dlg.after(150, lambda: dlg.attributes("-topmost", False))
+        dlg.grab_set()
+        self.root.wait_window(dlg)
+
+    def _center_dialog(self, dlg, w_logical):
+        """
+        Centers a CTkToplevel dialog over the main window using DPI-aware geometry.
+        Uses the same approach as show_help / show_list_manager:
+        wm_geometry() bypasses CustomTkinter's auto-scaling so the dialog is
+        positioned correctly on FHD, QHD, and 4K screens.
+        - w_logical : desired dialog width in logical (96 DPI) pixels
+        """
+        dlg.update_idletasks()
+
+        dpi_scale = 1.0
+        if sys.platform == "win32":
+            try:
+                from ctypes import windll
+                hwnd = windll.user32.GetParent(dlg.winfo_id())
+                dpi  = windll.user32.GetDpiForWindow(hwnd)
+                if dpi > 0:
+                    dpi_scale = dpi / 96.0
+            except Exception:
+                pass
+        else:
+            try:
+                dpi_scale = ctk.ScalingTracker.get_widget_scaling(dlg)
+            except Exception:
+                pass
+
+        final_w = int(w_logical * dpi_scale)
+        final_h = dlg.winfo_reqheight()
+        pos_x   = self.root.winfo_x() + (self.root.winfo_width()  // 2) - (final_w // 2)
+        pos_y   = self.root.winfo_y() + (self.root.winfo_height() // 2) - (final_h // 2)
+        dlg.wm_geometry(f"{final_w}x{final_h}+{max(0, pos_x)}+{max(0, pos_y)}")
+
     def _graceful_close(self):
         """
         Stops the monitoring thread cleanly, saves the session, then closes the app.
@@ -779,20 +1628,111 @@ class ActionsMixin:
     def cycle_app_theme(self):
         """
         Cycles the theme choice: dark → light → dark …
-        Saves the new choice then closes the app so the user can relaunch it.
-        COLOR_* constants are resolved at import time, so a full restart is needed.
+        Shows a themed confirmation dialog; saves the choice and closes the app
+        only if the user confirms. COLOR_* constants are resolved at import time,
+        so a full restart is needed to apply the new theme.
         """
         _order = ["dark", "light"]
         current = self.app_theme.get()
         next_theme = _order[(_order.index(current) + 1) % len(_order)] \
                      if current in _order else "light"
-        self.app_theme.set(next_theme)
 
         l = LANGS.get(self.current_lang.get(), LANGS["EN"])
-        msg   = l.get("theme_close_msg",   "The theme has been changed.\n\nThe application will now close.\nPlease relaunch it to apply the new theme.")
         title = l.get("theme_close_title", "Theme changed")
-        messagebox.showinfo(title, msg)
+        msg   = l.get("theme_close_msg",
+                      "The theme has been changed.\n\n"
+                      "The application will now close.\n"
+                      "Please relaunch it to apply the new theme.")
 
+        confirmed = [False]
+
+        dlg = ctk.CTkToplevel(self.root)
+        dlg.title(title)
+        dlg.configure(fg_color=COLOR_BG_DIALOG)
+        dlg.transient(self.root)
+        dlg.resizable(False, False)
+
+        ctk.CTkLabel(
+            dlg,
+            text=msg,
+            font=(self._main_font, 13),
+            text_color=COLOR_TEXT_MAIN,
+            wraplength=340,
+            justify="center",
+        ).pack(padx=24, pady=(24, 20))
+
+        btn_frame = tk.Frame(dlg, bg=COLOR_BG_DIALOG)
+        btn_frame.pack(padx=24, pady=(0, self.sc(48)))
+
+        def _confirm():
+            confirmed[0] = True
+            dlg.destroy()
+
+        def _cancel():
+            dlg.destroy()
+
+        btn_yes = ctk.CTkButton(
+            btn_frame,
+            text=l.get("yes", "Yes"),
+            width=90,
+            fg_color=COLOR_BTN_DEFAULT,
+            hover_color=COLOR_BTN_ACTIVE,
+            text_color=COLOR_TEXT_BRIGHT,
+            font=(self._main_font, 13),
+            command=_confirm,
+        )
+        btn_yes.pack(side="left", padx=(0, 10))
+
+        btn_no = ctk.CTkButton(
+            btn_frame,
+            text=l.get("no", "No"),
+            width=90,
+            fg_color=COLOR_BTN_DEFAULT,
+            hover_color=COLOR_BTN_ACTIVE,
+            text_color=COLOR_TEXT_BRIGHT,
+            font=(self._main_font, 13),
+            command=_cancel,
+        )
+        btn_no.pack(side="left")
+
+        _focused = ["no"]
+
+        def _set_focus(which):
+            _focused[0] = which
+            if which == "no":
+                btn_no.configure(fg_color=COLOR_BTN_ACTIVE)
+                btn_yes.configure(fg_color=COLOR_BTN_DEFAULT)
+            else:
+                btn_yes.configure(fg_color=COLOR_BTN_ACTIVE)
+                btn_no.configure(fg_color=COLOR_BTN_DEFAULT)
+
+        def _activate(e=None):
+            if _focused[0] == "yes":
+                _confirm()
+            else:
+                _cancel()
+
+        dlg.bind("<Left>",     lambda e: _set_focus("yes" if _focused[0] == "no" else "no"))
+        dlg.bind("<Right>",    lambda e: _set_focus("yes" if _focused[0] == "no" else "no"))
+        dlg.bind("<Return>",   _activate)
+        dlg.bind("<KP_Enter>", _activate)
+        dlg.bind("<Escape>",   lambda e: _cancel())
+
+        _set_focus("no")
+
+        # Center over the main window (DPI-aware, identical to show_help)
+        self._center_dialog(dlg, 420)
+
+        dlg.lift()
+        dlg.attributes("-topmost", True)
+        dlg.after(150, lambda: dlg.attributes("-topmost", False))
+        dlg.grab_set()
+        self.root.wait_window(dlg)
+
+        if not confirmed[0]:
+            return
+
+        self.app_theme.set(next_theme)
         self._graceful_close()
 
     def toggle_single_instance(self):
@@ -1193,8 +2133,7 @@ class ActionsMixin:
             self.combo_lang_tooltip.text = l["tip_lang"]
         if hasattr(self, "combo_kw_tooltip") and self.combo_kw_tooltip:
             self.combo_kw_tooltip.text = l["tip_kw_list"]
-        if hasattr(self, "history_clear_tooltip") and self.history_clear_tooltip:
-            self.history_clear_tooltip.text = l["tip_history_clear"]
+        self.update_history_clear_tooltip()
         if hasattr(self, "search_bar_tooltip") and self.search_bar_tooltip:
             self.search_bar_tooltip.text = l["tip_search_bar"]
         if hasattr(self, "btn_help_tooltip") and self.btn_help_tooltip:
@@ -1241,6 +2180,8 @@ class ActionsMixin:
             self.menu_items[1].config(text=f"  {l['sel_all']}  ")
             self.menu_items[2].config(text=f"  {l['search_localy']}  ")
             self.menu_items[3].config(text=f"  {l['search_google']}  ")
+            self.menu_items[4].config(text=f"  {l['exclude']}  ")
+        self.update_exclude_button()
 
         # --- Status label StringVars ---
         if self.is_paused.get():
@@ -1312,6 +2253,14 @@ class ActionsMixin:
             self.btn_clear_search.place(relx=0.5, rely=0.5, anchor="center")
         else:
             self.btn_clear_search.place_forget()
+            if self.is_paused.get():
+                self.is_paused.set(False)
+                self._last_wrap_anchor = None
+                self.update_button_colors()
+            # Empty query: bypass the sorting search worker and restore natural order.
+            self._cancel_pending_search()
+            self.refresh_natural_order()
+            return
 
         # Debounce: cancel any pending search timer and start a fresh one.
         # The actual file scan only starts 250 ms after the last keystroke.
@@ -1393,6 +2342,11 @@ class ActionsMixin:
 
                 low = line.lower()
 
+                # Exclusion list check — self.exclude_patterns is a plain Python
+                # list (no Tkinter calls), safe to read from a background thread.
+                if self.exclude_patterns and any(exc in low for exc in self.exclude_patterns):
+                    continue
+
                 # Determine log level (mirrors get_line_data)
                 if " error " in low or " critical " in low:
                     current_tag = "error"
@@ -1456,6 +2410,19 @@ class ActionsMixin:
     def clear_search(self):
         self.search_query.set("")
         self.search_entry.focus_set()  # tk.Entry / CTkEntry both support focus_set()
+        self._cancel_pending_search()
+        if self.is_paused.get():
+            self.is_paused.set(False)
+            self._last_wrap_anchor = None
+            self.update_button_colors()
+        self.refresh_natural_order()
+
+    def _cancel_pending_search(self):
+        """Cancels any debounced search timer and invalidates any running worker."""
+        if getattr(self, "_search_after_id", None):
+            self.root.after_cancel(self._search_after_id)
+            self._search_after_id = None
+        self._search_version = getattr(self, "_search_version", 0) + 1
 
     def reset_search_and_focus_log(self, event=None):
         """Clears the search field, hides history, and returns focus to the log.
@@ -1800,6 +2767,7 @@ class ActionsMixin:
         self.search_entry.bind("<Return>", self.validate_and_save_search)
         self.txt_area.bind("<FocusIn>", lambda e: self.hide_history_dropdown(), add="+")
         self.root.bind("<Button-1>", self._close_dropdown_on_outside_click, add="+")
+        self.update_history_clear_tooltip()
 
     def load_search_history(self):
         """Loads search history from file."""
@@ -1830,24 +2798,23 @@ class ActionsMixin:
         self.search_history.insert(0, text)
         self.search_history = self.search_history[:SEARCH_HISTORY_MAX_SIZE]
         self.save_search_history()
+        self.update_history_clear_tooltip()
 
-    def clear_all_history_data(self):
-        """Deletes the history file and clears the in-memory list."""
+    def update_history_clear_tooltip(self):
+        """Updates the history button tooltip text and color based on whether history is empty."""
+        if not hasattr(self, "history_clear_tooltip") or not self.history_clear_tooltip:
+            return
+        if not hasattr(self, "search_history"):
+            return
         l = LANGS.get(self.current_lang.get(), LANGS["EN"])
-        msg = l.get("clear_confirm_msg", "Do you want to delete all search history?")
-        confirm = messagebox.askyesno(APP_NAME, msg)
-
-        if confirm:
-            try:
-                history_path = ".kodi_search_history"
-                if os.path.exists(history_path):
-                    os.remove(history_path)
-                self.search_history = []
-                self.history_listbox.delete(0, tk.END)
-                self.hide_history_dropdown()
-                print("Search history cleared successfully.")
-            except Exception as e:
-                print(f"Error clearing history: {e}")
+        if self.search_history:
+            self.history_clear_tooltip.text = l.get("tip_history_manage", "Search history — click to manage")
+            if hasattr(self, "btn_clear_history"):
+                self.btn_clear_history.configure(text_color=COLOR_TEXT_DIM)
+        else:
+            self.history_clear_tooltip.text = l.get("tip_history_empty", "No search history")
+            if hasattr(self, "btn_clear_history"):
+                self.btn_clear_history.configure(text_color=COLOR_TEXT_LIGHT)
 
     def clean_search_input(self, *args):
         """
@@ -1903,6 +2870,10 @@ class ActionsMixin:
         for item in items:
             self.history_listbox.insert(tk.END, f"  {item}")
 
+        # Reset scroll to top: tk.Listbox remembers the last active item and
+        # auto-scrolls to it on re-populate, leaving a blank gap at the bottom.
+        self.history_listbox.yview_moveto(0)
+
         visible_lines = min(len(items), 7)
         self.history_listbox.config(height=visible_lines)
 
@@ -1911,7 +2882,7 @@ class ActionsMixin:
         x = self.search_entry.winfo_rootx()
         y = self.search_entry.winfo_rooty() + self.search_entry.winfo_height() + 10
         width  = self.search_entry.winfo_width()
-        height = self.history_listbox.winfo_reqheight() + 2
+        height = self.history_listbox.winfo_reqheight() + 4
 
         self.history_window.geometry(f"{width}x{height}+{x}+{y}")
         self.history_window.deiconify()
@@ -1934,10 +2905,7 @@ class ActionsMixin:
         # Cancel the debounced search timer triggered by search_query.set("") above,
         # and invalidate any running background search worker, so they don't
         # overwrite the refresh_natural_order call below.
-        if getattr(self, '_search_after_id', None):
-            self.root.after_cancel(self._search_after_id)
-            self._search_after_id = None
-        self._search_version = getattr(self, '_search_version', 0) + 1
+        self._cancel_pending_search()
 
         if self.is_paused.get():
             self.is_paused.set(False)
@@ -2102,7 +3070,5 @@ class ActionsMixin:
         """Handles Ctrl+MouseWheel to resize the log font."""
         if event.delta > 0 or event.num == 4:
             self.increase_font()
-        else:
+        elif event.delta < 0 or event.num == 5:
             self.decrease_font()
-        return "break"
-

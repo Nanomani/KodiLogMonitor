@@ -91,6 +91,7 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
         self._last_wrap_content = None  # Line text set by double-click; survives filter resets
         self._menu_kbfocus = -1         # Keyboard-focused item index in the log context menu
         self._summary_showing = False   # True while the summary view is displayed
+        self.exclude_patterns = []      # Lowercase exclusion strings, cached from file
 
         # --- Tkinter control variables (compatible with CTK) ---
         self.load_full_file = tk.BooleanVar(value=False)
@@ -126,6 +127,7 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
 
         # Build all UI widgets (CTK-converted)
         self.setup_ui()
+        self.load_exclude_patterns()
         self.load_session()
 
         # --- Reset geometry if empty after session load ---
@@ -180,6 +182,11 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
         self.root.bind("<Control-F>", self.focus_search_entry)
         self.txt_area.bind("<Control-f>", self.focus_search_entry)
         self.txt_area.bind("<Control-F>", self.focus_search_entry)
+
+        self.root.bind("<Control-n>", lambda e: self.show_exclude_list())
+        self.root.bind("<Control-N>", lambda e: self.show_exclude_list())
+        self.txt_area.bind("<Control-n>", lambda e: self.show_exclude_list())
+        self.txt_area.bind("<Control-N>", lambda e: self.show_exclude_list())
 
         self.root.bind("<Control-g>", self.select_clear_console_from_keyboard)
         self.root.bind("<Control-G>", self.select_clear_console_from_keyboard)

@@ -26,7 +26,11 @@ DEFAULT_PASTE_URL = "https://paste.kodi.tv/"
 DEFAULT_SECURITY_FILE_MAX_SIZE_STARTUP = 10
 DEFAULT_SECURITY_FILE_MAX_SIZE_BUTTON = 10
 DEFAULT_TIME_INACTIVITY = 300
-SEARCH_HISTORY_MAX_SIZE = 15
+SEARCH_HISTORY_MAX_SIZE = 50
+EXCLUDE_LIST_FILE = ".kodi_show_exclude"
+# Maximum number of exclusion patterns. Keeps substring-search overhead negligible
+# (each check is O(pattern_count * line_len); 20 patterns on 1 000 lines ≈ 1 ms).
+EXCLUDE_LIST_MAX_SIZE = 20
 SINGLE_INSTANCE_HOST = "127.0.0.1"
 SINGLE_INSTANCE_PORT = 65432
 ENABLE_SINGLE_INSTANCE = False
@@ -65,6 +69,8 @@ _DARK_PALETTE = {
 
     # --- Semantic colors ---
     "COLOR_ACCENT":           "#4a86ad",   # Blue accent (active filters, highlights)
+    "COLOR_LOG_SELECTION":    "#1565c0",   # Log text selection bg (distinct from accent)
+    "COLOR_LOG_SELECTION_FG": "#e3f2fd",   # Log text selection foreground
     "COLOR_DANGER":           "#E57373",   # Red (Pause, critical actions)
     "COLOR_WARNING":          "#EEB74D",   # Orange (Reset, warnings)
     "COLOR_SEPARATOR":        "#555555",   # Vertical line between button groups
@@ -119,6 +125,8 @@ _LIGHT_PALETTE = {
 
     # --- Semantic colors ---
     "COLOR_ACCENT":           "#1976d2",   # Darker blue accent (readable on light bg)
+    "COLOR_LOG_SELECTION":    "#9fa8da",   # Log text selection bg (distinct from accent)
+    "COLOR_LOG_SELECTION_FG": "#0d1b2a",   # Log text selection foreground
     "COLOR_DANGER":           "#c62828",   # Darker red
     "COLOR_WARNING":          "#e65100",   # Darker orange
     "COLOR_SEPARATOR":        "#c0c0c0",   # Vertical line between button groups
@@ -195,6 +203,8 @@ COLOR_BTN_DEFAULT      = _palette["COLOR_BTN_DEFAULT"]
 COLOR_BTN_ACTIVE       = _palette["COLOR_BTN_ACTIVE"]
 COLOR_BTN_SECONDARY    = _palette["COLOR_BTN_SECONDARY"]
 COLOR_ACCENT           = _palette["COLOR_ACCENT"]
+COLOR_LOG_SELECTION    = _palette["COLOR_LOG_SELECTION"]
+COLOR_LOG_SELECTION_FG = _palette["COLOR_LOG_SELECTION_FG"]
 COLOR_DANGER           = _palette["COLOR_DANGER"]
 COLOR_WARNING          = _palette["COLOR_WARNING"]
 COLOR_SEPARATOR        = _palette["COLOR_SEPARATOR"]

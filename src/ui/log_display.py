@@ -52,6 +52,12 @@ class LogDisplayMixin:
             return None
 
         low = line.lower()
+
+        # Exclusion list check (cached lowercase patterns, loaded from file).
+        # Short-circuits immediately when any pattern matches — O(n_patterns).
+        if self.exclude_patterns and any(exc in low for exc in self.exclude_patterns):
+            return None
+
         q = self.search_query.get().lower()
         current_tag = None
         if " error " in low or " critical " in low:
@@ -543,10 +549,13 @@ class LogDisplayMixin:
         # font_label is a CTkLabel — use CTK configure
         self.font_label.configure(text=str(self.font_size))
 
-        # Ensure selection is always visible on top of highlights
-        self.txt_area.tag_raise("sel")
-        # Ensure search bar highlight has priority over list highlight if both match
+        # Tag priority order (lowest → highest): highlight → search_bar_highlight → sel
+        # tag_raise() without second arg moves a tag to the very top of the stack,
+        # so the LAST call wins. sel must be raised last so the selection colour
+        # always shows on top of any search/keyword highlight underneath.
+        self.txt_area.tag_raise("highlight")
         self.txt_area.tag_raise("search_bar_highlight")
+        self.txt_area.tag_raise("sel")
 
     def update_stats(self):
         """
