@@ -31,8 +31,8 @@ Quickly monitor, filter, and analyze Kodi logs with a clean and responsive inter
 
 ### 📸 Screenshots
 
-<img width="3121" height="1735" alt="2026-04-16_204943" src="https://github.com/user-attachments/assets/6e019bf0-8ae9-439d-8b44-109aa8479aa6" />
-<img width="3121" height="1735" alt="2026-04-16_204848" src="https://github.com/user-attachments/assets/8c21a3f2-3fb4-4f56-9d2b-34f4a7c8fcac" />
+<img width="3121" height="1100" alt="2026-04-16_204943" src="https://github.com/user-attachments/assets/6e019bf0-8ae9-439d-8b44-109aa8479aa6" />
+<img width="3121" height="1100" alt="2026-04-16_204848" src="https://github.com/user-attachments/assets/8c21a3f2-3fb4-4f56-9d2b-34f4a7c8fcac" />
 
 ---
 
