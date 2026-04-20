@@ -47,11 +47,34 @@ class MonitorMixin:
 
                 last_pos = f.tell()
 
+                _ts_re = re.compile(r"^\d{4}-\d{2}-\d{2}")
                 to_display = []
+                last_parent_visible = False
+
                 for line in initial_lines:
+                    stripped = line.strip()
+                    if not stripped or "info <general>: --------" in line:
+                        last_parent_visible = False
+                        continue
+
+                    if not _ts_re.match(stripped):
+                        # Orphan continuation: inherit parent visibility.
+                        if last_parent_visible:
+                            low = line.lower()
+                            if not (self.exclude_patterns and
+                                    any(exc in low for exc in self.exclude_patterns)):
+                                to_display.append((line, None))
+                        continue
+
                     data = self.get_line_data(line)
                     if data and not self.is_duplicate(data[0]):
                         to_display.append(data)
+                        last_parent_visible = True
+                    else:
+                        last_parent_visible = False
+
+                # Persist flag so the live tail loop continues from the correct state.
+                self._monitor_last_parent_visible = last_parent_visible
 
                 # Send initial data to GUI
                 if self.running:
@@ -114,9 +137,27 @@ class MonitorMixin:
                                 break
                             last_pos = f.tell()
                             has_new_lines = True  # file wrote something, regardless of filter
+
+                            stripped = line.strip()
+                            if not stripped or "info <general>: --------" in line:
+                                self._monitor_last_parent_visible = False
+                                continue
+
+                            if not _ts_re.match(stripped):
+                                # Orphan continuation: inherit parent visibility.
+                                if self._monitor_last_parent_visible:
+                                    low = line.lower()
+                                    if not (self.exclude_patterns and
+                                            any(exc in low for exc in self.exclude_patterns)):
+                                        batch.append((line, None))
+                                continue
+
                             data = self.get_line_data(line)
                             if data and not self.is_duplicate(data[0]):
                                 batch.append((data[0], data[1]))
+                                self._monitor_last_parent_visible = True
+                            else:
+                                self._monitor_last_parent_visible = False
 
                         # 5a. File had new content: update indicator on raw activity,
                         #     dispatch only the filtered batch to the GUI.
@@ -254,10 +295,12 @@ class MonitorMixin:
     def _reset_seen_cache(self):
         """
         Clears both the deque and its companion set so they stay in sync.
+        Also resets the orphan-parent tracking flag used by the live tail.
         Call this wherever seen_lines.clear() was previously used.
         """
         self.seen_lines.clear()
         self._seen_set.clear()
+        self._monitor_last_parent_visible = False
 
     def is_duplicate(self, text):
         """

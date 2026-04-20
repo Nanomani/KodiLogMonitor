@@ -2330,21 +2330,28 @@ class ActionsMixin:
                 return
 
             to_display = []
+            last_parent_visible = False
+
             for line in lines:
                 if version != self._search_version:
                     return  # Newer search started — discard current work
 
                 stripped = line.strip()
-                if not stripped:
-                    continue
-                if "info <general>: --------" in line:
+                if not stripped or "info <general>: --------" in line:
+                    last_parent_visible = False
                     continue
 
                 low = line.lower()
 
-                # Exclusion list check — self.exclude_patterns is a plain Python
-                # list (no Tkinter calls), safe to read from a background thread.
+                # Exclusion list check — safe to read from background thread.
                 if self.exclude_patterns and any(exc in low for exc in self.exclude_patterns):
+                    last_parent_visible = False
+                    continue
+
+                if not _ts_re.match(stripped):
+                    # Orphan continuation: inherit parent visibility.
+                    if last_parent_visible:
+                        to_display.append((line, None))
                     continue
 
                 # Determine log level (mirrors get_line_data)
@@ -2361,25 +2368,27 @@ class ActionsMixin:
 
                 # Level filter (mirrors is_filter_match)
                 if not filter_all:
-                    if not _ts_re.match(stripped):
-                        continue
                     if current_tag is None or current_tag not in active_tags:
+                        last_parent_visible = False
                         continue
 
                 # Text search filter
                 if query_lower and query_lower not in low:
+                    last_parent_visible = False
                     continue
 
                 # Keyword-list filter
                 if keywords_lower and not any(k in low for k in keywords_lower):
+                    last_parent_visible = False
                     continue
 
                 to_display.append((line, current_tag))
+                last_parent_visible = True
 
             if version != self._search_version:
                 return
 
-            to_display.sort(key=lambda x: x[0])
+            # File is already chronological — no sort needed.
 
             if self.running:
                 self.root.after(0, self._apply_search_results,

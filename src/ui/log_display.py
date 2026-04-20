@@ -7,6 +7,11 @@ from datetime import datetime
 from config import *
 from languages import LANGS
 
+# Pre-compiled timestamp pattern shared by all display functions.
+# Kodi log lines start with YYYY-MM-DD; lines without this prefix are
+# orphan continuations that belong to the preceding timestamped line.
+_TS_RE = re.compile(r"^\d{4}-\d{2}-\d{2}")
+
 
 def _pad_line(text: str, chars_label: str = "chars") -> str:
     """
@@ -424,18 +429,38 @@ class LogDisplayMixin:
                     lines = f.readlines()[-1000:]
 
                 to_display = []
-                # We collect search keywords
                 query = self.search_query.get().lower()
+                last_parent_visible = False
 
                 for line in lines:
+                    stripped = line.strip()
+                    if not stripped or "info <general>: --------" in line:
+                        last_parent_visible = False
+                        continue
+
+                    if not _TS_RE.match(stripped):
+                        # Orphan continuation: show only if parent was visible
+                        # and the line itself is not excluded.
+                        if last_parent_visible:
+                            low = line.lower()
+                            if not (self.exclude_patterns and
+                                    any(exc in low for exc in self.exclude_patterns)):
+                                to_display.append((line, None))
+                        continue
+
+                    # Normal timestamped line
                     data = self.get_line_data(line)
                     if data:
                         text, tag = data
-                        # Filter by search only (Search bar)
                         if not query or query in text.lower():
                             to_display.append((text, tag))
+                            last_parent_visible = True
+                        else:
+                            last_parent_visible = False
+                    else:
+                        last_parent_visible = False
 
-                # INSERTION WITHOUT SORTING (Natural order of the file)
+                # INSERTION WITHOUT SORTING (natural file order preserved)
                 self.bulk_insert(to_display)
 
         except Exception as e:
@@ -455,17 +480,32 @@ class LogDisplayMixin:
                     lines = f.readlines()[-1000:]
 
                 to_display = []
+                last_parent_visible = False
+
                 for line in lines:
+                    stripped = line.strip()
+                    if not stripped or "info <general>: --------" in line:
+                        last_parent_visible = False
+                        continue
+
+                    if not _TS_RE.match(stripped):
+                        # Orphan continuation: inherit parent visibility.
+                        if last_parent_visible:
+                            low = line.lower()
+                            if not (self.exclude_patterns and
+                                    any(exc in low for exc in self.exclude_patterns)):
+                                to_display.append((line, None))
+                        continue
+
+                    # Normal timestamped line
                     data = self.get_line_data(line)
                     if data and self.is_filter_match(data[1], data[0]):
-                        # data is (full_text, level_tag)
                         to_display.append(data)
+                        last_parent_visible = True
+                    else:
+                        last_parent_visible = False
 
-                # --- CORRECTION: CHRONOLOGICAL SORTING ---
-                # Sort the list based on the text content (which starts with the date)
-                to_display.sort(key=lambda x: x[0])
-
-                # Batch insertion for performance
+                # File is already in chronological order — no sort needed.
                 self.bulk_insert(to_display)
         except Exception as e:
             print(f"[ERROR] {type(e).__name__}: {e}")
