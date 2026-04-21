@@ -367,13 +367,19 @@ class MonitorMixin:
         to close the app so it can be relaunched with correct CTK geometry/DPI.
         Shows a Yes / No dialog:
           - Yes → clear saved geometry + close cleanly via _graceful_close()
-          - No  → update title bar + resume periodic check
+          - No  → update title bar + resume periodic check (with cooldown)
         """
-        from tkinter import messagebox
-
-        # Guard: only one dialog at a time
+        # Guard 1: only one dialog at a time
         if getattr(self, '_showing_dpi_msg', False):
             return
+
+        # Guard 2: cooldown — don't re-show within 30 s of a previous dismissal.
+        # Prevents a spurious second appearance caused by residual WM_DISPLAYCHANGE
+        # events or transient GetSystemMetrics values after the dialog closes.
+        _last = getattr(self, '_dpi_dialog_dismissed_at', 0)
+        if time.time() - _last < 30:
+            return
+
         self._showing_dpi_msg = True
 
         l = LANGS.get(self.current_lang.get(), LANGS["EN"])
@@ -478,7 +484,15 @@ class MonitorMixin:
             self.window_geometry = ""
             self._graceful_close()
         else:
-            # User declined — update title bar and resume periodic monitoring
+            # Record dismissal time — cooldown prevents re-showing within 30 s.
+            self._dpi_dialog_dismissed_at = time.time()
+            # Refresh last known screen dimensions so the next check starts clean.
+            try:
+                from ctypes import windll
+                self.last_screen_width  = windll.user32.GetSystemMetrics(0)
+                self.last_screen_height = windll.user32.GetSystemMetrics(1)
+            except Exception:
+                pass
             if hasattr(self, 'update_windows_title_bar'):
                 self.update_windows_title_bar()
             self.root.after(3000, self.periodic_display_check)

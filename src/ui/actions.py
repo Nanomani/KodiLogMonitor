@@ -180,7 +180,8 @@ class ActionsMixin:
                 pass
 
         win.protocol("WM_DELETE_WINDOW", _on_close)
-        win.bind("<Escape>", _on_close)
+        win.bind("<Escape>",    _on_close)
+        win.bind("<BackSpace>", _on_close)
 
         # --- Layout ---
         content = ctk.CTkFrame(win, fg_color=COLOR_BG_DIALOG, corner_radius=0)
@@ -434,6 +435,9 @@ class ActionsMixin:
                 if t == "ok" and has_clear:             _set_focus("clear")
                 elif t == "clear":                      _set_focus("ok")
                 elif t == "delete":                     _set_focus("clear" if has_clear else "ok")
+                return "break"
+            elif key in ("Escape", "BackSpace"):
+                _on_close()
                 return "break"
 
         _rebuild()
@@ -2253,10 +2257,14 @@ class ActionsMixin:
             self.btn_clear_search.place(relx=0.5, rely=0.5, anchor="center")
         else:
             self.btn_clear_search.place_forget()
-            if self.is_paused.get():
-                self.is_paused.set(False)
-                self._last_wrap_anchor = None
-                self.update_button_colors()
+            # Invalidate the remembered line — search change makes it stale.
+            self._last_wrap_anchor = None
+            # NOTE: pause state is intentionally NOT changed here.
+            # Only explicit user actions (DEL button, ESC key, Reset) deactivate pause.
+            # This prevents the pause being silently released when search is cleared
+            # character by character, which the user would only notice when new log
+            # activity causes an unexpected scroll.
+
             # Empty query: bypass the sorting search worker and restore natural order.
             self._cancel_pending_search()
             self.refresh_natural_order()
@@ -2417,14 +2425,17 @@ class ActionsMixin:
         self.bulk_insert(to_display)
 
     def clear_search(self):
-        self.search_query.set("")
-        self.search_entry.focus_set()  # tk.Entry / CTkEntry both support focus_set()
-        self._cancel_pending_search()
+        # Deactivate pause first so that on_search_change's refresh_natural_order
+        # call already runs with pause=False and scrolls to end — avoids a
+        # redundant second refresh when we clear the query below.
         if self.is_paused.get():
             self.is_paused.set(False)
             self._last_wrap_anchor = None
             self.update_button_colors()
-        self.refresh_natural_order()
+        # Clearing the query fires on_search_change which cancels pending search
+        # and calls refresh_natural_order (scrolls to end now that pause is off).
+        self.search_query.set("")
+        self.search_entry.focus_set()
 
     def _cancel_pending_search(self):
         """Cancels any debounced search timer and invalidates any running worker."""
@@ -2432,19 +2443,6 @@ class ActionsMixin:
             self.root.after_cancel(self._search_after_id)
             self._search_after_id = None
         self._search_version = getattr(self, "_search_version", 0) + 1
-
-    def reset_search_and_focus_log(self, event=None):
-        """Clears the search field, hides history, and returns focus to the log.
-        Also deactivates pause mode if it was active."""
-        self.search_query.set("")
-        if hasattr(self, 'history_listbox'):
-            self.history_listbox.place_forget()
-        if self.is_paused.get():
-            self.is_paused.set(False)
-            self.toggle_pause_scroll()
-        if hasattr(self, 'txt_area'):
-            self.txt_area.focus_set()
-        return "break"
 
     def copy_selection(self):
         try:
@@ -2904,24 +2902,29 @@ class ActionsMixin:
 
     def reset_search_and_focus_log(self, event=None):
         """Clears the search, hides history, and returns focus to the log area.
-        Cancels the debounced _fire_search that on_search_change schedules when
-        search_query is cleared, then restores file order via refresh_natural_order.
-        Also deactivates pause mode if it was active."""
+        Deactivates pause first so that on_search_change's refresh already runs
+        with pause=False, avoiding a redundant second refresh_natural_order call.
+        Also cancels any pending search worker."""
         had_query = bool(self.search_query.get())
-        self.search_query.set("")
         self.hide_history_dropdown()
 
-        # Cancel the debounced search timer triggered by search_query.set("") above,
-        # and invalidate any running background search worker, so they don't
-        # overwrite the refresh_natural_order call below.
-        self._cancel_pending_search()
-
+        # Deactivate pause BEFORE clearing the query so that on_search_change's
+        # refresh_natural_order fires with the correct (unpaused) state and
+        # scrolls to end in a single pass.
         if self.is_paused.get():
             self.is_paused.set(False)
             self._last_wrap_anchor = None
             self.update_button_colors()
+
+        # Clearing the query fires on_search_change which cancels pending search
+        # and calls refresh_natural_order (scrolls to end since pause is now off).
+        self.search_query.set("")
+
+        # Extra safety: cancel any search timer/worker that might still be queued.
+        self._cancel_pending_search()
+
         if had_query:
-            self.refresh_natural_order()
+            # on_search_change already refreshed; just ensure we land at the bottom.
             self.root.after(0, lambda: self.txt_area.see(tk.END))
         if hasattr(self, 'txt_area'):
             self.txt_area.focus_set()
