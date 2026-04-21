@@ -14,7 +14,7 @@ Quickly monitor, filter, and analyze Kodi logs with a clean and responsive inter
 ### ✨ Features
 
 - **Real-Time Log Monitoring** – Instantly view new log entries  
-- **Advanced Filtering** – Filter by level (Info, Warning, Error, Debug) or keywords  
+- **Advanced Filtering** – Filter by level (Info, Warning, Error, Debug), keywords, or quickly exclude log lines  
 - **Dynamic Search** – Fast search, even on very large log files  
 - **Large Log Support** – Optimized for high-volume logs with smart limits  
 - **Color-Coded UI** – Quickly identify issues at a glance  
@@ -31,8 +31,9 @@ Quickly monitor, filter, and analyze Kodi logs with a clean and responsive inter
 
 ### 📸 Screenshots
 
-<img width="3121" height="1735" alt="2026-04-16_204943" src="https://github.com/user-attachments/assets/6e019bf0-8ae9-439d-8b44-109aa8479aa6" />
-<img width="3121" height="1735" alt="2026-04-16_204848" src="https://github.com/user-attachments/assets/8c21a3f2-3fb4-4f56-9d2b-34f4a7c8fcac" />
+<img width="3646" height="1975" alt="capture_white" src="https://github.com/user-attachments/assets/d63219e6-3533-4b2a-854a-7fe77d04bd9f" />
+<img width="3646" height="1975" alt="capture_black" src="https://github.com/user-attachments/assets/6d7f4d23-4ece-45c1-acfd-e7ccc370681b" />
+
 
 ---
 
@@ -105,7 +106,7 @@ python main.py
 ```
 ---
 
-### 📝 Project Structure (v1.3.7+)
+### 📝 Project Structure
 ```
 src/
 │
