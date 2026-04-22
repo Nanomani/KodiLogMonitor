@@ -67,7 +67,8 @@ Space        : Pause / Resume auto-scroll
 Ctrl + O     : Open log file  
 Ctrl + S     : Export log
 Ctrl + P     : Upload log  
-Ctrl + F     : Search keywords  
+Ctrl + F     : Search keywords
+Ctrl + N     : Open exclusions  
 Ctrl + G     : Clear console  
 Ctrl + L     : Toggle word wrap  
 Ctrl + T     : Unlimited mode (∞) / 1000 lines  
