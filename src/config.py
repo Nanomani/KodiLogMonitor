@@ -93,7 +93,10 @@ _DARK_PALETTE = {
     "SCROLL_THUMB_HOVER":     "#d4d4d4",   # Scrollbar thumb hover
 
     # --- Fixed overlay text (same in both themes) ---
-    "COLOR_TEXT_ON_ACCENT":   "#ffffff",   # White text on accent/colored bg (active buttons, hover, selection)
+    "COLOR_TEXT_ON_ACCENT":        "#ffffff",   # White text on accent/colored bg (active buttons, hover, selection)
+
+    # --- Timeline viewport overlay ---
+    "COLOR_TIMELINE_VIEWPORT":     "#ffffff",   # Outline of the visible-range rectangle on the timeline strip
 
     # --- Log text tag colors ---
     "LOG_COLORS": {
@@ -149,7 +152,10 @@ _LIGHT_PALETTE = {
     "SCROLL_THUMB_HOVER":     "#424242",   # Scrollbar thumb hover
 
     # --- Fixed overlay text (same in both themes) ---
-    "COLOR_TEXT_ON_ACCENT":   "#ffffff",   # White text on accent/colored bg (active buttons, hover, selection)
+    "COLOR_TEXT_ON_ACCENT":        "#ffffff",   # White text on accent/colored bg (active buttons, hover, selection)
+
+    # --- Timeline viewport overlay ---
+    "COLOR_TIMELINE_VIEWPORT":     "#0d47a1",   # Outline of the visible-range rectangle on the timeline strip
 
     # --- Log text tag colors (darker variants for readability on light bg) ---
     "LOG_COLORS": {
@@ -219,8 +225,9 @@ COLOR_INDICATOR_OFF    = _palette["COLOR_INDICATOR_OFF"]
 COLOR_INDICATOR_BORDER = _palette["COLOR_INDICATOR_BORDER"]
 SCROLL_THUMB_DEFAULT   = _palette["SCROLL_THUMB_DEFAULT"]
 SCROLL_THUMB_HOVER     = _palette["SCROLL_THUMB_HOVER"]
-COLOR_TEXT_ON_ACCENT   = _palette["COLOR_TEXT_ON_ACCENT"]
-LOG_COLORS             = _palette["LOG_COLORS"]
+COLOR_TEXT_ON_ACCENT       = _palette["COLOR_TEXT_ON_ACCENT"]
+COLOR_TIMELINE_VIEWPORT    = _palette["COLOR_TIMELINE_VIEWPORT"]
+LOG_COLORS                 = _palette["LOG_COLORS"]
 
 if not os.path.exists(KEYWORD_DIR):
     os.makedirs(KEYWORD_DIR)

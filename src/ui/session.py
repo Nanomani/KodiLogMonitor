@@ -28,7 +28,7 @@ class SessionMixin:
                     f"{str(self.selected_list.get()):<{w}} # Selected keyword list",
                     f"{filter_states:<{w}} # Filter states (ALL, INFO, WARNING, ERROR, DEBUG)",
                     f"{('1' if self.show_google_search.get() else '0'):<{w}} # Show google search menu (0=hide)",
-                    f"{'deprecated':<{w}} # Theme mode (deprecated — kept for backward compat)",
+                    f"{'deprecated':<{w}} # Theme mode (deprecated - kept for backward compat)",
                     f"{str(self.inactivity_limit):<{w}} # Inactivity limit seconds (0=disable)",
                     f"{str(self.paste_url):<{w}} # Url for upload",
                     f"{str(self.max_size_mb):<{w}} # Max size Mo limit (10 Mo default)",
@@ -108,7 +108,7 @@ class SessionMixin:
                     # Default to enabled if the line doesn't exist yet
                     self.show_google_search.set(True)
 
-                # 9. (deprecated — was OS title-bar theme combobox, now ignored)
+                # 9. (deprecated - was OS title-bar theme combobox, now ignored)
 
                 # 10. Inactivity Limit
                 if len(lines) >= 10:

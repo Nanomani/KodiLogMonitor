@@ -93,7 +93,7 @@ class ActionsMixin:
                 fg_color=COLOR_DANGER,
                 text_color=COLOR_TEXT_ON_ACCENT,
             )
-            tip = l_ui.get("tip_exclude_active", "Active exclusions — click to manage")
+            tip = l_ui.get("tip_exclude_active", "Active exclusions - click to manage")
         else:
             self.btn_exclude_list.configure(
                 text="☰",
@@ -148,10 +148,10 @@ class ActionsMixin:
         """
         Generic list manager window.
         Handles exclusions, search history, or any simple string list.
-        - title     : str — window title and header label
-        - get_items : callable → list[str] — always-fresh item list
-        - on_save   : callable(list[str]) — persist + refresh UI after any change
-        - empty_msg : str — message shown when the list is empty
+        - title     : str - window title and header label
+        - get_items : callable → list[str] - always-fresh item list
+        - on_save   : callable(list[str]) - persist + refresh UI after any change
+        - empty_msg : str - message shown when the list is empty
         """
         # Only one manager can be open at a time
         if getattr(self, "_list_manager_open", False):
@@ -885,6 +885,13 @@ class ActionsMixin:
                         latest_v_tuple = parse_version(latest_v_str)
 
                         if latest_v_tuple > current_v_tuple and latest_v_str != self.skip_version:
+                            # A version newer than the skipped one is available:
+                            # the skip entry is now stale - clear it silently so
+                            # the 🔕 indicator disappears without user action.
+                            if self.skip_version:
+                                self.skip_version = ""
+                                self.save_session()
+                                self.root.after(0, self.update_notify_indicator)
                             self.root.after(0, lambda: self._show_update_dialog(
                                 latest_v_str,
                                 data.get("html_url")
@@ -959,6 +966,7 @@ class ActionsMixin:
         def on_skip():
             self.skip_version = new_version
             self.save_session()
+            self.update_notify_indicator()
             safe_close()
 
         def on_disable():
@@ -1052,6 +1060,7 @@ class ActionsMixin:
             if dis_confirmed[0]:
                 self.updates_enabled = False
                 self.save_session()
+                self.update_notify_indicator()
                 safe_close()
 
         btn_style = dict(
@@ -1150,6 +1159,141 @@ class ActionsMixin:
         upd_win.grab_set()
         upd_win.focus_force()
 
+    # ------------------------------------------------------------------
+    # Update-notifications muted indicator (🔕 in footer)
+    # ------------------------------------------------------------------
+
+    def update_notify_indicator(self):
+        """
+        Shows or hides the 🔕 muted indicator in the footer.
+        Visible when updates are permanently disabled OR a specific version
+        has been skipped (i.e. any deviation from the default state).
+        Also refreshes the tooltip text to reflect the current reason.
+        """
+        l_ui    = LANGS.get(self.current_lang.get(), LANGS["EN"])
+        is_perm = not self.updates_enabled
+        is_skip = bool(self.skip_version)
+        is_muted = is_perm or is_skip
+
+        if is_muted:
+            if is_perm:
+                tip = l_ui.get(
+                    "tip_notify_disabled",
+                    "Update notifications disabled - click to restore",
+                )
+            else:
+                tip = l_ui.get(
+                    "tip_notify_skipped",
+                    "Version {version} skipped - click to restore",
+                ).format(version=self.skip_version)
+            self.notify_muted_tooltip.text = tip
+
+            # Insert icon and separator to the RIGHT of the version label.
+            # `before=github_label` places each widget earlier in the pack list,
+            # which with side=tk.RIGHT means further to the right visually.
+            # Pack order in list: [lbl_notify_muted, sep_notify_muted, github_label]
+            # Visual result (left→right): [version | sep | 🔕]
+            self.lbl_notify_muted.pack(
+                side=tk.RIGHT, padx=(6, 6), before=self.github_label
+            )
+            self.sep_notify_muted.pack(
+                side=tk.RIGHT, fill=tk.Y, padx=(5, 0), pady=2,
+                before=self.github_label
+            )
+        else:
+            self.lbl_notify_muted.pack_forget()
+            self.sep_notify_muted.pack_forget()
+
+    def _reset_update_notifications_dialog(self, event=None):
+        """
+        Asks the user to confirm resetting update notification options to
+        their defaults (updates_enabled=True, skip_version="").
+        Opens a simple Yes / No confirmation dialog - same pattern as the
+        existing disable-confirmation dialog.
+        """
+        l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
+
+        confirmed = [False]
+
+        dlg = ctk.CTkToplevel(self.root)
+        dlg.title(l_ui.get("notify_reset_title", "Update notifications"))
+        dlg.configure(fg_color=COLOR_BG_DIALOG)
+        dlg.transient(self.root)
+        dlg.resizable(False, False)
+
+        ctk.CTkLabel(
+            dlg,
+            text=l_ui.get("notify_reset_msg", "Restore default update notification settings?"),
+            font=(self._main_font, 13),
+            text_color=COLOR_TEXT_MAIN,
+            wraplength=320,
+            justify="center",
+        ).pack(padx=24, pady=(24, 20))
+
+        btn_frame = tk.Frame(dlg, bg=COLOR_BG_DIALOG)
+        btn_frame.pack(padx=24, pady=(0, self.sc(48)))
+
+        def _confirm():
+            confirmed[0] = True
+            dlg.destroy()
+
+        def _cancel():
+            dlg.destroy()
+
+        _focused = ["no"]
+
+        def _set_focus(which):
+            _focused[0] = which
+            btn_yes.configure(fg_color=COLOR_BTN_ACTIVE  if which == "yes" else COLOR_BTN_DEFAULT)
+            btn_no.configure( fg_color=COLOR_BTN_ACTIVE  if which == "no"  else COLOR_BTN_DEFAULT)
+
+        def _activate(e=None):
+            (_confirm if _focused[0] == "yes" else _cancel)()
+
+        btn_yes = ctk.CTkButton(
+            btn_frame,
+            text=l_ui.get("yes", "Yes"),
+            width=90,
+            fg_color=COLOR_BTN_DEFAULT,
+            hover_color=COLOR_BTN_ACTIVE,
+            text_color=COLOR_TEXT_BRIGHT,
+            font=(self._main_font, 13),
+            command=_confirm,
+        )
+        btn_yes.pack(side="left", padx=(0, 10))
+
+        btn_no = ctk.CTkButton(
+            btn_frame,
+            text=l_ui.get("no", "No"),
+            width=90,
+            fg_color=COLOR_BTN_DEFAULT,
+            hover_color=COLOR_BTN_ACTIVE,
+            text_color=COLOR_TEXT_BRIGHT,
+            font=(self._main_font, 13),
+            command=_cancel,
+        )
+        btn_no.pack(side="left")
+
+        dlg.bind("<Left>",     lambda e: _set_focus("yes" if _focused[0] == "no" else "no"))
+        dlg.bind("<Right>",    lambda e: _set_focus("yes" if _focused[0] == "no" else "no"))
+        dlg.bind("<Return>",   _activate)
+        dlg.bind("<KP_Enter>", _activate)
+        dlg.bind("<Escape>",   lambda e: _cancel())
+
+        _set_focus("no")
+        self._center_dialog(dlg, 380)
+        dlg.lift()
+        dlg.attributes("-topmost", True)
+        dlg.after(150, lambda: dlg.attributes("-topmost", False))
+        dlg.grab_set()
+        self.root.wait_window(dlg)
+
+        if confirmed[0]:
+            self.updates_enabled = True
+            self.skip_version    = ""
+            self.save_session()
+            self.update_notify_indicator()
+
     def check_log_loaded(self):
         """Check if a log file is loaded; show a message if not."""
         if not self.log_file_path:
@@ -1240,11 +1384,11 @@ class ActionsMixin:
 
         # Priority 1: explicit double-click anchor (set by on_double_click_line).
         # After reset_all_filters the INSERT cursor lands at "1.0" which would
-        # silently win over _last_wrap_content if checked first — so we check
+        # silently win over _last_wrap_content if checked first - so we check
         # _last_wrap_content first and skip the live-cursor read entirely.
         if getattr(self, "_last_wrap_content", None):
             cursor_line_content = self._last_wrap_content
-            cursor_idx = "1.0"  # dummy — _focus_line uses content search, not this index
+            cursor_idx = "1.0"  # dummy - _focus_line uses content search, not this index
 
         else:
             # Priority 2: live INSERT cursor (keyboard navigation / manual click)
@@ -1470,7 +1614,7 @@ class ActionsMixin:
                 self.root.wait_window(dlg)
 
                 if not confirmed[0]:
-                    return  # User cancelled — nothing changes (no .set, no color update)
+                    return  # User cancelled - nothing changes (no .set, no color update)
 
         # 2. Commit the state change now that the user has confirmed (or no dialog was needed)
         self.load_full_file.set(new_value)
@@ -2178,7 +2322,7 @@ class ActionsMixin:
                 tip_key = f"tip_filter_{mode}"
                 tooltip.text = l[tip_key]
 
-        # --- Context menu item labels (tk.Label — uses .config()) ---
+        # --- Context menu item labels (tk.Label - uses .config()) ---
         if hasattr(self, "menu_items"):
             self.menu_items[0].config(text=f"  {l['copy']}  ")
             self.menu_items[1].config(text=f"  {l['sel_all']}  ")
@@ -2257,7 +2401,7 @@ class ActionsMixin:
             self.btn_clear_search.place(relx=0.5, rely=0.5, anchor="center")
         else:
             self.btn_clear_search.place_forget()
-            # Invalidate the remembered line — search change makes it stale.
+            # Invalidate the remembered line - search change makes it stale.
             self._last_wrap_anchor = None
             # NOTE: pause state is intentionally NOT changed here.
             # Only explicit user actions (DEL button, ESC key, Reset) deactivate pause.
@@ -2315,7 +2459,7 @@ class ActionsMixin:
                        active_tags, load_full, keywords_lower):
         """
         Background thread: reads the log file and filters lines using only
-        plain Python values (no Tkinter calls — not thread-safe).
+        plain Python values (no Tkinter calls - not thread-safe).
 
         Aborts early whenever _search_version no longer matches, meaning
         the user typed another character and a newer search has taken over.
@@ -2342,7 +2486,7 @@ class ActionsMixin:
 
             for line in lines:
                 if version != self._search_version:
-                    return  # Newer search started — discard current work
+                    return  # Newer search started - discard current work
 
                 stripped = line.strip()
                 if not stripped or "info <general>: --------" in line:
@@ -2351,7 +2495,7 @@ class ActionsMixin:
 
                 low = line.lower()
 
-                # Exclusion list check — safe to read from background thread.
+                # Exclusion list check - safe to read from background thread.
                 if self.exclude_patterns and any(exc in low for exc in self.exclude_patterns):
                     last_parent_visible = False
                     continue
@@ -2396,7 +2540,7 @@ class ActionsMixin:
             if version != self._search_version:
                 return
 
-            # File is already chronological — no sort needed.
+            # File is already chronological - no sort needed.
 
             if self.running:
                 self.root.after(0, self._apply_search_results,
@@ -2416,7 +2560,7 @@ class ActionsMixin:
         Discards stale results if a newer search has already started.
         """
         if version != self._search_version:
-            return  # Superseded by a more recent search — ignore
+            return  # Superseded by a more recent search - ignore
         # Clear the widget before calling bulk_insert so that, when to_display
         # is empty, bulk_insert sees an empty widget and shows the "no results"
         # message instead of leaving the previous log visible.
@@ -2426,7 +2570,7 @@ class ActionsMixin:
 
     def clear_search(self):
         # Deactivate pause first so that on_search_change's refresh_natural_order
-        # call already runs with pause=False and scrolls to end — avoids a
+        # call already runs with pause=False and scrolls to end - avoids a
         # redundant second refresh when we clear the query below.
         if self.is_paused.get():
             self.is_paused.set(False)
@@ -2743,7 +2887,7 @@ class ActionsMixin:
         """Immediately syncs the limit label with the current toggle state."""
         l = LANGS.get(self.current_lang.get(), LANGS["EN"])
         txt = l["unlimited"] if self.load_full_file.get() else l["limit"]
-        self.limit_var.set(txt)  # uses textvariable — no .config() needed
+        self.limit_var.set(txt)  # uses textvariable - no .config() needed
 
     def copy_to_clipboard(self, event=None):
         """Copies the currently selected text from the log area to the clipboard."""
@@ -2815,7 +2959,7 @@ class ActionsMixin:
             return
         l = LANGS.get(self.current_lang.get(), LANGS["EN"])
         if self.search_history:
-            self.history_clear_tooltip.text = l.get("tip_history_manage", "Search history — click to manage")
+            self.history_clear_tooltip.text = l.get("tip_history_manage", "Search history - click to manage")
             if hasattr(self, "btn_clear_history"):
                 self.btn_clear_history.configure(text_color=COLOR_TEXT_DIM)
         else:
@@ -2874,8 +3018,12 @@ class ActionsMixin:
         )
 
         self.history_listbox.delete(0, tk.END)
+        self._hist_tip_items = []
+        max_chars = getattr(self, "_HIST_MAX_CHARS", 40)
         for item in items:
-            self.history_listbox.insert(tk.END, f"  {item}")
+            display = item if len(item) <= max_chars else item[:max_chars - 1] + "…"
+            self.history_listbox.insert(tk.END, f"  {display}")
+            self._hist_tip_items.append(item)
 
         # Reset scroll to top: tk.Listbox remembers the last active item and
         # auto-scrolls to it on re-populate, leaving a blank gap at the bottom.
@@ -2896,9 +3044,11 @@ class ActionsMixin:
         self.history_window.lift()
 
     def hide_history_dropdown(self, event=None):
-        """Hides the history popup window."""
+        """Hides the history popup window and its truncation tooltip."""
         if hasattr(self, 'history_window'):
             self.history_window.withdraw()
+        if hasattr(self, '_hist_tooltip'):
+            self._hist_tooltip.withdraw()
 
     def reset_search_and_focus_log(self, event=None):
         """Clears the search, hides history, and returns focus to the log area.
@@ -2970,11 +3120,13 @@ class ActionsMixin:
             if last_idx >= 0:
                 self.history_listbox.selection_set(last_idx)
                 self.history_listbox.see(last_idx)
+                self._hist_highlight_idx(last_idx)
         else:
             idx = max(0, current[0] - 1)
             self.history_listbox.selection_clear(0, tk.END)
             self.history_listbox.selection_set(idx)
             self.history_listbox.see(idx)
+            self._hist_highlight_idx(idx)
 
         return "break"
 
@@ -2988,11 +3140,13 @@ class ActionsMixin:
         current = self.history_listbox.curselection()
         if not current:
             self.history_listbox.selection_set(0)
+            self._hist_highlight_idx(0)
         else:
             idx = min(current[0] + 1, self.history_listbox.size() - 1)
             self.history_listbox.selection_clear(0, tk.END)
             self.history_listbox.selection_set(idx)
             self.history_listbox.see(idx)
+            self._hist_highlight_idx(idx)
 
         return "break"
 
@@ -3010,7 +3164,13 @@ class ActionsMixin:
 
         if index >= 0:
             try:
-                selected_text = self.history_listbox.get(index).strip()
+                # Use the full original value from _hist_tip_items when available
+                # (listbox may display a truncated version with "…").
+                tip_items = getattr(self, "_hist_tip_items", [])
+                if index < len(tip_items):
+                    selected_text = tip_items[index]
+                else:
+                    selected_text = self.history_listbox.get(index).strip()
                 self._apply_history_selection(selected_text)
                 self.history_listbox.place_forget()
                 self.search_entry.focus_set()
@@ -3028,7 +3188,12 @@ class ActionsMixin:
         if self.history_listbox.winfo_viewable():
             selection = self.history_listbox.curselection()
             if selection:
-                selected_text = self.history_listbox.get(selection[0])
+                idx = selection[0]
+                tip_items = getattr(self, "_hist_tip_items", [])
+                if idx < len(tip_items):
+                    selected_text = tip_items[idx]
+                else:
+                    selected_text = self.history_listbox.get(idx)
                 self._apply_history_selection(selected_text)
                 return "break"
 

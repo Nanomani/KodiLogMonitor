@@ -18,8 +18,8 @@ def _patch_combo_hover_text(combo):
     We override it to white after the combo is initialised.
 
     The fix is a single configure(activeforeground="#ffffff") call. Because
-    tk.Menu applies this widget-level option to all entries — present and
-    future — no further patching is needed when values are refreshed.
+    tk.Menu applies this widget-level option to all entries - present and
+    future - no further patching is needed when values are refreshed.
 
     No-op in dark theme (CTK already uses near-white text there).
     """
@@ -360,7 +360,7 @@ class UIBuilderMixin:
         self.btn_help_tooltip = ToolTip(self.btn_help, l_ui["tip_help"], scale=self.scale)
 
         # ──────────────────────────────────────────────────────────────
-        # SUB-HEADER ROW (row 1) — secondary toolbar
+        # SUB-HEADER ROW (row 1) - secondary toolbar
         # ──────────────────────────────────────────────────────────────
         sub_header = ctk.CTkFrame(
             self.root, fg_color=COLOR_BG_HEADER, corner_radius=0
@@ -399,7 +399,7 @@ class UIBuilderMixin:
         _patch_combo_hover_text(self.combo_lists)
         self.combo_kw_tooltip = ToolTip(self.combo_lists, l_ui["tip_kw_list"], scale=self.scale)
 
-        # Keyword list refresh button — same style as option toggle buttons (♾ ↩ ⏸️)
+        # Keyword list refresh button - same style as option toggle buttons (♾ ↩ ⏸️)
         btn_refresh = ctk.CTkButton(
             kw_box,
             text="🔄",
@@ -418,7 +418,7 @@ class UIBuilderMixin:
         btn_refresh.bind("<Leave>", lambda e: btn_refresh.configure(fg_color=COLOR_BTN_DEFAULT))
         self.btn_kw_refresh_tooltip = ToolTip(btn_refresh, l_ui["tip_kw_refresh"], scale=self.scale)
 
-        # Open keyword folder button — same style as option toggle buttons (♾ ↩ ⏸️)
+        # Open keyword folder button - same style as option toggle buttons (♾ ↩ ⏸️)
         btn_folder = ctk.CTkButton(
             kw_box,
             text="📁",
@@ -461,7 +461,7 @@ class UIBuilderMixin:
             font=ctk.CTkFont(family=emoji_fam, size=12),
         ).pack(side=tk.LEFT, padx=(8, 0), pady=(1, 1))
 
-        # Search entry field — kept as tk.Entry for full API compatibility
+        # Search entry field - kept as tk.Entry for full API compatibility
         # (icursor, selection_range, event_generate, etc. used throughout actions.py).
         # Wrapped in a plain tk.Frame so the placeholder label can be positioned
         # with relative coordinates (rely=0.5) instead of fragile pixel offsets.
@@ -532,7 +532,7 @@ class UIBuilderMixin:
         clear_container.pack(side=tk.LEFT)
         clear_container.pack_propagate(False)
 
-        # "×" clear button — tk.Label for precise vertical centering (CTkLabel has
+        # "×" clear button - tk.Label for precise vertical centering (CTkLabel has
         # fixed internal padding that ignores font size and resists centering).
         self.btn_clear_search = tk.Label(
             clear_container,
@@ -595,7 +595,7 @@ class UIBuilderMixin:
         tip_text = l_ui.get("btn_clear_history", "Delete all search history")
         self.history_clear_tooltip = ToolTip(self.btn_clear_history, tip_text, scale=self.scale)
 
-        # Exclusion list button — ☰ = no exclusions, ⛔ = active exclusions.
+        # Exclusion list button - ☰ = no exclusions, ⛔ = active exclusions.
         # Placed in sh_left, between the search box and the options separator,
         # with the same visual style as the limit/wrap/pause toggle buttons.
         self.btn_exclude_list = ctk.CTkButton(
@@ -666,7 +666,7 @@ class UIBuilderMixin:
                 )
 
         def _get_opt_active(widget):
-            """Placeholder — actual state checked per-button via BooleanVar."""
+            """Placeholder - actual state checked per-button via BooleanVar."""
             return False
 
         # Remember active check function for each option button
@@ -759,7 +759,7 @@ class UIBuilderMixin:
         sh_right = ctk.CTkFrame(sub_header, fg_color=COLOR_BG_HEADER, corner_radius=0)
         sh_right.pack(side=tk.RIGHT, fill=tk.Y, padx=10, pady=10)
 
-        # Decrease font button — same style as option toggle buttons (♾ ↩ ⏸️)
+        # Decrease font button - same style as option toggle buttons (♾ ↩ ⏸️)
         self.btn_dec_font = ctk.CTkButton(
             sh_right,
             text="−",
@@ -778,7 +778,7 @@ class UIBuilderMixin:
         self.btn_dec_font.bind("<Leave>", lambda e: self.btn_dec_font.configure(fg_color=COLOR_BTN_DEFAULT))
         self.btn_down_font_tooltip = ToolTip(self.btn_dec_font, l_ui["tip_down_font"], scale=self.scale)
 
-        # Increase font button — same style as option toggle buttons (♾ ↩ ⏸️)
+        # Increase font button - same style as option toggle buttons (♾ ↩ ⏸️)
         self.btn_inc_font = ctk.CTkButton(
             sh_right,
             text="+",
@@ -818,10 +818,26 @@ class UIBuilderMixin:
             row=2, column=0, sticky="nsew",
             padx=10, pady=(0, 5)
         )
-        self.main_container.grid_columnconfigure(0, weight=1)
+        # col 0: timeline strip (fixed width), col 1: log text area, col 2: v-scrollbar
+        self.main_container.grid_columnconfigure(0, weight=0)   # timeline - fixed
+        self.main_container.grid_columnconfigure(1, weight=1)   # txt_area - expands
+        self.main_container.grid_columnconfigure(2, weight=0)   # v_scroll - fixed
         self.main_container.grid_rowconfigure(0, weight=1)
 
-        # tk.Text widget — kept as standard tkinter for full tag/config API compatibility
+        # Timeline strip (vertical colour-coded overview of the log)
+        self.timeline_setup()
+        self.timeline_canvas.grid(
+            row=0, column=0,
+            rowspan=2,           # spans txt_area row + h_scrollbar row
+            sticky="ns",
+            # Right padx reduced by _STRIP_OVERHANG so the visual gap between
+            # the segment area and the log text area stays constant now that
+            # the canvas is wider (_STRIP_OVERHANG px extra on each side).
+            # Net gap: sc(2) [overhang] + sc(2) [padx] = sc(4) as before.
+            padx=(0, self.sc(2)),
+        )
+
+        # tk.Text widget - kept as standard tkinter for full tag/config API compatibility
         self.txt_area = tk.Text(
             self.main_container,
             wrap=tk.NONE,
@@ -844,7 +860,7 @@ class UIBuilderMixin:
             inactiveselectbackground=COLOR_LOG_SELECTION,
             exportselection=False,
         )
-        self.txt_area.grid(row=0, column=0, sticky="nsew")
+        self.txt_area.grid(row=0, column=1, sticky="nsew")
 
         # Vertical scrollbar (CTK styled)
         self.v_scroll = ctk.CTkScrollbar(
@@ -858,8 +874,10 @@ class UIBuilderMixin:
             corner_radius=10,
             border_spacing=2
         )
-        self.txt_area.configure(yscrollcommand=self.v_scroll.set)
-        self.v_scroll.grid(row=0, column=1, sticky="ns", padx=(2, 0))
+        # Route yscrollcommand through the timeline wrapper so the viewport
+        # indicator stays in sync whenever the user scrolls.
+        self.txt_area.configure(yscrollcommand=self._timeline_yscroll)
+        self.v_scroll.grid(row=0, column=2, sticky="ns", padx=(2, 0))
 
         # Horizontal scrollbar (CTK styled)
         self.h_scrollbar = ctk.CTkScrollbar(
@@ -874,7 +892,7 @@ class UIBuilderMixin:
             border_spacing=2
         )
         self.txt_area.configure(xscrollcommand=self.h_scrollbar.set)
-        self.h_scrollbar.grid(row=1, column=0, sticky="ew", pady=(2, 0))
+        self.h_scrollbar.grid(row=1, column=1, sticky="ew", pady=(2, 0))
 
         # --- Custom Context Menu (right-click on log area) ---
         # Uses tk.Toplevel with overrideredirect for a frameless popup;
@@ -969,7 +987,7 @@ class UIBuilderMixin:
         self.loading_label.pack(expand=True)
 
         # ──────────────────────────────────────────────────────────────
-        # FOOTER ROW (row 3) — status bar
+        # FOOTER ROW (row 3) - status bar
         # ──────────────────────────────────────────────────────────────
         footer = ctk.CTkFrame(
             self.root, fg_color=COLOR_BG_FOOTER, corner_radius=0
@@ -1009,7 +1027,7 @@ class UIBuilderMixin:
             textvariable=self.inactivity_timer_var,
             fg_color=COLOR_BG_FOOTER,
             text_color=COLOR_DANGER,
-            font=ctk.CTkFont(family=main_fam, size=12, weight="bold"),
+            font=ctk.CTkFont(family=main_fam, size=12),
         )
         self.lbl_timer.pack(side=tk.LEFT, padx=(10, 5))
 
@@ -1031,7 +1049,7 @@ class UIBuilderMixin:
 
         # Common font for all footer stat labels (CTkFont handles DPI scaling;
         # passing it to tk.Label widgets ensures identical rendered size)
-        footer_font = ctk.CTkFont(family=emoji_fam, size=12, weight="bold")
+        footer_font = ctk.CTkFont(family=emoji_fam, size=12)
 
         # 3. File path label
         self.lbl_path = ctk.CTkLabel(
@@ -1045,7 +1063,7 @@ class UIBuilderMixin:
         self.lbl_path.pack(side=tk.LEFT, padx=(5, 10))
         self.path_tooltip = ToolTip(self.lbl_path, "")
 
-        # Separators and stat labels — shown/hidden dynamically by update_stats().
+        # Separators and stat labels - shown/hidden dynamically by update_stats().
         # Using ctk.CTkLabel (no textvariable) so font scaling matches the rest
         # of the footer. Text is set explicitly via .configure(text=...) in
         # update_stats(), avoiding the CTK textvariable + pack_forget reliability issue.
@@ -1099,7 +1117,7 @@ class UIBuilderMixin:
             text=f"{APP_NAME} {APP_VERSION}",
             fg_color=COLOR_BG_FOOTER,
             text_color=COLOR_TEXT_GREY,
-            font=ctk.CTkFont(family=main_fam, size=12, weight="bold"),
+            font=ctk.CTkFont(family=main_fam, size=12),
             cursor="hand2",
         )
         self.github_label.pack(side=tk.RIGHT, padx=5)
@@ -1114,6 +1132,26 @@ class UIBuilderMixin:
             self.github_label, l_ui.get("tip_github", "View the source code on GitHub"),
             scale=self.scale
         )
+
+        # --- Update-notifications muted indicator (right of version, hidden by default) ---
+        # Shown only when updates_enabled is False OR skip_version is set.
+        # Separator is packed/forgotten together with the label via update_notify_indicator().
+        self.sep_notify_muted = tk.Frame(footer_inner, bg=COLOR_SEPARATOR, width=2)
+        self.lbl_notify_muted = ctk.CTkLabel(
+            footer_inner,
+            text="🔕",
+            fg_color=COLOR_BG_FOOTER,
+            text_color=COLOR_TEXT_DIM,
+            font=ctk.CTkFont(family=emoji_fam, size=12),
+            cursor="hand2",
+        )
+        self.notify_muted_tooltip = ToolTip(self.lbl_notify_muted, "", scale=self.scale)
+        self.lbl_notify_muted.bind(
+            "<Button-1>", self._reset_update_notifications_dialog, add="+"
+        )
+        # Initial visibility is set by update_notify_indicator() called from app.py
+        # after load_session(), so the widget starts hidden (pack_forget not needed -
+        # widgets that have never been packed are already invisible).
 
         # --- History dropdown listbox (placed on root, shown on demand) ---
         self.history_listbox = tk.Listbox(

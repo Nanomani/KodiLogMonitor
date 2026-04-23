@@ -12,6 +12,17 @@ from languages import LANGS
 # orphan continuations that belong to the preceding timestamped line.
 _TS_RE = re.compile(r"^\d{4}-\d{2}-\d{2}")
 
+# Characters treated as "blank" when deciding whether to skip a line.
+# str.strip() removes whitespace but NOT NUL bytes (\x00), which Kodi
+# occasionally writes as padding after certain log entries (e.g. curl errors).
+# We strip both so that NUL-padded lines are discarded like empty lines.
+_BLANK_CHARS = " \t\r\n\x00"
+
+
+def _is_blank(line: str) -> bool:
+    """Return True if the line contains nothing meaningful (whitespace + NUL only)."""
+    return not line.strip(_BLANK_CHARS)
+
 
 def _pad_line(text: str, chars_label: str = "chars") -> str:
     """
@@ -47,7 +58,7 @@ class LogDisplayMixin:
         if is_filtering and not has_timestamp:
             return None
 
-        if not line or not line.strip():
+        if _is_blank(line):
             return None
 
         # SKIP THE KODI STARTUP DASH LINE IF DESIRED
@@ -59,7 +70,7 @@ class LogDisplayMixin:
         low = line.lower()
 
         # Exclusion list check (cached lowercase patterns, loaded from file).
-        # Short-circuits immediately when any pattern matches — O(n_patterns).
+        # Short-circuits immediately when any pattern matches - O(n_patterns).
         if self.exclude_patterns and any(exc in low for exc in self.exclude_patterns):
             return None
 
@@ -99,7 +110,9 @@ class LogDisplayMixin:
         if not self.running:
             return
 
-        valid_data = [d for d in data_list if d is not None]
+        # Filter None entries AND blank/NUL-padded lines as a last safety net,
+        # regardless of which code path produced the list.
+        valid_data = [d for d in data_list if d is not None and not _is_blank(d[0])]
         self.txt_area.config(state=tk.NORMAL)
 
         if not valid_data:
@@ -186,6 +199,8 @@ class LogDisplayMixin:
             final_no_match = l_ui.get('no_match', "❌ No matches found")
             self.txt_area.insert(tk.END, f"\n\t{final_no_match}", "no_match_text")
             self._no_results_showing = True   # Flag: no-results screen is active
+            if hasattr(self, "timeline_clear"):
+                self.timeline_clear()
 
             self.show_loading(False)
             self.update_stats()
@@ -241,6 +256,10 @@ class LogDisplayMixin:
             # Restore the horizontal position
             self.txt_area.xview_moveto(current_x)
 
+        # Update the timeline strip to reflect the newly displayed content
+        if hasattr(self, "timeline_rebuild"):
+            self.timeline_rebuild(valid_data)
+
         self.update_stats()
         self.show_loading(False)
 
@@ -257,6 +276,8 @@ class LogDisplayMixin:
             return
         if self.is_paused.get():
             return
+        # Strip blank/NUL-padded lines as a last safety net before display.
+        batch = [item for item in batch if not _is_blank(item[0])]
         if not batch:
             return
         if getattr(self, "_no_results_showing", False):
@@ -275,6 +296,10 @@ class LogDisplayMixin:
             self.txt_area.see(tk.END)
             self.txt_area.xview_moveto(current_x)
             self.update_stats()
+
+        # Append new lines to the timeline strip
+        if hasattr(self, "timeline_append"):
+            self.timeline_append(batch)
 
     def append_to_gui(self, text, tag):
         """
@@ -398,7 +423,7 @@ class LogDisplayMixin:
         if getattr(self, "_kw_cache_key", None) == cache_key and self._kw_cache is not None:
             return self._kw_cache
 
-        # Cache miss — read from disk and store
+        # Cache miss - read from disk and store
         try:
             with open(path, "r", encoding="utf-8", errors="ignore") as f:
                 keywords = [line.strip() for line in f if line.strip()]
@@ -433,7 +458,7 @@ class LogDisplayMixin:
                 last_parent_visible = False
 
                 for line in lines:
-                    stripped = line.strip()
+                    stripped = line.strip(_BLANK_CHARS)
                     if not stripped or "info <general>: --------" in line:
                         last_parent_visible = False
                         continue
@@ -483,7 +508,7 @@ class LogDisplayMixin:
                 last_parent_visible = False
 
                 for line in lines:
-                    stripped = line.strip()
+                    stripped = line.strip(_BLANK_CHARS)
                     if not stripped or "info <general>: --------" in line:
                         last_parent_visible = False
                         continue
@@ -505,7 +530,7 @@ class LogDisplayMixin:
                     else:
                         last_parent_visible = False
 
-                # File is already in chronological order — no sort needed.
+                # File is already in chronological order - no sort needed.
                 self.bulk_insert(to_display)
         except Exception as e:
             print(f"[ERROR] {type(e).__name__}: {e}")
@@ -583,10 +608,10 @@ class LogDisplayMixin:
             font=c_font,
         )
 
-        # txt_area is a tk.Text widget — use standard Tkinter configure
+        # txt_area is a tk.Text widget - use standard Tkinter configure
         self.txt_area.configure(bg=COLOR_BG_MAIN, font=c_font)
 
-        # font_label is a CTkLabel — use CTK configure
+        # font_label is a CTkLabel - use CTK configure
         self.font_label.configure(text=str(self.font_size))
 
         # Tag priority order (lowest → highest): highlight → search_bar_highlight → sel
@@ -633,7 +658,7 @@ class LogDisplayMixin:
         self.stats_var.set(lines_text)
         self.size_var.set(size_text)
 
-        # Set label texts explicitly (no textvariable — avoids CTK pack_forget issue)
+        # Set label texts explicitly (no textvariable - avoids CTK pack_forget issue)
         self.label_lines.configure(text=lines_text)
         self.label_size.configure(text=size_text)
 
@@ -858,7 +883,7 @@ class LogDisplayMixin:
         or an empty string if the duration cannot be determined.
 
         Strategy: read only the first 4 KB for the earliest timestamp and the
-        last 4 KB for the latest timestamp — O(1) regardless of file size.
+        last 4 KB for the latest timestamp - O(1) regardless of file size.
         """
         if not self.log_file_path or not os.path.exists(self.log_file_path):
             return ""

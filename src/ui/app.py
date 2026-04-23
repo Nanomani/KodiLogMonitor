@@ -6,6 +6,7 @@ import threading
 import os
 import time
 import sys
+import subprocess
 from collections import deque
 
 import config
@@ -19,11 +20,12 @@ from ui.log_display import LogDisplayMixin
 from ui.session import SessionMixin
 from ui.actions import ActionsMixin
 from ui.ui_builder import UIBuilderMixin
+from ui.timeline import TimelineMixin
 
 
-class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin, MonitorMixin):
+class KodiLogMonitor(UIBuilderMixin, TimelineMixin, ActionsMixin, SessionMixin, LogDisplayMixin, MonitorMixin):
     """
-    Main class — assembles all modules via multiple inheritance.
+    Main class - assembles all modules via multiple inheritance.
     Converted to CustomTkinter (CTk root window).
     """
     def __init__(self, root):
@@ -139,6 +141,9 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
             else:
                 self.window_geometry = DEFAULT_GEOMETRY_HD
 
+        # Refresh the 🔕 muted indicator now that session values are loaded
+        self.update_notify_indicator()
+
         self.check_for_updates()
 
         # Note: start_monitoring() is already called at the end of load_session()
@@ -193,8 +198,14 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
         self.txt_area.bind("<Control-g>", self.select_clear_console_from_keyboard)
         self.txt_area.bind("<Control-G>", self.select_clear_console_from_keyboard)
 
-        self.root.bind("<space>", self.toggle_pause_from_keyboard)
+        # txt_area needs its own binding: the tk.Text class binding for <space>
+        # returns "break" even when disabled, which would block bind_all below.
+        # The instance binding fires first, handles the toggle, and its own "break"
+        # prevents the Text class from interfering - no double-fire.
         self.txt_area.bind("<space>", self.toggle_pause_from_keyboard)
+        # bind_all catches all other widgets (CTk buttons, scrollbars, canvas…)
+        # that would otherwise consume the event before it reaches root.bind().
+        self.root.bind_all("<space>", self.toggle_pause_from_keyboard)
 
         self.root.bind("<Control-l>", self.toggle_line_break_from_keyboard)
         self.root.bind("<Control-L>", self.toggle_line_break_from_keyboard)
@@ -295,7 +306,7 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
         self.history_window = tk.Toplevel(self.root)
         self.history_window.withdraw()
         self.history_window.overrideredirect(True)
-        # 1px COLOR_SEPARATOR border — same technique as the context menus
+        # 1px COLOR_SEPARATOR border - same technique as the context menus
         self.history_window.configure(bg=COLOR_SEPARATOR)
 
         # Style the history listbox to match dark theme
@@ -314,31 +325,41 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
         self.history_listbox.pack(fill=tk.BOTH, expand=True, padx=1, pady=1)
         self.history_listbox.bind("<ButtonRelease-1>", self.on_history_select)
 
+        # Max display characters before truncation with "…" in the dropdown.
+        # Items longer than this get a tooltip showing the full value on hover.
+        self._HIST_MAX_CHARS = 32
+
+        # Full original items parallel to the listbox content - used for tooltip.
+        self._hist_tip_items = []
+
+        # Tooltip Toplevel for truncated history items (created once, shown/hidden).
+        self._hist_tooltip = tk.Toplevel(self.root)
+        self._hist_tooltip.withdraw()
+        self._hist_tooltip.overrideredirect(True)
+        self._hist_tooltip.configure(bg=COLOR_BG_TIPS)
+        self._hist_tooltip_label = tk.Label(
+            self._hist_tooltip,
+            text="",
+            bg=COLOR_BG_TIPS,
+            fg=COLOR_TEXT_TIPS,
+            font=(self._mono_font, 10),
+            padx=6,
+            pady=4,
+        )
+        self._hist_tooltip_label.pack()
+
         # Hover highlight for history listbox (tk.Listbox has no native hover)
         self._history_hover_idx = None
 
         def _on_history_motion(event):
             idx = self.history_listbox.nearest(event.y)
-            if idx == self._history_hover_idx:
-                return
-            # Restore previous hovered item
-            if self._history_hover_idx is not None:
-                try:
-                    self.history_listbox.itemconfigure(
-                        self._history_hover_idx, background=COLOR_BG_HEADER, foreground=COLOR_TEXT_MAIN
-                    )
-                except tk.TclError:
-                    pass
-            # Highlight new hovered item
-            try:
-                self.history_listbox.itemconfigure(
-                    idx, background=COLOR_ACCENT, foreground=COLOR_TEXT_ON_ACCENT
-                )
-                self._history_hover_idx = idx
-            except tk.TclError:
-                self._history_hover_idx = None
+            # Clear any keyboard-driven selection so its native blue highlight
+            # does not persist alongside the mouse hover highlight.
+            self.history_listbox.selection_clear(0, tk.END)
+            self._hist_highlight_idx(idx, y_offset=event.y)
 
         def _on_history_leave(event):
+            self._hist_tooltip.withdraw()
             if self._history_hover_idx is not None:
                 try:
                     self.history_listbox.itemconfigure(
@@ -352,6 +373,11 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
         self.history_listbox.bind("<Leave>", _on_history_leave)
 
         self.root.after(5000, self.scheduled_stats_update)
+
+        # Close the history dropdown when the main window is minimised.
+        # <Unmap> fires on Windows when the window is iconified (minimised button).
+        self.root.bind("<Unmap>", lambda e: self.hide_history_dropdown()
+                       if e.widget is self.root else None)
 
         if sys.platform == "win32":
             self.update_windows_title_bar()
@@ -386,4 +412,74 @@ class KodiLogMonitor(UIBuilderMixin, ActionsMixin, SessionMixin, LogDisplayMixin
             windll.user32.SetWindowLongPtrW(hwnd, -4, self.old_wndproc)
         self.window_geometry = self.root.geometry()
         self.save_session()
+        self._persist_clipboard_on_close()
         self.root.destroy()
+
+    def _hist_highlight_idx(self, idx, y_offset=None):
+        """
+        Highlights item `idx` in the history dropdown and shows/hides the
+        truncation tooltip.  Called by both mouse motion and keyboard navigation
+        so that whichever input fired last naturally controls the visual state.
+
+        `y_offset` - pixel offset within the listbox widget for tooltip
+        positioning.  When None (keyboard path), the item's bbox is used.
+        """
+        # Restore previous hover highlight if it changed
+        if self._history_hover_idx is not None and self._history_hover_idx != idx:
+            try:
+                self.history_listbox.itemconfigure(
+                    self._history_hover_idx,
+                    background=COLOR_BG_HEADER,
+                    foreground=COLOR_TEXT_MAIN,
+                )
+            except tk.TclError:
+                pass
+
+        # Apply hover highlight to new item
+        try:
+            self.history_listbox.itemconfigure(
+                idx, background=COLOR_ACCENT, foreground=COLOR_TEXT_ON_ACCENT
+            )
+            self._history_hover_idx = idx
+        except tk.TclError:
+            self._history_hover_idx = None
+            self._hist_tooltip.withdraw()
+            return
+
+        # Show tooltip only when the displayed value is truncated
+        if 0 <= idx < len(self._hist_tip_items):
+            full = self._hist_tip_items[idx]
+            if len(full) > self._HIST_MAX_CHARS:
+                self._hist_tooltip_label.configure(text=full)
+                # Keyboard path: derive y from the item's bounding box
+                if y_offset is None:
+                    bbox = self.history_listbox.bbox(idx)
+                    y_offset = (bbox[1] + bbox[3] // 2) if bbox else 0
+                x = (self.history_window.winfo_rootx()
+                     + self.history_window.winfo_width() + 4)
+                y = self.history_window.winfo_rooty() + y_offset - 10
+                self._hist_tooltip.geometry(f"+{x}+{y}")
+                self._hist_tooltip.deiconify()
+                self._hist_tooltip.lift()
+                return
+        self._hist_tooltip.withdraw()
+
+    def _persist_clipboard_on_close(self):
+        """
+        On Windows, Tkinter owns the clipboard: closing the window empties it.
+        Transfer the current clipboard content to clip.exe so it survives after
+        the window is destroyed.  No-op on non-Windows or if clipboard is empty.
+        """
+        if sys.platform != "win32":
+            return
+        try:
+            content = self.root.clipboard_get()
+            if not content:
+                return
+            proc = subprocess.Popen(
+                ["clip"],          # list form - no shell injection possible
+                stdin=subprocess.PIPE,
+            )
+            proc.communicate(input=content.encode("utf-16-le"))
+        except Exception:
+            pass

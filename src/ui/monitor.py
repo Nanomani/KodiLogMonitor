@@ -9,6 +9,7 @@ import customtkinter as ctk
 
 from config import *
 from languages import LANGS
+from ui.log_display import _is_blank, _BLANK_CHARS
 
 # Maximum number of lines collected in one batch before dispatching to the UI.
 # Keeps the main thread responsive even under intense log flux.
@@ -52,7 +53,7 @@ class MonitorMixin:
                 last_parent_visible = False
 
                 for line in initial_lines:
-                    stripped = line.strip()
+                    stripped = line.strip(_BLANK_CHARS)
                     if not stripped or "info <general>: --------" in line:
                         last_parent_visible = False
                         continue
@@ -295,12 +296,15 @@ class MonitorMixin:
     def _reset_seen_cache(self):
         """
         Clears both the deque and its companion set so they stay in sync.
-        Also resets the orphan-parent tracking flag used by the live tail.
+        Also resets the orphan-parent tracking flag used by the live tail,
+        and clears the timeline strip for the new file/session.
         Call this wherever seen_lines.clear() was previously used.
         """
         self.seen_lines.clear()
         self._seen_set.clear()
         self._monitor_last_parent_visible = False
+        if hasattr(self, "timeline_clear"):
+            self.timeline_clear()
 
     def is_duplicate(self, text):
         """
@@ -354,7 +358,7 @@ class MonitorMixin:
                 self.last_screen_height = current_h
                 # Show dialog on the main thread via after_idle
                 self.root.after_idle(self.show_display_changed_dialog)
-                return   # Don't reschedule — the dialog will handle the next step
+                return   # Don't reschedule - the dialog will handle the next step
 
         except Exception:
             pass
@@ -373,7 +377,7 @@ class MonitorMixin:
         if getattr(self, '_showing_dpi_msg', False):
             return
 
-        # Guard 2: cooldown — don't re-show within 30 s of a previous dismissal.
+        # Guard 2: cooldown - don't re-show within 30 s of a previous dismissal.
         # Prevents a spurious second appearance caused by residual WM_DISPLAYCHANGE
         # events or transient GetSystemMetrics values after the dialog closes.
         _last = getattr(self, '_dpi_dialog_dismissed_at', 0)
@@ -466,7 +470,7 @@ class MonitorMixin:
         dlg.bind("<KP_Enter>", _activate)
         dlg.bind("<Escape>",   lambda e: _cancel())
 
-        # Default focus on Yes — closing is the recommended action
+        # Default focus on Yes - closing is the recommended action
         _set_focus("yes")
 
         self._center_dialog(dlg, 430)
@@ -484,7 +488,7 @@ class MonitorMixin:
             self.window_geometry = ""
             self._graceful_close()
         else:
-            # Record dismissal time — cooldown prevents re-showing within 30 s.
+            # Record dismissal time - cooldown prevents re-showing within 30 s.
             self._dpi_dialog_dismissed_at = time.time()
             # Refresh last known screen dimensions so the next check starts clean.
             try:
