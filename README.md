@@ -123,7 +123,8 @@ src/
 │   ├── actions.py          # User Interactions
 │   ├── log_display.py      # Log Rendering
 │   ├── monitor.py          # Threaded Monitoring
-│   └── session.py          # Persistence  
+│   ├── session.py          # Persistence
+│   └── timeline.py         # Timeline Strip  
 │  
 └── assets/                 # Graphics Resources  
     ├── logo.ico            # Windows application icon.  
