@@ -15,7 +15,8 @@ Quickly monitor, filter, and analyze Kodi logs with a clean and responsive inter
 
 - **Real-Time Log Monitoring** – Instantly view new log entries  
 - **Advanced Filtering** – Filter by level (Info, Warning, Error, Debug), keywords, or quickly exclude log lines  
-- **Dynamic Search** – Fast search, even on very large log files  
+- **Dynamic Search** – Fast search, even on very large log files
+- **Visual Timeline** – Navigate log history instantly using a vertical timeline with a colored overview 
 - **Large Log Support** – Optimized for high-volume logs with smart limits  
 - **Color-Coded UI** – Quickly identify issues at a glance  
 - **Log Upload (paste.kodi.tv)** – Share logs in one click (Ctrl + P)  
