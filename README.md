@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/badge/License-GPLv3-orange)](LICENSE.txt)
 ![Downloads](https://img.shields.io/github/downloads/Nanomani/KodiLogMonitor/total)
 
-🚀 **A fast, lightweight real-time log viewer for Kodi — built for users and developers.**
+🚀 **A fast, lightweight real-time log viewer for Kodi - built for users and developers.**
 
 Quickly monitor, filter, and analyze Kodi logs with a clean and responsive interface.
 
@@ -13,20 +13,20 @@ Quickly monitor, filter, and analyze Kodi logs with a clean and responsive inter
 
 ### ✨ Features
 
-- **Real-Time Log Monitoring** – Instantly view new log entries  
-- **Advanced Filtering** – Filter by level (Info, Warning, Error, Debug), keywords, or quickly exclude log lines  
-- **Dynamic Search** – Fast search, even on very large log files
-- **Visual Timeline** – Navigate log history instantly using a vertical timeline with a colored overview 
-- **Large Log Support** – Optimized for high-volume logs with smart limits  
-- **Color-Coded UI** – Quickly identify issues at a glance  
-- **Log Upload (paste.kodi.tv)** – Share logs in one click (Ctrl + P)  
-- **System Summary** – Instantly view Kodi/system info  
-- **Keyboard Shortcuts** – Full control without leaving the keyboard  
-- **Multi-Instance Support** – Optional single-instance lock  
-- **Responsive UI** – Works seamlessly from HD to 4K  
-- **Light & Dark Themes** – Comfortable for long sessions  
-- **Localization** – Multi-language support with auto-detection  
-- **Robust Network Handling** – Stable with remote logs and reconnections  
+- **Real-Time Log Monitoring** - Instantly view new log entries  
+- **Advanced Filtering** - Filter by level (Info, Warning, Error, Debug), keywords, or quickly exclude log lines  
+- **Dynamic Search** - Fast search, even on very large log files
+- **Visual Timeline** - Navigate log history instantly using a vertical timeline with a colored overview 
+- **Large Log Support** - Optimized for high-volume logs with smart limits  
+- **Color-Coded UI** - Quickly identify issues at a glance  
+- **Log Upload (paste.kodi.tv)** - Share logs in one click (Ctrl + P)  
+- **System Summary** - Instantly view Kodi/system info  
+- **Keyboard Shortcuts** - Full control without leaving the keyboard  
+- **Multi-Instance Support** - Optional single-instance lock  
+- **Responsive UI** - Works seamlessly from HD to 4K  
+- **Light & Dark Themes** - Comfortable for long sessions  
+- **Localization** - Multi-language support with auto-detection  
+- **Robust Network Handling** - Stable with remote logs and reconnections  
 
 ---
 
@@ -55,7 +55,7 @@ This tool helps you:
 ### 👉 Download (recommended)
 1. Go to the **[Releases](../../releases)** section  
 2. Download the latest version  
-3. Run — no installation required  
+3. Run - no installation required  
 
 ---
 
