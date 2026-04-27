@@ -41,10 +41,7 @@ class ActionsMixin:
         if save_path:
             try:
                 with open(save_path, "w", encoding="utf-8") as f:
-                    raw = self.txt_area.get("1.0", tk.END)
-                    # Strip trailing whitespace added by _pad_line for fixed-width display
-                    cleaned = "\n".join(line.rstrip() for line in raw.splitlines())
-                    f.write(cleaned)
+                    f.write(self._strip_pad(self.txt_area.get("1.0", tk.END)))
             except IOError as e:
                 print(f"Error exporting log: {e}")
 
@@ -2588,12 +2585,19 @@ class ActionsMixin:
             self._search_after_id = None
         self._search_version = getattr(self, "_search_version", 0) + 1
 
+    @staticmethod
+    def _strip_pad(text: str) -> str:
+        """Strip trailing whitespace from each line.
+        Removes the fixed-width padding added by _pad_line() for the horizontal
+        scrollbar, so copied text does not contain hundreds of trailing spaces."""
+        return "\n".join(line.rstrip() for line in text.splitlines())
+
     def copy_selection(self):
         try:
             selected_text = self.txt_area.get(tk.SEL_FIRST, tk.SEL_LAST)
             if selected_text:
                 self.root.clipboard_clear()
-                self.root.clipboard_append(selected_text)
+                self.root.clipboard_append(self._strip_pad(selected_text))
         except tk.TclError:
             pass
 
@@ -2890,12 +2894,13 @@ class ActionsMixin:
         self.limit_var.set(txt)  # uses textvariable - no .config() needed
 
     def copy_to_clipboard(self, event=None):
-        """Copies the currently selected text from the log area to the clipboard."""
+        """Copies the currently selected text from the log area to the clipboard.
+        Trailing spaces added by _pad_line() are stripped before copying."""
         try:
             selected_text = self.txt_area.get(tk.SEL_FIRST, tk.SEL_LAST)
             if selected_text:
                 self.root.clipboard_clear()
-                self.root.clipboard_append(selected_text)
+                self.root.clipboard_append(self._strip_pad(selected_text))
                 self.root.update()
         except tk.TclError:
             pass
