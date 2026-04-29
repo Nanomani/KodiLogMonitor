@@ -28,6 +28,8 @@ DEFAULT_SECURITY_FILE_MAX_SIZE_BUTTON = 10
 DEFAULT_TIME_INACTIVITY = 300
 SEARCH_HISTORY_MAX_SIZE = 50
 EXCLUDE_LIST_FILE = ".kodi_show_exclude"
+# Output file for shutdown debug logging (activated via Ctrl+Shift+D in the UI).
+DEBUG_LOG_FILE = "kodi_monitor_debug.log"
 # Maximum number of exclusion patterns. Keeps substring-search overhead negligible
 # (each check is O(pattern_count * line_len); 20 patterns on 1 000 lines ≈ 1 ms).
 EXCLUDE_LIST_MAX_SIZE = 20

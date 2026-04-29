@@ -6,7 +6,7 @@ import threading
 import os
 import time
 import sys
-import subprocess
+
 from collections import deque
 
 import config
@@ -47,6 +47,10 @@ class KodiLogMonitor(UIBuilderMixin, TimelineMixin, ActionsMixin, SessionMixin, 
             self.window_geometry = DEFAULT_GEOMETRY_HD
             self.scale = 0.25
 
+        # Window state: 'normal' or 'zoomed' (maximised).  Persisted so the app
+        # reopens in the same state it was closed in.
+        self.window_state = "normal"
+
         # --- SAFE DISPLAY MONITORING (Windows only) ---
         if sys.platform == "win32":
             from ctypes import windll
@@ -81,6 +85,7 @@ class KodiLogMonitor(UIBuilderMixin, TimelineMixin, ActionsMixin, SessionMixin, 
         self.max_size_mb = DEFAULT_SECURITY_FILE_MAX_SIZE_STARTUP
         self.updates_enabled = True
         self.skip_version = ""
+        self.debug_mode = False     # Toggled by Ctrl+Shift+D; persisted in config
         self.running = False
         self.monitor_thread = None
         self.seen_lines = deque(maxlen=2000)
@@ -141,15 +146,48 @@ class KodiLogMonitor(UIBuilderMixin, TimelineMixin, ActionsMixin, SessionMixin, 
             else:
                 self.window_geometry = DEFAULT_GEOMETRY_HD
 
-        # Refresh the 🔕 muted indicator now that session values are loaded
+        # ── Orphan debug file cleanup ─────────────────────────────────────────
+        # If the app crashed or the file handle was not released properly on the
+        # previous run, the debug log file may still exist while debug_mode is off.
+        if not self.debug_mode:
+            try:
+                if os.path.exists(DEBUG_LOG_FILE):
+                    os.remove(DEBUG_LOG_FILE)
+            except OSError:
+                pass
+
+        # ── Startup timing (active only when debug_mode was persisted as True) ─
+        # debug_mode is now set from load_session(), so the logger is available.
+        # Each startup run is preceded by a separator line for easy navigation.
+        _dlog = self._get_debug_logger()
+        if _dlog:
+            _t_start = time.time()
+            _dlog.debug("STARTUP   BEGIN")
+            def _sstep(label):
+                _dlog.debug("STARTUP   %s  (+%d ms)", label, (time.time() - _t_start) * 1000)
+        else:
+            def _sstep(label):
+                pass   # no-op when debug mode is off
+
+        _sstep("load_session done")
+
+        # Refresh footer indicators now that session values are loaded
         self.update_notify_indicator()
+        self.update_debug_indicator()
+        _sstep("footer indicators updated")
 
         self.check_for_updates()
+        _sstep("check_for_updates done")
 
         # Note: start_monitoring() is already called at the end of load_session()
         # if a saved log path exists. No second call is needed here.
 
         self.root.geometry(self.window_geometry)
+        # Restore maximised state AFTER geometry so the window manager has
+        # valid coordinates to fall back on when un-maximising later.
+        if self.window_state == "zoomed":
+            self.root.state("zoomed")
+        _sstep("geometry applied")
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
 
         # --- KEYBOARD SHORTCUTS ---
@@ -221,6 +259,10 @@ class KodiLogMonitor(UIBuilderMixin, TimelineMixin, ActionsMixin, SessionMixin, 
         self.root.bind("<Control-R>", self.select_reset_all_filters_from_keyboard)
         self.txt_area.bind("<Control-r>", self.select_reset_all_filters_from_keyboard)
         self.txt_area.bind("<Control-R>", self.select_reset_all_filters_from_keyboard)
+
+        # Ctrl+Shift+D — toggle debug mode (🐞 indicator + shutdown log)
+        self.root.bind("<Control-D>", self.toggle_debug_mode)
+        self.txt_area.bind("<Control-D>", self.toggle_debug_mode)
 
         self.root.bind("<s>", self.select_show_summary_from_keyboard)
         self.root.bind("<S>", self.select_show_summary_from_keyboard)
@@ -383,7 +425,29 @@ class KodiLogMonitor(UIBuilderMixin, TimelineMixin, ActionsMixin, SessionMixin, 
             self.update_windows_title_bar()
 
         self.update_button_colors()
+        _sstep("STARTUP COMPLETE")
         self.root.bind("<FocusIn>", lambda e: self.sync_config_on_focus())
+
+    def _get_debug_logger(self):
+        """
+        Returns the shared debug logger when debug_mode is active, None otherwise.
+        The logger is initialised lazily on first call and reused on subsequent ones.
+        Writes to DEBUG_LOG_FILE (config.py) with rotation: 500 KB max, 1 backup.
+        """
+        if not self.debug_mode:
+            return None
+        import logging
+        _log = logging.getLogger("kodi_debug")
+        if not _log.handlers:
+            # mode='w' overwrites the file at each new session (first activation).
+            _h = logging.FileHandler(DEBUG_LOG_FILE, mode="w", encoding="utf-8")
+            _h.setFormatter(logging.Formatter(
+                "%(asctime)s.%(msecs)03d  %(message)s",
+                datefmt="%Y-%m-%d %H:%M:%S",
+            ))
+            _log.addHandler(_h)
+            _log.setLevel(logging.DEBUG)
+        return _log
 
     def _load_single_instance_state(self):
         """Pre-loads the 'single instance' state from the config file."""
@@ -399,21 +463,47 @@ class KodiLogMonitor(UIBuilderMixin, TimelineMixin, ActionsMixin, SessionMixin, 
 
     def on_closing(self):
         """Handles the window close event: stops monitoring thread, saves session, destroys window."""
+        # ── Shutdown timing (active only when debug_mode is True) ────────────
+        # Each run is preceded by a separator line for easy navigation in the file.
+        _log = self._get_debug_logger()
+        if _log:
+            _t0 = time.time()
+            def _step(label):
+                _log.debug("SHUTDOWN  %s  (+%d ms)", label, (time.time() - _t0) * 1000)
+        else:
+            def _step(label):
+                pass   # no-op when debug mode is off
+
+        _step("on_closing START")
+
         self.running = False
-        # Wait for monitor_loop to exit its sleep cycle before destroying the window.
-        # Without this, root.destroy() can race with the thread and cause a GIL crash.
-        if hasattr(self, 'monitor_thread') and \
+        _step("running = False")
+
+        if hasattr(self, "monitor_thread") and \
            self.monitor_thread is not None and \
            self.monitor_thread.is_alive():
+            _step("monitor_thread alive — join(timeout=1.2s) …")
             self.monitor_thread.join(timeout=1.2)
+            _step(f"monitor_thread join done  still_alive={self.monitor_thread.is_alive()}")
+        else:
+            _step("monitor_thread not running — join skipped")
+
         if sys.platform == "win32" and hasattr(self, "old_wndproc"):
             from ctypes import windll
             hwnd = windll.user32.GetParent(self.root.winfo_id())
             windll.user32.SetWindowLongPtrW(hwnd, -4, self.old_wndproc)
+            _step("wndproc restored")
+
+        self.window_state    = self.root.state()    # 'normal' or 'zoomed'
         self.window_geometry = self.root.geometry()
+        _step("geometry captured")
+
         self.save_session()
-        self._persist_clipboard_on_close()
+        _step("session saved")
+
+        _step("root.destroy() …")
         self.root.destroy()
+        _step("root.destroy() returned")
 
     def _hist_highlight_idx(self, idx, y_offset=None):
         """
@@ -464,22 +554,3 @@ class KodiLogMonitor(UIBuilderMixin, TimelineMixin, ActionsMixin, SessionMixin, 
                 return
         self._hist_tooltip.withdraw()
 
-    def _persist_clipboard_on_close(self):
-        """
-        On Windows, Tkinter owns the clipboard: closing the window empties it.
-        Transfer the current clipboard content to clip.exe so it survives after
-        the window is destroyed.  No-op on non-Windows or if clipboard is empty.
-        """
-        if sys.platform != "win32":
-            return
-        try:
-            content = self.root.clipboard_get()
-            if not content:
-                return
-            proc = subprocess.Popen(
-                ["clip"],          # list form - no shell injection possible
-                stdin=subprocess.PIPE,
-            )
-            proc.communicate(input=content.encode("utf-16-le"))
-        except Exception:
-            pass

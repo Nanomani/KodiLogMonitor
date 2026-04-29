@@ -867,6 +867,17 @@ class ActionsMixin:
 
         def _check():
             url = GITHUB_API_URL
+            # ── Debug update-check timing (active only when debug_mode is True) ──
+            _dlog = self._get_debug_logger()
+            if _dlog:
+                import time as _time
+                _t_upd = _time.time()
+                _dlog.debug("UPDATE    CHECK START")
+                def _ustep(label):
+                    _dlog.debug("UPDATE    %s  (+%d ms)", label, (_time.time() - _t_upd) * 1000)
+            else:
+                def _ustep(label): pass
+
             try:
                 import urllib.request, json
                 from urllib.error import URLError
@@ -874,6 +885,7 @@ class ActionsMixin:
                 req = urllib.request.Request(url, headers={'User-Agent': 'KodiLogMonitor-App'})
                 with urllib.request.urlopen(req, timeout=5) as response:
                     data = json.loads(response.read().decode())
+                    _ustep(f"HTTP OK  tag={data.get('tag_name', '?')}")
 
                     latest_v_str = data.get("tag_name", "")
 
@@ -882,6 +894,7 @@ class ActionsMixin:
                         latest_v_tuple = parse_version(latest_v_str)
 
                         if latest_v_tuple > current_v_tuple and latest_v_str != self.skip_version:
+                            _ustep(f"UPDATE AVAILABLE  {APP_VERSION} → {latest_v_str}")
                             # A version newer than the skipped one is available:
                             # the skip entry is now stale - clear it silently so
                             # the 🔕 indicator disappears without user action.
@@ -893,8 +906,11 @@ class ActionsMixin:
                                 latest_v_str,
                                 data.get("html_url")
                             ))
+                        else:
+                            _ustep(f"up to date  current={APP_VERSION}  latest={latest_v_str}")
 
             except Exception as e:
+                _ustep(f"FAILED  {type(e).__name__}: {e}")
                 print(f"Update check skipped (reason: {e})")
 
         threading.Thread(target=_check, daemon=True).start()
@@ -1200,6 +1216,57 @@ class ActionsMixin:
         else:
             self.lbl_notify_muted.pack_forget()
             self.sep_notify_muted.pack_forget()
+
+        # Keep debug indicator position consistent after notify state changes
+        if getattr(self, "debug_mode", False):
+            self.update_debug_indicator()
+
+    # ------------------------------------------------------------------
+    # Debug mode indicator (🐞 in footer) — toggled by Ctrl+Shift+D
+    # ------------------------------------------------------------------
+
+    def toggle_debug_mode(self, event=None):
+        """Toggles debug logging on/off and updates the 🐞 footer indicator.
+        When disabled, closes the logger and immediately deletes the debug log file."""
+        self.debug_mode = not self.debug_mode
+        if not self.debug_mode:
+            # Close and release the file handle before deleting (required on Windows)
+            import logging
+            _log = logging.getLogger("kodi_debug")
+            for _h in _log.handlers[:]:
+                _h.close()
+                _log.removeHandler(_h)
+            try:
+                if os.path.exists(DEBUG_LOG_FILE):
+                    os.remove(DEBUG_LOG_FILE)
+            except OSError:
+                pass
+        self.save_session()
+        self.update_debug_indicator()
+        return "break"
+
+    def update_debug_indicator(self):
+        """
+        Shows or hides the 🐞 debug indicator in the footer.
+        Positioned to the right of 🔕 when that indicator is visible,
+        or directly to the right of the version label otherwise.
+        """
+        if self.debug_mode:
+            # Anchor: right of 🔕 if visible, right of version label otherwise
+            anchor = (
+                self.lbl_notify_muted
+                if self.lbl_notify_muted.winfo_ismapped()
+                else self.github_label
+            )
+            self.lbl_debug_mode.pack(
+                side=tk.RIGHT, padx=(5, 6), before=anchor
+            )
+            self.sep_debug_mode.pack(
+                side=tk.RIGHT, fill=tk.Y, padx=(5, 0), pady=2, before=anchor
+            )
+        else:
+            self.lbl_debug_mode.pack_forget()
+            self.sep_debug_mode.pack_forget()
 
     def _reset_update_notifications_dialog(self, event=None):
         """

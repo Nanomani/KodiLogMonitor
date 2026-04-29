@@ -18,6 +18,16 @@ _BATCH_MAX = 150
 class MonitorMixin:
     def monitor_loop(self):
         """Monitors the log file in a background thread and updates the UI."""
+        # ── Debug file-reload timing (active only when debug_mode is True) ──
+        _dlog = self._get_debug_logger()
+        if _dlog:
+            _t_reload = time.time()
+            _dlog.debug("RELOAD    START  file=%s", self.log_file_path)
+            def _rstep(label):
+                _dlog.debug("RELOAD    %s  (+%d ms)", label, (time.time() - _t_reload) * 1000)
+        else:
+            def _rstep(label): pass
+
         try:
             # --- CAPTURE UI VALUES SAFELY AT START ---
             if not self.running:
@@ -43,6 +53,7 @@ class MonitorMixin:
                     f.seek(max(0, f.tell() - 100000))
 
                 initial_lines = f.readlines()
+                _rstep(f"file read  {len(initial_lines)} raw lines")
                 if not load_full:
                     initial_lines = initial_lines[-1000:]
 
@@ -77,11 +88,14 @@ class MonitorMixin:
                 # Persist flag so the live tail loop continues from the correct state.
                 self._monitor_last_parent_visible = last_parent_visible
 
+                _rstep(f"parse done  {len(to_display)} displayable lines")
+
                 # Send initial data to GUI
                 if self.running:
                     try:
                         if to_display:
                             self.root.after(0, self.bulk_insert, to_display)
+                            _rstep("bulk_insert dispatched to UI")
                         else:
                             # Logic for empty files or filtering
                             is_filtering = any(v.get() for k, v in self.filter_vars.items() if k != "all")
@@ -122,6 +136,7 @@ class MonitorMixin:
 
                         # 3. Detect Log Rotations (Kodi restarts)
                         if current_size < last_pos:
+                            _rstep("ROTATION detected — restarting monitor")
                             if self.running:
                                 self.root.after(0, self.start_monitoring, self.log_file_path, False, False)
                             return

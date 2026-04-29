@@ -1153,6 +1153,24 @@ class UIBuilderMixin:
         # after load_session(), so the widget starts hidden (pack_forget not needed -
         # widgets that have never been packed are already invisible).
 
+        # --- Debug mode indicator (🐞) — visible only when debug_mode is True ---
+        # Placed to the right of the 🔕 indicator (or right of version if 🔕 hidden).
+        # Toggled by Ctrl+Shift+D; visibility managed by update_debug_indicator().
+        self.sep_debug_mode = tk.Frame(footer_inner, bg=COLOR_SEPARATOR, width=2)
+        self.lbl_debug_mode = ctk.CTkLabel(
+            footer_inner,
+            text="🐞",
+            fg_color=COLOR_BG_FOOTER,
+            text_color=COLOR_TEXT_DIM,
+            font=ctk.CTkFont(family=emoji_fam, size=12),
+            cursor="hand2",
+        )
+        self.debug_mode_tooltip = ToolTip(
+            self.lbl_debug_mode,
+            l_ui.get("tip_debug_mode", "Debug mode ON — Ctrl+Shift+D to disable"),
+            scale=self.scale,
+        )
+
         # --- History dropdown listbox (placed on root, shown on demand) ---
         self.history_listbox = tk.Listbox(
             self.root,

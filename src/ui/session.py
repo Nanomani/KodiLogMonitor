@@ -38,6 +38,8 @@ class SessionMixin:
                     f"{str(SINGLE_INSTANCE_PORT):<{w}} # Single instance port",
                     f"{('1' if self.enable_single_instance_var else '0'):<{w}} # Enable single instance (1=True, 0=False)",
                     f"{str(self.app_theme.get()):<{w}} # App color theme (dark/light)",
+                    f"{str(self.window_state):<{w}} # Window state (normal/zoomed)",
+                    f"{('1' if self.debug_mode else '0'):<{w}} # Debug mode (1=on 0=off)",
                 ]
                 f.write("\n".join(config_data))
         except (IOError, OSError) as e:
@@ -48,7 +50,9 @@ class SessionMixin:
         Load previous session settings from the configuration file.
         """
         if not os.path.exists(CONFIG_FILE):
-            # No config file, perform basic UI updates and return
+            # First launch — no config file yet.
+            # Start maximised so the user sees the full interface immediately.
+            self.window_state = "zoomed"
             self.retranslate_ui(False)
             self.update_tags_config()
             return
@@ -162,6 +166,16 @@ class SessionMixin:
                     val = lines[17].strip().lower()
                     if val in ("dark", "light"):
                         self.app_theme.set(val)
+
+                # Line 19: Window state (normal / zoomed)
+                if len(lines) >= 19:
+                    val = lines[18].strip().lower()
+                    if val in ("normal", "zoomed"):
+                        self.window_state = val
+
+                # Line 20: Debug mode (0 / 1)
+                if len(lines) >= 20:
+                    self.debug_mode = (lines[19].strip() == "1")
 
         except Exception as e:
             print(f"Error loading configuration: {e}")
