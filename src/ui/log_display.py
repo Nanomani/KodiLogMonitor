@@ -228,13 +228,15 @@ class LogDisplayMixin:
             prev_tag = None
             batch    = []
             for text, tag in valid_data:
-                padded = _pad_line(text, chars_label)
-                if tag == prev_tag:
+                # Map None (continuation lines) to their dedicated tag
+                eff_tag = tag if tag is not None else "continuation"
+                padded  = _pad_line(text, chars_label)
+                if eff_tag == prev_tag:
                     batch.append(padded)
                 else:
                     if batch:
                         self.txt_area.insert(tk.END, "".join(batch), prev_tag)
-                    prev_tag = tag
+                    prev_tag = eff_tag
                     batch    = [padded]
             if batch:
                 self.txt_area.insert(tk.END, "".join(batch), prev_tag)
@@ -338,7 +340,10 @@ class LogDisplayMixin:
         Inserts log lines and applies different highlight colors:
         - Blue for keywords from the search bar.
         - Yellow for keywords from the loaded list.
+        Continuation lines (tag=None) are mapped to the "continuation" tag.
         """
+        # Map None (continuation lines) to their dedicated tag
+        base_tag = base_tag if base_tag is not None else "continuation"
         l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
 
         # 1. Get terms from search bar

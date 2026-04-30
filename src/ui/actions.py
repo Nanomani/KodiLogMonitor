@@ -119,6 +119,8 @@ class ActionsMixin:
             get_items=lambda: list(self.exclude_patterns),
             on_save=_on_save,
             empty_msg=l_ui.get("exclude_list_empty", "No active exclusions."),
+            resizable=True,
+            default_width=640,
         )
 
     def show_history_manager(self):
@@ -141,7 +143,7 @@ class ActionsMixin:
             empty_msg=l_ui.get("history_list_empty", "No search history."),
         )
 
-    def show_list_manager(self, title, get_items, on_save, empty_msg=""):
+    def show_list_manager(self, title, get_items, on_save, empty_msg="", resizable=False, default_width=560):
         """
         Generic list manager window.
         Handles exclusions, search history, or any simple string list.
@@ -162,7 +164,9 @@ class ActionsMixin:
         win.title(title)
         win.configure(fg_color=COLOR_BG_DIALOG)
         win.transient(self.root)
-        win.resizable(False, False)
+        win.resizable(resizable, resizable)
+        if resizable:
+            win.minsize(480, 300)
         # Start off-screen to avoid flicker during build.
         # Avoid withdraw(): CTkToplevel may call deiconify() internally after
         # its own init delay, leaving the window in an inconsistent state.
@@ -459,7 +463,7 @@ class ActionsMixin:
             except Exception:
                 pass
 
-        TARGET_W_LOGICAL  = 560
+        TARGET_W_LOGICAL  = default_width
         n                 = max(1, len(get_items()))
         TARGET_H_LOGICAL  = max(280, min(440, 160 + n * 32))
         final_w           = int(TARGET_W_LOGICAL * dpi_scale)
@@ -1268,6 +1272,142 @@ class ActionsMixin:
             self.lbl_debug_mode.pack_forget()
             self.sep_debug_mode.pack_forget()
 
+    def _show_info_dialog(self, title, message):
+        """
+        Displays a simple information dialog with a single OK button.
+        Uses CTkToplevel for consistent theming with the rest of the application.
+        """
+        l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
+
+        dlg = ctk.CTkToplevel(self.root)
+        dlg.title(title)
+        dlg.configure(fg_color=COLOR_BG_DIALOG)
+        dlg.transient(self.root)
+        dlg.resizable(False, False)
+
+        def _close(event=None):
+            dlg.destroy()
+
+        ctk.CTkLabel(
+            dlg,
+            text=message,
+            font=(self._main_font, 13),
+            text_color=COLOR_TEXT_MAIN,
+            wraplength=320,
+            justify="center",
+        ).pack(padx=24, pady=(24, 20))
+
+        btn_frame = tk.Frame(dlg, bg=COLOR_BG_DIALOG)
+        btn_frame.pack(padx=24, pady=(0, self.sc(48)))
+
+        btn_ok = ctk.CTkButton(
+            btn_frame,
+            text=l_ui.get("ok", "OK"),
+            width=90,
+            fg_color=COLOR_BTN_DEFAULT,
+            hover_color=COLOR_BTN_ACTIVE,
+            text_color=COLOR_TEXT_BRIGHT,
+            font=(self._main_font, 13),
+            command=_close,
+        )
+        btn_ok.pack()
+
+        for key in ("<Return>", "<KP_Enter>", "<Escape>"):
+            dlg.bind(key, _close)
+
+        self._center_dialog(dlg, 380)
+        dlg.lift()
+        dlg.attributes("-topmost", True)
+        dlg.after(150, lambda: dlg.attributes("-topmost", False))
+        dlg.grab_set()
+        self.root.wait_window(dlg)
+
+    def _show_confirm_dialog(self, title, message):
+        """
+        Displays a Yes / No confirmation dialog styled with CTkToplevel.
+        Returns True if the user confirmed, False otherwise.
+        Default focus is on No to avoid accidental confirmation.
+        """
+        l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
+        confirmed = [False]
+
+        dlg = ctk.CTkToplevel(self.root)
+        dlg.title(title)
+        dlg.configure(fg_color=COLOR_BG_DIALOG)
+        dlg.transient(self.root)
+        dlg.resizable(False, False)
+
+        ctk.CTkLabel(
+            dlg,
+            text=message,
+            font=(self._main_font, 13),
+            text_color=COLOR_TEXT_MAIN,
+            wraplength=320,
+            justify="center",
+        ).pack(padx=24, pady=(24, 20))
+
+        btn_frame = tk.Frame(dlg, bg=COLOR_BG_DIALOG)
+        btn_frame.pack(padx=24, pady=(0, self.sc(48)))
+
+        def _confirm():
+            confirmed[0] = True
+            dlg.destroy()
+
+        def _cancel():
+            dlg.destroy()
+
+        _focused = ["no"]
+
+        def _set_focus(which):
+            _focused[0] = which
+            btn_yes.configure(fg_color=COLOR_BTN_ACTIVE  if which == "yes" else COLOR_BTN_DEFAULT)
+            btn_no.configure( fg_color=COLOR_BTN_ACTIVE  if which == "no"  else COLOR_BTN_DEFAULT)
+
+        def _activate(e=None):
+            (_confirm if _focused[0] == "yes" else _cancel)()
+
+        btn_yes = ctk.CTkButton(
+            btn_frame,
+            text=l_ui.get("yes", "Yes"),
+            width=90,
+            fg_color=COLOR_BTN_DEFAULT,
+            hover_color=COLOR_BTN_ACTIVE,
+            text_color=COLOR_TEXT_BRIGHT,
+            font=(self._main_font, 13),
+            command=_confirm,
+        )
+        btn_yes.pack(side="left", padx=(0, 10))
+
+        btn_no = ctk.CTkButton(
+            btn_frame,
+            text=l_ui.get("no", "No"),
+            width=90,
+            fg_color=COLOR_BTN_DEFAULT,
+            hover_color=COLOR_BTN_ACTIVE,
+            text_color=COLOR_TEXT_BRIGHT,
+            font=(self._main_font, 13),
+            command=_cancel,
+        )
+        btn_no.pack(side="left")
+
+        dlg.bind("<Left>",     lambda e: _set_focus("yes" if _focused[0] == "no" else "no"))
+        dlg.bind("<Right>",    lambda e: _set_focus("yes" if _focused[0] == "no" else "no"))
+        dlg.bind("<Return>",   _activate)
+        dlg.bind("<KP_Enter>", _activate)
+        dlg.bind("<Escape>",   lambda e: _cancel())
+
+        # Default focus on No — closing is a significant action
+        _set_focus("no")
+
+        self._center_dialog(dlg, 380)
+        dlg.lift()
+        dlg.attributes("-topmost", True)
+        dlg.after(150, lambda: dlg.attributes("-topmost", False))
+        dlg.grab_set()
+        self.root.wait_window(dlg)
+
+        return confirmed[0]
+
     def _reset_update_notifications_dialog(self, event=None):
         """
         Asks the user to confirm resetting update notification options to
@@ -1972,12 +2112,55 @@ class ActionsMixin:
         from utils import check_single_instance
         check_single_instance()
 
+    def open_colors_file(self, event=None):
+        """
+        Opens kodi_monitor_colors.ini in the system default text editor.
+        Snapshots the file mtime beforehand so sync_config_on_focus() can
+        detect whether the user saved changes and prompt for a restart.
+        """
+        try:
+            self._colors_file_mtime = (
+                os.path.getmtime(COLORS_FILE) if os.path.exists(COLORS_FILE) else None
+            )
+        except OSError:
+            self._colors_file_mtime = None
+
+        try:
+            if sys.platform == "win32":
+                os.startfile(COLORS_FILE)
+            elif sys.platform == "darwin":
+                subprocess.Popen(["open", COLORS_FILE])
+            else:
+                subprocess.Popen(["xdg-open", COLORS_FILE])
+        except Exception as e:
+            print(f"Error opening colors file: {e}")
+
     def sync_config_on_focus(self):
         """
-        Reloads the single instance state only when the user focuses the window.
-        Uses a safe approach to avoid overwriting default values.
+        Called each time the main window regains focus.
+        - Detects if kodi_monitor_colors.ini was modified and prompts for restart.
+        - Reloads the single instance state from the config file.
         """
         global ENABLE_SINGLE_INSTANCE
+
+        # ── Colors file change detection ─────────────────────────────────────
+        if self._colors_file_mtime is not None:
+            try:
+                current_mtime = (
+                    os.path.getmtime(COLORS_FILE) if os.path.exists(COLORS_FILE) else None
+                )
+                if current_mtime and current_mtime != self._colors_file_mtime:
+                    self._colors_file_mtime = None   # Reset to avoid repeated prompts
+                    l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
+                    confirmed = self._show_confirm_dialog(
+                        l_ui.get("colors_restart_title", "Colors updated"),
+                        l_ui.get("colors_restart_msg",
+                                 "Colors have been updated.\n\nPlease relaunch the application\nto apply the new colors.\n\nClose now?"),
+                    )
+                    if confirmed:
+                        self.on_closing()
+            except OSError:
+                self._colors_file_mtime = None
 
         if not os.path.exists(CONFIG_FILE):
             return
@@ -2356,6 +2539,8 @@ class ActionsMixin:
             self.btn_down_font_tooltip.text = l["tip_down_font"]
         if hasattr(self, "btn_up_font_tooltip") and self.btn_up_font_tooltip:
             self.btn_up_font_tooltip.text = l["tip_up_font"]
+        if hasattr(self, "btn_colors_tooltip") and self.btn_colors_tooltip:
+            self.btn_colors_tooltip.text = l.get("tip_colors", "Customize log colors")
         if hasattr(self, "btn_kw_refresh_tooltip") and self.btn_kw_refresh_tooltip:
             self.btn_kw_refresh_tooltip.text = l["tip_kw_refresh"]
         if hasattr(self, "btn_kw_folder_tooltip") and self.btn_kw_folder_tooltip:

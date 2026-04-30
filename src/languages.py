@@ -86,6 +86,14 @@ LANGS = {
         "tip_upd_dl": "Télécharger la mise à jour depuis Github",
         "tip_upd_sk": "Ignorer les notifications pour cette version",
         "tip_upd_di": "Désactiver définitivement les notifications",
+        "tip_colors": "Personnaliser les couleurs des types de messages",
+        "colors_restart_title": "Couleurs mises à jour",
+        "colors_restart_msg": (
+            "Les couleurs ont été modifiées.\n\n"
+            "Veuillez relancer l'application\n"
+            "pour appliquer les nouvelles couleurs.\n\n"
+            "Fermer maintenant ?"
+        ),
         "tip_notify_disabled": "Notifications de mise à jour désactivées - cliquer pour rétablir",
         "tip_notify_skipped":  "Version {version} ignorée - cliquer pour rétablir",
         "tip_debug_mode": "Mode debug actif - Ctrl+Shift+D pour désactiver",
@@ -252,6 +260,14 @@ LANGS = {
         "tip_upd_dl": "Download the update from GitHub",
         "tip_upd_sk": "Ignore notifications for this version",
         "tip_upd_di": "Permanently disable notifications",
+        "tip_colors": "Customize log message type colors",
+        "colors_restart_title": "Colors updated",
+        "colors_restart_msg": (
+            "Colors have been updated.\n\n"
+            "Please relaunch the application\n"
+            "to apply the new colors.\n\n"
+            "Close now?"
+        ),
         "tip_notify_disabled": "Update notifications disabled - click to restore",
         "tip_notify_skipped":  "Version {version} skipped - click to restore",
         "tip_debug_mode": "Debug mode active - Ctrl+Shift+D to disable",
@@ -418,6 +434,14 @@ LANGS = {
         "tip_upd_dl": "Descargar la actualización desde GitHub",
         "tip_upd_sk": "Ignorar notificaciones para esta versión",
         "tip_upd_di": "Desactivar notificaciones permanentemente",
+        "tip_colors": "Personalizar los colores de los tipos de mensajes",
+        "colors_restart_title": "Colores actualizados",
+        "colors_restart_msg": (
+            "Los colores han sido modificados.\n\n"
+            "Vuelva a iniciar la aplicación\n"
+            "para aplicar los nuevos colores.\n\n"
+            "¿Cerrar ahora?"
+        ),
         "tip_notify_disabled": "Notificaciones de actualización desactivadas - clic para restaurar",
         "tip_notify_skipped":  "Versión {version} omitida - clic para restaurar",
         "tip_debug_mode": "Modo debug activo - Ctrl+Shift+D para desactivar",
@@ -584,6 +608,14 @@ LANGS = {
         "tip_upd_dl": "Update von GitHub herunterladen",
         "tip_upd_sk": "Benachrichtigungen für diese Version ignorieren",
         "tip_upd_di": "Benachrichtigungen dauerhaft deaktivieren",
+        "tip_colors": "Farben der Nachrichtentypen anpassen",
+        "colors_restart_title": "Farben aktualisiert",
+        "colors_restart_msg": (
+            "Die Farben wurden geändert.\n\n"
+            "Bitte starten Sie die Anwendung neu,\n"
+            "um die neuen Farben anzuwenden.\n\n"
+            "Jetzt schließen?"
+        ),
         "tip_notify_disabled": "Update-Benachrichtigungen deaktiviert - klicken zum Wiederherstellen",
         "tip_notify_skipped":  "Version {version} übersprungen - klicken zum Wiederherstellen",
         "tip_debug_mode": "Debug-Modus aktiv - Ctrl+Shift+D zum Deaktivieren",
@@ -750,6 +782,14 @@ LANGS = {
         "tip_upd_dl": "Scarica l'aggiornamento da GitHub",
         "tip_upd_sk": "Ignora le notifiche per questa versione",
         "tip_upd_di": "Disattiva le notifiche in modo permanente",
+        "tip_colors": "Personalizza i colori dei tipi di messaggio",
+        "colors_restart_title": "Colori aggiornati",
+        "colors_restart_msg": (
+            "I colori sono stati modificati.\n\n"
+            "Riavviare l'applicazione\n"
+            "per applicare i nuovi colori.\n\n"
+            "Chiudere adesso?"
+        ),
         "tip_notify_disabled": "Notifiche di aggiornamento disattivate - clicca per ripristinare",
         "tip_notify_skipped":  "Versione {version} ignorata - clicca per ripristinare",
         "tip_debug_mode": "Modalità debug attiva - Ctrl+Shift+D per disattivare",

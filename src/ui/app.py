@@ -85,7 +85,8 @@ class KodiLogMonitor(UIBuilderMixin, TimelineMixin, ActionsMixin, SessionMixin, 
         self.max_size_mb = DEFAULT_SECURITY_FILE_MAX_SIZE_STARTUP
         self.updates_enabled = True
         self.skip_version = ""
-        self.debug_mode = False     # Toggled by Ctrl+Shift+D; persisted in config
+        self.debug_mode = False           # Toggled by Ctrl+Shift+D; persisted in config
+        self._colors_file_mtime = None    # mtime snapshot taken when 🎨 opens the colors file
         self.running = False
         self.monitor_thread = None
         self.seen_lines = deque(maxlen=2000)
@@ -185,8 +186,12 @@ class KodiLogMonitor(UIBuilderMixin, TimelineMixin, ActionsMixin, SessionMixin, 
         self.root.geometry(self.window_geometry)
         # Restore maximised state AFTER geometry so the window manager has
         # valid coordinates to fall back on when un-maximising later.
+        # "zoomed" is Windows-only; Linux uses the -zoomed attribute instead.
         if self.window_state == "zoomed":
-            self.root.state("zoomed")
+            if sys.platform == "win32":
+                self.root.state("zoomed")
+            else:
+                self.root.attributes("-zoomed", True)
         _sstep("geometry applied")
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
 
@@ -494,7 +499,11 @@ class KodiLogMonitor(UIBuilderMixin, TimelineMixin, ActionsMixin, SessionMixin, 
             windll.user32.SetWindowLongPtrW(hwnd, -4, self.old_wndproc)
             _step("wndproc restored")
 
-        self.window_state    = self.root.state()    # 'normal' or 'zoomed'
+        # Capture maximised state — platform-specific API
+        if sys.platform == "win32":
+            self.window_state = self.root.state()   # 'normal' or 'zoomed'
+        else:
+            self.window_state = "zoomed" if self.root.attributes("-zoomed") else "normal"
         self.window_geometry = self.root.geometry()
         _step("geometry captured")
 

@@ -808,6 +808,32 @@ class UIBuilderMixin:
         )
         self.font_label.pack(side=tk.LEFT)
 
+        # Vertical separator
+        tk.Frame(sh_right, bg=COLOR_SEPARATOR, width=2).pack(
+            side=tk.LEFT, fill=tk.Y, padx=self.sc(10), pady=8
+        )
+
+        # Color customization button — opens kodi_monitor_colors.ini in the default editor
+        self.btn_colors = ctk.CTkButton(
+            sh_right,
+            text="🎨",
+            font=ctk.CTkFont(family=emoji_fam, size=12),
+            fg_color=COLOR_BTN_DEFAULT,
+            hover=False,
+            text_color=COLOR_TEXT_BRIGHT,
+            corner_radius=5,
+            border_width=0,
+            height=28,
+            width=40,
+            command=self.open_colors_file,
+        )
+        self.btn_colors.pack(side=tk.LEFT, padx=5)
+        self.btn_colors.bind("<Enter>", lambda e: self.btn_colors.configure(fg_color=COLOR_BTN_ACTIVE))
+        self.btn_colors.bind("<Leave>", lambda e: self.btn_colors.configure(fg_color=COLOR_BTN_DEFAULT))
+        self.btn_colors_tooltip = ToolTip(
+            self.btn_colors, l_ui.get("tip_colors", "Customize log colors"), scale=self.scale
+        )
+
         # ──────────────────────────────────────────────────────────────
         # MAIN LOG DISPLAY AREA (row 2)
         # ──────────────────────────────────────────────────────────────

@@ -30,6 +30,8 @@ SEARCH_HISTORY_MAX_SIZE = 50
 EXCLUDE_LIST_FILE = ".kodi_show_exclude"
 # Output file for shutdown debug logging (activated via Ctrl+Shift+D in the UI).
 DEBUG_LOG_FILE = "kodi_monitor_debug.log"
+# User-editable file for customising log-type colors (generated on first launch).
+COLORS_FILE = "kodi_monitor_colors.ini"
 # Maximum number of exclusion patterns. Keeps substring-search overhead negligible
 # (each check is O(pattern_count * line_len); 20 patterns on 1 000 lines ≈ 1 ms).
 EXCLUDE_LIST_MAX_SIZE = 20
@@ -105,8 +107,9 @@ _DARK_PALETTE = {
         "info":              "#81C784",    # Green
         "warning":           "#EEB74D",    # Orange
         "error":             "#E57373",    # Red
-        "debug":             "#B0BEC5",    # Grey
+        "debug":             "#9faeb6",    # Grey
         "summary":           "#8fa8b3",    # Cyan/Blue
+        "continuation":      "#d4d4d4",    # Grey (same as COLOR_TEXT_MAIN dark)
         "highlight_kwl_bg":  "#0d3c61",    # Blue bg for keyword list match
         "highlight_kwl_fg":  "#90caf9",    # Blue text on blue
         "highlight_kws_bg":  "#5c4b00",    # Brown bg for search bar match
@@ -166,6 +169,7 @@ _LIGHT_PALETTE = {
         "error":             "#c62828",    # Dark red
         "debug":             "#757575",    # Medium grey
         "summary":           "#1565c0",    # Dark blue
+        "continuation":      "#212121",    # Near-black (same as COLOR_TEXT_MAIN light)
         "highlight_kwl_bg":  "#bbdefb",    # Blue light bg for keyword list match
         "highlight_kwl_fg":  "#0d47a1",    # Blue text on blue light
         "highlight_kws_bg":  "#fff59d",    # Brown bg for search bar match
@@ -176,6 +180,145 @@ _LIGHT_PALETTE = {
 # ==============================================================
 # THEME SELECTION  (read saved preference at import time)
 # ==============================================================
+
+def _generate_default_colors_file():
+    """
+    Creates the color customization file with default values for both themes.
+    Only the 5 user-facing log-type colors are included (info, warning, error,
+    debug, summary). Highlight colors are intentionally omitted as they are
+    more technical and less likely to need customisation.
+    Called once on first launch if the file does not exist.
+    """
+    dark  = _DARK_PALETTE["LOG_COLORS"]
+    light = _LIGHT_PALETTE["LOG_COLORS"]
+    # Inline comments use ";" so that "#" in hex values is never misread.
+    lines = [
+        "# KodiLogMonitor - Log color customization",
+        "# Restart the application after any change.",
+        "# Use hexadecimal color codes (#RRGGBB).",
+        "",
+        "[dark]",
+        f"info         = {dark['info']}  ; Green",
+        f"warning      = {dark['warning']}  ; Orange",
+        f"error        = {dark['error']}  ; Red",
+        f"debug        = {dark['debug']}  ; Grey",
+        f"summary      = {dark['summary']}  ; Blue",
+        f"continuation = {dark['continuation']}  ; Continuation lines (no timestamp)",
+        "",
+        "[light]",
+        f"info         = {light['info']}  ; Dark green",
+        f"warning      = {light['warning']}  ; Deep orange",
+        f"error        = {light['error']}  ; Dark red",
+        f"debug        = {light['debug']}  ; Medium grey",
+        f"summary      = {light['summary']}  ; Dark blue",
+        f"continuation = {light['continuation']}  ; Continuation lines (no timestamp)",
+    ]
+    with open(COLORS_FILE, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines))
+
+
+def _repair_colors_file():
+    """
+    Checks the colors file for missing or invalid keys and restores them.
+    If any key is absent or contains an invalid hex value in either section,
+    the file is rewritten completely: existing valid values are preserved and
+    gaps are filled with palette defaults.
+    Called at startup after _apply_color_overrides().
+    """
+    if not os.path.exists(COLORS_FILE):
+        return
+
+    import configparser, re
+    _keys = ("info", "warning", "error", "debug", "summary", "continuation")
+    _defaults = {
+        "dark":  _DARK_PALETTE["LOG_COLORS"],
+        "light": _LIGHT_PALETTE["LOG_COLORS"],
+    }
+    _hex_re = re.compile(r"^#[0-9a-fA-F]{6}$")
+
+    try:
+        parser = configparser.ConfigParser(inline_comment_prefixes=(";",), strict=False)
+        parser.read(COLORS_FILE, encoding="utf-8")
+
+        # Detect whether any repair is needed
+        needs_repair = False
+        for theme in ("dark", "light"):
+            if theme not in parser:
+                needs_repair = True
+                break
+            for key in _keys:
+                val = parser[theme].get(key, "").strip()
+                if not _hex_re.match(val):
+                    needs_repair = True
+                    break
+            if needs_repair:
+                break
+
+        if not needs_repair:
+            return
+
+        # Build merged values: user's valid values take priority, defaults fill gaps
+        merged = {}
+        for theme in ("dark", "light"):
+            merged[theme] = {}
+            for key in _keys:
+                val = (parser[theme].get(key, "") if theme in parser else "").strip()
+                merged[theme][key] = val if _hex_re.match(val) else _defaults[theme][key]
+
+        # Rewrite the file in standard format with all values restored
+        d, l = merged["dark"], merged["light"]
+        lines = [
+            "# KodiLogMonitor - Log color customization",
+            "# Restart the application after any change.",
+            "# Use hexadecimal color codes (#RRGGBB).",
+            "",
+            "[dark]",
+            f"info         = {d['info']}  ; Green",
+            f"warning      = {d['warning']}  ; Orange",
+            f"error        = {d['error']}  ; Red",
+            f"debug        = {d['debug']}  ; Grey",
+            f"summary      = {d['summary']}  ; Blue",
+            f"continuation = {d['continuation']}  ; Continuation lines (no timestamp)",
+            "",
+            "[light]",
+            f"info         = {l['info']}  ; Dark green",
+            f"warning      = {l['warning']}  ; Deep orange",
+            f"error        = {l['error']}  ; Dark red",
+            f"debug        = {l['debug']}  ; Medium grey",
+            f"summary      = {l['summary']}  ; Dark blue",
+            f"continuation = {l['continuation']}  ; Continuation lines (no timestamp)",
+        ]
+        with open(COLORS_FILE, "w", encoding="utf-8") as f:
+            f.write("\n".join(lines))
+
+    except Exception:
+        pass
+
+
+def _apply_color_overrides(log_colors, theme):
+    """
+    Reads the color customization file and overwrites matching LOG_COLORS keys.
+    Only valid #RRGGBB hex values are accepted; invalid or missing entries are
+    silently ignored so the defaults remain in effect.
+    """
+    import configparser, re
+    if not os.path.exists(COLORS_FILE):
+        return
+    _hex_re = re.compile(r"^#[0-9a-fA-F]{6}$")
+    try:
+        parser = configparser.ConfigParser(inline_comment_prefixes=(";",), strict=False)
+        parser.read(COLORS_FILE, encoding="utf-8")
+        if theme not in parser:
+            return
+        section = parser[theme]
+        for key in ("info", "warning", "error", "debug", "summary", "continuation"):
+            if key in section:
+                val = section[key].strip()
+                if _hex_re.match(val):
+                    log_colors[key] = val
+    except Exception:
+        pass
+
 
 def _read_saved_app_theme():
     """
@@ -229,7 +372,17 @@ SCROLL_THUMB_DEFAULT   = _palette["SCROLL_THUMB_DEFAULT"]
 SCROLL_THUMB_HOVER     = _palette["SCROLL_THUMB_HOVER"]
 COLOR_TEXT_ON_ACCENT       = _palette["COLOR_TEXT_ON_ACCENT"]
 COLOR_TIMELINE_VIEWPORT    = _palette["COLOR_TIMELINE_VIEWPORT"]
-LOG_COLORS                 = _palette["LOG_COLORS"]
+# Independent copy so overrides do not mutate the original palette dict.
+LOG_COLORS                 = dict(_palette["LOG_COLORS"])
+
+# Generate the color customization file on first launch, then apply any overrides.
+if not os.path.exists(COLORS_FILE):
+    try:
+        _generate_default_colors_file()
+    except Exception:
+        pass
+_apply_color_overrides(LOG_COLORS, APP_THEME)
+_repair_colors_file()
 
 if not os.path.exists(KEYWORD_DIR):
     os.makedirs(KEYWORD_DIR)
