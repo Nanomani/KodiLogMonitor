@@ -2150,7 +2150,10 @@ class ActionsMixin:
                     os.path.getmtime(COLORS_FILE) if os.path.exists(COLORS_FILE) else None
                 )
                 if current_mtime and current_mtime != self._colors_file_mtime:
-                    self._colors_file_mtime = None   # Reset to avoid repeated prompts
+                    # Set to None before opening the dialog to prevent re-entrancy:
+                    # any FocusIn event fired while the dialog is open will find
+                    # _colors_file_mtime == None and skip the check.
+                    self._colors_file_mtime = None
                     l_ui = LANGS.get(self.current_lang.get(), LANGS["EN"])
                     confirmed = self._show_confirm_dialog(
                         l_ui.get("colors_restart_title", "Colors updated"),
@@ -2159,6 +2162,9 @@ class ActionsMixin:
                     )
                     if confirmed:
                         self.on_closing()
+                    else:
+                        # User chose to stay — re-snapshot so the next save is detected too
+                        self._colors_file_mtime = current_mtime
             except OSError:
                 self._colors_file_mtime = None
 

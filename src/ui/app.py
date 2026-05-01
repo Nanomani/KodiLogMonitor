@@ -86,7 +86,16 @@ class KodiLogMonitor(UIBuilderMixin, TimelineMixin, ActionsMixin, SessionMixin, 
         self.updates_enabled = True
         self.skip_version = ""
         self.debug_mode = False           # Toggled by Ctrl+Shift+D; persisted in config
-        self._colors_file_mtime = None    # mtime snapshot taken when 🎨 opens the colors file
+        # mtime snapshot for colors file change detection.
+        # Initialized at startup so any edit made while the app is running is detected,
+        # even if the user never clicked the 🎨 button in this session.
+        try:
+            from config import COLORS_FILE
+            self._colors_file_mtime = (
+                os.path.getmtime(COLORS_FILE) if os.path.exists(COLORS_FILE) else None
+            )
+        except Exception:
+            self._colors_file_mtime = None
         self.running = False
         self.monitor_thread = None
         self.seen_lines = deque(maxlen=2000)
