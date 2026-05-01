@@ -19,6 +19,7 @@ Quickly monitor, filter, and analyze Kodi logs with a clean and responsive inter
 - **Visual Timeline** - Navigate log history instantly using a vertical timeline with a colored overview 
 - **Large Log Support** - Optimized for high-volume logs with smart limits  
 - **Color-Coded UI** - Quickly identify issues at a glance  
+- **UI Customization** - Customize message type colors for each theme  
 - **Log Upload (paste.kodi.tv)** - Share logs in one click (Ctrl + P)  
 - **System Summary** - Instantly view Kodi/system info  
 - **Keyboard Shortcuts** - Full control without leaving the keyboard  
@@ -26,7 +27,7 @@ Quickly monitor, filter, and analyze Kodi logs with a clean and responsive inter
 - **Responsive UI** - Works seamlessly from HD to 4K  
 - **Light & Dark Themes** - Comfortable for long sessions  
 - **Localization** - Multi-language support with auto-detection  
-- **Robust Network Handling** - Stable with remote logs and reconnections  
+- **Robust Network Handling** - Stable with remote logs and reconnections
 
 ---
 
