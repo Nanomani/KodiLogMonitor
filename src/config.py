@@ -10,7 +10,7 @@ the matching palette. Changing themes requires an app restart (handled by action
 import os
 
 # --- CONFIGURATION ---
-APP_VERSION = "v1.7.2"
+APP_VERSION = "v1.7.3"
 APP_NAME = "Kodi Log Monitor"
 CONFIG_FILE = ".kodi_monitor_config"
 SEARCH_HISTORY_FILE = ".kodi_search_history"
